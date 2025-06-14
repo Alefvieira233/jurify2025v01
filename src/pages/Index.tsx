@@ -5,6 +5,7 @@ import Dashboard from '@/components/Dashboard';
 import LeadsPanel from '@/components/LeadsPanel';
 import WhatsAppIA from '@/components/WhatsAppIA';
 import PipelineJuridico from '@/components/PipelineJuridico';
+import ContratosManager from '@/components/ContratosManager';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -20,12 +21,7 @@ const Index = () => {
       case 'whatsapp':
         return <WhatsAppIA />;
       case 'contratos':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">Gestão de Contratos</h1>
-            <p className="text-gray-600 mt-2">Templates e geração automática de contratos - Em desenvolvimento</p>
-          </div>
-        );
+        return <ContratosManager />;
       case 'agendamentos':
         return (
           <div className="p-6">

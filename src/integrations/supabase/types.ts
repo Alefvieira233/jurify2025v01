@@ -9,6 +9,65 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      contratos: {
+        Row: {
+          area_juridica: string
+          clausulas_customizadas: string | null
+          created_at: string
+          data_assinatura: string | null
+          data_envio: string | null
+          id: string
+          lead_id: string | null
+          nome_cliente: string
+          observacoes: string | null
+          responsavel: string
+          status: string
+          texto_contrato: string
+          updated_at: string
+          valor_causa: number
+        }
+        Insert: {
+          area_juridica: string
+          clausulas_customizadas?: string | null
+          created_at?: string
+          data_assinatura?: string | null
+          data_envio?: string | null
+          id?: string
+          lead_id?: string | null
+          nome_cliente: string
+          observacoes?: string | null
+          responsavel: string
+          status?: string
+          texto_contrato: string
+          updated_at?: string
+          valor_causa: number
+        }
+        Update: {
+          area_juridica?: string
+          clausulas_customizadas?: string | null
+          created_at?: string
+          data_assinatura?: string | null
+          data_envio?: string | null
+          id?: string
+          lead_id?: string | null
+          nome_cliente?: string
+          observacoes?: string | null
+          responsavel?: string
+          status?: string
+          texto_contrato?: string
+          updated_at?: string
+          valor_causa?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           area_juridica: string

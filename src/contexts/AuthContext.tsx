@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
+import { useLogActivity } from '@/hooks/useLogActivity';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type UserRole = Database['public']['Tables']['user_roles']['Row'];
@@ -13,7 +13,7 @@ interface AuthContextType {
   profile: Profile | null;
   userRoles: UserRole[];
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ user: User | null, error: any }>;
   signUp: (email: string, password: string, nomeCompleto: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   hasPermission: (module: string, permission: string) => boolean;
@@ -41,6 +41,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Hook para logs - colocado após os estados
+  const { logLogin, logLogout } = useLogActivity();
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -85,11 +88,29 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    return { error };
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        setUser(data.user);
+        await fetchProfile(data.user.id);
+        // Registrar log de login após sucesso
+        setTimeout(() => logLogin(), 1000);
+      }
+
+      return { user: data.user, error: null };
+    } catch (error: any) {
+      console.error('Erro no login:', error);
+      return { user: null, error };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signUp = async (email: string, password: string, nomeCompleto: string) => {
@@ -109,7 +130,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Registrar log de logout antes de fazer logout
+      logLogout();
+      
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      setUser(null);
+      setProfile(null);
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      throw error;
+    }
   };
 
   useEffect(() => {

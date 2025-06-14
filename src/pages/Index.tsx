@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -13,9 +12,10 @@ import WhatsAppIA from "@/components/WhatsAppIA";
 import UsuariosManager from "@/components/UsuariosManager";
 import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
 import NotificationsPanel from "@/components/NotificationsPanel";
+import LogsPanel from "@/components/LogsPanel";
 import { useSearchParams } from "react-router-dom";
 
-type ActiveTab = 'dashboard' | 'leads' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'usuarios' | 'configuracoes' | 'notificacoes';
+type ActiveTab = 'dashboard' | 'leads' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs';
 
 const Index = () => {
   const { user, profile, signOut, hasPermission } = useAuth();
@@ -25,7 +25,7 @@ const Index = () => {
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
-    if (tab && ['dashboard', 'leads', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'usuarios', 'configuracoes', 'notificacoes'].includes(tab)) {
+    if (tab && ['dashboard', 'leads', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'usuarios', 'configuracoes', 'notificacoes', 'logs'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -79,6 +79,8 @@ const Index = () => {
         return hasPermission('whatsapp_ia', 'read') ? <WhatsAppIA /> : <div>Sem permissão</div>;
       case 'usuarios':
         return hasPermission('usuarios', 'read') ? <UsuariosManager /> : <div>Sem permissão</div>;
+      case 'logs':
+        return hasPermission('usuarios', 'read') ? <LogsPanel /> : <div>Sem permissão</div>;
       case 'configuracoes':
         return <ConfiguracoesGerais />;
       case 'notificacoes':

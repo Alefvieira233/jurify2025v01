@@ -12,7 +12,8 @@ import {
   TrendingUp,
   UserCog,
   LogOut,
-  Bell
+  Bell,
+  Activity
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -38,7 +39,10 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'agentes', label: 'Agentes IA', icon: Bot },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
     { id: 'notificacoes', label: 'Notificações', icon: Bell },
-    ...(hasRole('administrador') ? [{ id: 'usuarios', label: 'Usuários', icon: UserCog }] : []),
+    ...(hasRole('administrador') ? [
+      { id: 'logs', label: 'Logs de Atividades', icon: Activity },
+      { id: 'usuarios', label: 'Usuários', icon: UserCog }
+    ] : []),
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];
 

@@ -356,6 +356,53 @@ export type Database = {
         }
         Relationships: []
       }
+      logs_atividades: {
+        Row: {
+          created_at: string
+          data_hora: string
+          descricao: string
+          detalhes_adicionais: Json | null
+          id: string
+          ip_usuario: string | null
+          modulo: string
+          nome_usuario: string
+          tipo_acao: Database["public"]["Enums"]["tipo_acao"]
+          usuario_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_hora?: string
+          descricao: string
+          detalhes_adicionais?: Json | null
+          id?: string
+          ip_usuario?: string | null
+          modulo: string
+          nome_usuario: string
+          tipo_acao: Database["public"]["Enums"]["tipo_acao"]
+          usuario_id: string
+        }
+        Update: {
+          created_at?: string
+          data_hora?: string
+          descricao?: string
+          detalhes_adicionais?: Json | null
+          id?: string
+          ip_usuario?: string | null
+          modulo?: string
+          nome_usuario?: string
+          tipo_acao?: Database["public"]["Enums"]["tipo_acao"]
+          usuario_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_atividades_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notificacoes: {
         Row: {
           ativo: boolean | null
@@ -551,6 +598,29 @@ export type Database = {
       }
     }
     Functions: {
+      buscar_logs_atividades: {
+        Args: {
+          _limite?: number
+          _offset?: number
+          _usuario_id?: string
+          _tipo_acao?: Database["public"]["Enums"]["tipo_acao"]
+          _modulo?: string
+          _data_inicio?: string
+          _data_fim?: string
+        }
+        Returns: {
+          id: string
+          usuario_id: string
+          nome_usuario: string
+          tipo_acao: Database["public"]["Enums"]["tipo_acao"]
+          modulo: string
+          descricao: string
+          data_hora: string
+          ip_usuario: string
+          detalhes_adicionais: Json
+          total_count: number
+        }[]
+      }
       contar_nao_lidas: {
         Args: { user_id: string }
         Returns: number
@@ -592,6 +662,18 @@ export type Database = {
         Args: { user_id: string }
         Returns: number
       }
+      registrar_log_atividade: {
+        Args: {
+          _usuario_id: string
+          _nome_usuario: string
+          _tipo_acao: Database["public"]["Enums"]["tipo_acao"]
+          _modulo: string
+          _descricao: string
+          _ip_usuario?: string
+          _detalhes_adicionais?: Json
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_module:
@@ -610,6 +692,14 @@ export type Database = {
         | "pos_venda"
         | "suporte"
       notification_type: "info" | "alerta" | "sucesso" | "erro"
+      tipo_acao:
+        | "criacao"
+        | "edicao"
+        | "exclusao"
+        | "login"
+        | "logout"
+        | "erro"
+        | "outro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -743,6 +833,15 @@ export const Constants = {
         "suporte",
       ],
       notification_type: ["info", "alerta", "sucesso", "erro"],
+      tipo_acao: [
+        "criacao",
+        "edicao",
+        "exclusao",
+        "login",
+        "logout",
+        "erro",
+        "outro",
+      ],
     },
   },
 } as const

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -5,17 +6,20 @@ import { supabase } from "@/integrations/supabase/client";
 import Sidebar from "@/components/Sidebar";
 import Dashboard from "@/components/Dashboard";
 import LeadsPanel from "@/components/LeadsPanel";
+import PipelineJuridico from "@/components/PipelineJuridico";
 import AgendamentosManager from "@/components/AgendamentosManager";
 import ContratosManager from "@/components/ContratosManager";
 import RelatoriosGerenciais from "@/components/RelatoriosGerenciais";
 import WhatsAppIA from "@/components/WhatsAppIA";
+import AgentesIAManager from "@/components/AgentesIAManager";
 import UsuariosManager from "@/components/UsuariosManager";
 import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import LogsPanel from "@/components/LogsPanel";
+import IntegracoesConfig from "@/components/IntegracoesConfig";
 import { useSearchParams } from "react-router-dom";
 
-type ActiveTab = 'dashboard' | 'leads' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs';
+type ActiveTab = 'dashboard' | 'leads' | 'pipeline' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'agentes' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs' | 'integracoes';
 
 const Index = () => {
   const { user, profile, signOut, hasPermission } = useAuth();
@@ -25,7 +29,7 @@ const Index = () => {
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
-    if (tab && ['dashboard', 'leads', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'usuarios', 'configuracoes', 'notificacoes', 'logs'].includes(tab)) {
+    if (tab && ['dashboard', 'leads', 'pipeline', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'agentes', 'usuarios', 'configuracoes', 'notificacoes', 'logs', 'integracoes'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -69,6 +73,8 @@ const Index = () => {
         return <Dashboard />;
       case 'leads':
         return hasPermission('leads', 'read') ? <LeadsPanel /> : <div>Sem permissão</div>;
+      case 'pipeline':
+        return hasPermission('leads', 'read') ? <PipelineJuridico /> : <div>Sem permissão</div>;
       case 'agendamentos':
         return hasPermission('agendamentos', 'read') ? <AgendamentosManager /> : <div>Sem permissão</div>;
       case 'contratos':
@@ -77,10 +83,14 @@ const Index = () => {
         return hasPermission('relatorios', 'read') ? <RelatoriosGerenciais /> : <div>Sem permissão</div>;
       case 'whatsapp':
         return hasPermission('whatsapp_ia', 'read') ? <WhatsAppIA /> : <div>Sem permissão</div>;
+      case 'agentes':
+        return hasPermission('whatsapp_ia', 'read') ? <AgentesIAManager /> : <div>Sem permissão</div>;
       case 'usuarios':
         return hasPermission('usuarios', 'read') ? <UsuariosManager /> : <div>Sem permissão</div>;
       case 'logs':
         return hasPermission('usuarios', 'read') ? <LogsPanel /> : <div>Sem permissão</div>;
+      case 'integracoes':
+        return hasPermission('usuarios', 'read') ? <IntegracoesConfig /> : <div>Sem permissão</div>;
       case 'configuracoes':
         return <ConfiguracoesGerais />;
       case 'notificacoes':

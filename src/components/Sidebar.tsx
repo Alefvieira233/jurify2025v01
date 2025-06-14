@@ -13,7 +13,8 @@ import {
   UserCog,
   LogOut,
   Bell,
-  Activity
+  Activity,
+  Zap
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,8 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'notificacoes', label: 'Notificações', icon: Bell },
     ...(hasRole('administrador') ? [
       { id: 'logs', label: 'Logs de Atividades', icon: Activity },
-      { id: 'usuarios', label: 'Usuários', icon: UserCog }
+      { id: 'usuarios', label: 'Usuários', icon: UserCog },
+      { id: 'integracoes', label: 'Integrações', icon: Zap }
     ] : []),
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];

@@ -42,39 +42,43 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
       const agentesStats: AgenteStats[] = [];
 
       // Processar agentes IA
-      agentesIA?.forEach(agente => {
-        const leadsDoAgente = leads?.filter(lead => lead.area_juridica === agente.area_juridica) || [];
-        const contratosDoAgente = contratos?.filter(contrato => 
-          contrato.responsavel === 'IA Jurídica' && contrato.status === 'assinado'
-        ) || [];
+      if (agentesIA && agentesIA.length > 0) {
+        agentesIA.forEach(agente => {
+          const leadsDoAgente = leads?.filter(lead => lead.area_juridica === agente.area_juridica) || [];
+          const contratosDoAgente = contratos?.filter(contrato => 
+            contrato.responsavel === 'IA Jurídica' && contrato.status === 'assinado'
+          ) || [];
 
-        agentesStats.push({
-          nome: agente.nome,
-          tipo: 'ia',
-          leadsAtendidos: leadsDoAgente.length,
-          taxaFechamento: leadsDoAgente.length > 0 ? (contratosDoAgente.length / leadsDoAgente.length) * 100 : 0,
-          tempoMedioResposta: agente.delay_resposta || 3,
-          valorGerado: contratosDoAgente.reduce((sum, c) => sum + (c.valor_causa || 0), 0)
+          agentesStats.push({
+            nome: agente.nome,
+            tipo: 'ia',
+            leadsAtendidos: leadsDoAgente.length,
+            taxaFechamento: leadsDoAgente.length > 0 ? (contratosDoAgente.length / leadsDoAgente.length) * 100 : 0,
+            tempoMedioResposta: agente.delay_resposta || 3,
+            valorGerado: contratosDoAgente.reduce((sum, c) => sum + (c.valor_causa || 0), 0)
+          });
         });
-      });
+      }
 
       // Processar agentes humanos
       const responsaveisHumanos = [...new Set(leads?.map(lead => lead.responsavel).filter(resp => resp !== 'IA Jurídica'))] || [];
       
       responsaveisHumanos.forEach(responsavel => {
-        const leadsDoResponsavel = leads?.filter(lead => lead.responsavel === responsavel) || [];
-        const contratosDoResponsavel = contratos?.filter(contrato => 
-          contrato.responsavel === responsavel && contrato.status === 'assinado'
-        ) || [];
+        if (responsavel) {
+          const leadsDoResponsavel = leads?.filter(lead => lead.responsavel === responsavel) || [];
+          const contratosDoResponsavel = contratos?.filter(contrato => 
+            contrato.responsavel === responsavel && contrato.status === 'assinado'
+          ) || [];
 
-        agentesStats.push({
-          nome: responsavel,
-          tipo: 'humano',
-          leadsAtendidos: leadsDoResponsavel.length,
-          taxaFechamento: leadsDoResponsavel.length > 0 ? (contratosDoResponsavel.length / leadsDoResponsavel.length) * 100 : 0,
-          tempoMedioResposta: Math.floor(Math.random() * 60) + 30, // Simular tempo de resposta humano
-          valorGerado: contratosDoResponsavel.reduce((sum, c) => sum + (c.valor_causa || 0), 0)
-        });
+          agentesStats.push({
+            nome: responsavel,
+            tipo: 'humano',
+            leadsAtendidos: leadsDoResponsavel.length,
+            taxaFechamento: leadsDoResponsavel.length > 0 ? (contratosDoResponsavel.length / leadsDoResponsavel.length) * 100 : 0,
+            tempoMedioResposta: Math.floor(Math.random() * 60) + 30, // Simular tempo de resposta humano
+            valorGerado: contratosDoResponsavel.reduce((sum, c) => sum + (c.valor_causa || 0), 0)
+          });
+        }
       });
 
       // Ordenar por leads atendidos

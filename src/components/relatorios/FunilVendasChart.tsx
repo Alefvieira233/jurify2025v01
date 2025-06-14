@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface FunilVendasData {
   novo_lead: number;
@@ -43,11 +43,11 @@ const FunilVendasChart: React.FC<FunilVendasChartProps> = ({ data }) => {
           />
           <YAxis />
           <Tooltip />
-          <Bar 
-            dataKey="valor" 
-            fill="#3B82F6"
-            radius={[4, 4, 0, 0]}
-          />
+          <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+            {chartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.cor} />
+            ))}
+          </Bar>
         </BarChart>
       </ResponsiveContainer>
     </div>

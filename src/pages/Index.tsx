@@ -4,6 +4,7 @@ import Sidebar from '@/components/Sidebar';
 import Dashboard from '@/components/Dashboard';
 import LeadsPanel from '@/components/LeadsPanel';
 import WhatsAppIA from '@/components/WhatsAppIA';
+import PipelineJuridico from '@/components/PipelineJuridico';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -14,15 +15,10 @@ const Index = () => {
         return <Dashboard />;
       case 'leads':
         return <LeadsPanel />;
+      case 'pipeline':
+        return <PipelineJuridico />;
       case 'whatsapp':
         return <WhatsAppIA />;
-      case 'pipeline':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
-            <p className="text-gray-600 mt-2">Gestão visual do funil de vendas jurídico - Em desenvolvimento</p>
-          </div>
-        );
       case 'contratos':
         return (
           <div className="p-6">

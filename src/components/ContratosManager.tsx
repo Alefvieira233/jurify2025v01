@@ -24,6 +24,10 @@ interface Contrato {
   data_envio?: string;
   data_assinatura?: string;
   lead_id?: string;
+  texto_contrato: string;
+  clausulas_customizadas?: string;
+  observacoes?: string;
+  updated_at: string;
 }
 
 const ContratosManager = () => {

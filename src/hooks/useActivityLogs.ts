@@ -47,7 +47,7 @@ export const useActivityLogs = () => {
         _limite: limit,
         _offset: offset,
         _usuario_id: filters.usuario_id || null,
-        _tipo_acao: filters.tipo_acao || null,
+        _tipo_acao: filters.tipo_acao as any || null,
         _modulo: filters.modulo || null,
         _data_inicio: filters.data_inicio || null,
         _data_fim: filters.data_fim || null,

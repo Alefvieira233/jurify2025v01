@@ -1,77 +1,80 @@
 
 import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings, Calendar, Bell, Shield } from 'lucide-react';
-import GoogleCalendarConfig from './GoogleCalendarConfig';
+import { Settings, Plug, User, Bell } from 'lucide-react';
+import IntegracoesConfig from './IntegracoesConfig';
 
 const ConfiguracoesGerais = () => {
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-2">
-        <Settings className="h-6 w-6 text-amber-500" />
-        <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Configurações Gerais</h1>
+        <p className="text-gray-600">Gerencie as configurações do sistema Jurify</p>
       </div>
 
-      <Tabs defaultValue="calendar" className="space-y-4">
+      <Tabs defaultValue="integracoes" className="space-y-6">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="calendar" className="flex items-center space-x-2">
-            <Calendar className="h-4 w-4" />
-            <span>Calendário</span>
+          <TabsTrigger value="integracoes" className="flex items-center gap-2">
+            <Plug className="h-4 w-4" />
+            Integrações
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center space-x-2">
+          <TabsTrigger value="usuarios" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Usuários
+          </TabsTrigger>
+          <TabsTrigger value="notificacoes" className="flex items-center gap-2">
             <Bell className="h-4 w-4" />
-            <span>Notificações</span>
+            Notificações
           </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center space-x-2">
-            <Shield className="h-4 w-4" />
-            <span>Segurança</span>
-          </TabsTrigger>
-          <TabsTrigger value="general" className="flex items-center space-x-2">
+          <TabsTrigger value="sistema" className="flex items-center gap-2">
             <Settings className="h-4 w-4" />
-            <span>Geral</span>
+            Sistema
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="calendar">
-          <GoogleCalendarConfig />
+        <TabsContent value="integracoes">
+          <IntegracoesConfig />
         </TabsContent>
 
-        <TabsContent value="notifications">
+        <TabsContent value="usuarios">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações de Usuários</CardTitle>
+              <CardDescription>
+                Gerencie configurações relacionadas aos usuários do sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-500">Em desenvolvimento...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notificacoes">
           <Card>
             <CardHeader>
               <CardTitle>Configurações de Notificações</CardTitle>
+              <CardDescription>
+                Configure como as notificações são enviadas e recebidas
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">
-                Configurações de notificações serão implementadas em breve.
-              </p>
+              <p className="text-gray-500">Em desenvolvimento...</p>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="security">
+        <TabsContent value="sistema">
           <Card>
             <CardHeader>
-              <CardTitle>Configurações de Segurança</CardTitle>
+              <CardTitle>Configurações do Sistema</CardTitle>
+              <CardDescription>
+                Configurações gerais do sistema Jurify
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <p className="text-gray-600">
-                Configurações de segurança serão implementadas em breve.
-              </p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle>Configurações Gerais</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">
-                Configurações gerais serão implementadas em breve.
-              </p>
+              <p className="text-gray-500">Em desenvolvimento...</p>
             </CardContent>
           </Card>
         </TabsContent>

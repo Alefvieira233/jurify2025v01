@@ -48,7 +48,7 @@ const ConversaoChart: React.FC<ConversaoChartProps> = ({ periodo }) => {
     }
   });
 
-  if (!dadosConversao) {
+  if (!dadosConversao || !Array.isArray(dadosConversao)) {
     return <div className="h-64 flex items-center justify-center text-gray-500">Carregando dados...</div>;
   }
 

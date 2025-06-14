@@ -42,11 +42,16 @@ const RelatoriosGerenciais = () => {
         .select('*')
         .gte('created_at', getDataInicio(periodo));
 
+      const totalLeads = leads?.length || 0;
+      const contratosAssinados = contratos?.filter(c => c?.status === 'assinado').length || 0;
+      const valorTotalContratos = contratos?.reduce((sum, c) => sum + (c?.valor_causa || 0), 0) || 0;
+      const taxaConversao = totalLeads > 0 ? (contratosAssinados / totalLeads * 100) : 0;
+
       return {
-        totalLeads: leads?.length || 0,
-        contratosAssinados: contratos?.filter(c => c.status === 'assinado').length || 0,
-        valorTotalContratos: contratos?.reduce((sum, c) => sum + (c.valor_causa || 0), 0) || 0,
-        taxaConversao: leads?.length ? ((contratos?.filter(c => c.status === 'assinado').length || 0) / leads.length * 100) : 0
+        totalLeads,
+        contratosAssinados,
+        valorTotalContratos,
+        taxaConversao
       };
     }
   });
@@ -79,11 +84,13 @@ const RelatoriosGerenciais = () => {
         'lead_perdido': 0
       };
 
-      data?.forEach(lead => {
-        if (contadores.hasOwnProperty(lead.status)) {
-          contadores[lead.status as keyof typeof contadores]++;
-        }
-      });
+      if (data && Array.isArray(data)) {
+        data.forEach(lead => {
+          if (lead?.status && contadores.hasOwnProperty(lead.status)) {
+            contadores[lead.status as keyof typeof contadores]++;
+          }
+        });
+      }
 
       return contadores;
     }
@@ -105,9 +112,13 @@ const RelatoriosGerenciais = () => {
       const { data } = await query;
 
       const contadores: Record<string, number> = {};
-      data?.forEach(lead => {
-        contadores[lead.area_juridica] = (contadores[lead.area_juridica] || 0) + 1;
-      });
+      if (data && Array.isArray(data)) {
+        data.forEach(lead => {
+          if (lead?.area_juridica) {
+            contadores[lead.area_juridica] = (contadores[lead.area_juridica] || 0) + 1;
+          }
+        });
+      }
 
       return contadores;
     }
@@ -129,9 +140,13 @@ const RelatoriosGerenciais = () => {
       const { data } = await query;
 
       const contadores: Record<string, number> = {};
-      data?.forEach(lead => {
-        contadores[lead.origem] = (contadores[lead.origem] || 0) + 1;
-      });
+      if (data && Array.isArray(data)) {
+        data.forEach(lead => {
+          if (lead?.origem) {
+            contadores[lead.origem] = (contadores[lead.origem] || 0) + 1;
+          }
+        });
+      }
 
       return contadores;
     }

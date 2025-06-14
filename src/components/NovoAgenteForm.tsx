@@ -24,7 +24,7 @@ interface AgenteIA {
   perguntas_qualificacao: string[];
   keywords_acao: string[];
   delay_resposta: number;
-  status: 'ativo' | 'inativo';
+  status: string; // Mudado para string
 }
 
 interface NovoAgenteFormProps {
@@ -44,7 +44,7 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     perguntas_qualificacao: [''],
     keywords_acao: [''],
     delay_resposta: 3,
-    status: 'ativo' as 'ativo' | 'inativo'
+    status: 'ativo' as string // Mudado para string
   });
 
   const areas = [
@@ -206,7 +206,7 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
             {/* Status */}
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value: 'ativo' | 'inativo') => handleInputChange('status', value)}>
+              <Select value={formData.status} onValueChange={(value: string) => handleInputChange('status', value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

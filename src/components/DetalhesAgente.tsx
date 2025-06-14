@@ -13,7 +13,7 @@ interface AgenteIA {
   perguntas_qualificacao: string[];
   keywords_acao: string[];
   delay_resposta: number;
-  status: 'ativo' | 'inativo';
+  status: string; // Mudado para string
   created_at: string;
   updated_at: string;
 }

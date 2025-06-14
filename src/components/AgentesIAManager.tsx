@@ -45,7 +45,7 @@ interface AgenteIA {
   perguntas_qualificacao: string[];
   keywords_acao: string[];
   delay_resposta: number;
-  status: 'ativo' | 'inativo';
+  status: string; // Mudado para string para aceitar valores do banco
   created_at: string;
   updated_at: string;
 }

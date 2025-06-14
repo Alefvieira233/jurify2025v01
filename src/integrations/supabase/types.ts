@@ -98,6 +98,42 @@ export type Database = {
         }
         Relationships: []
       }
+      configuracoes_integracoes: {
+        Row: {
+          api_key: string
+          atualizado_em: string
+          criado_em: string
+          data_ultima_sincronizacao: string | null
+          endpoint_url: string
+          id: string
+          nome_integracao: string
+          observacoes: string | null
+          status: Database["public"]["Enums"]["status_integracao"]
+        }
+        Insert: {
+          api_key: string
+          atualizado_em?: string
+          criado_em?: string
+          data_ultima_sincronizacao?: string | null
+          endpoint_url: string
+          id?: string
+          nome_integracao: string
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["status_integracao"]
+        }
+        Update: {
+          api_key?: string
+          atualizado_em?: string
+          criado_em?: string
+          data_ultima_sincronizacao?: string | null
+          endpoint_url?: string
+          id?: string
+          nome_integracao?: string
+          observacoes?: string | null
+          status?: Database["public"]["Enums"]["status_integracao"]
+        }
+        Relationships: []
+      }
       contratos: {
         Row: {
           area_juridica: string
@@ -692,6 +728,7 @@ export type Database = {
         | "pos_venda"
         | "suporte"
       notification_type: "info" | "alerta" | "sucesso" | "erro"
+      status_integracao: "ativa" | "inativa" | "erro"
       tipo_acao:
         | "criacao"
         | "edicao"
@@ -833,6 +870,7 @@ export const Constants = {
         "suporte",
       ],
       notification_type: ["info", "alerta", "sucesso", "erro"],
+      status_integracao: ["ativa", "inativa", "erro"],
       tipo_acao: [
         "criacao",
         "edicao",

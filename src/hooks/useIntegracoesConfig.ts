@@ -3,26 +3,11 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import type { Database } from '@/integrations/supabase/types';
 
-export interface IntegracaoConfig {
-  id: string;
-  nome_integracao: string;
-  status: 'ativa' | 'inativa' | 'erro';
-  api_key: string;
-  endpoint_url: string;
-  data_ultima_sincronizacao?: string;
-  observacoes?: string;
-  criado_em: string;
-  atualizado_em: string;
-}
-
-export interface CreateIntegracaoData {
-  nome_integracao: string;
-  status: 'ativa' | 'inativa' | 'erro';
-  api_key: string;
-  endpoint_url: string;
-  observacoes?: string;
-}
+// Use os tipos do Supabase para IntegracaoConfig
+export type IntegracaoConfig = Database['public']['Tables']['configuracoes_integracoes']['Row'];
+export type CreateIntegracaoData = Database['public']['Tables']['configuracoes_integracoes']['Insert'];
 
 export const useIntegracoesConfig = () => {
   const [integracoes, setIntegracoes] = useState<IntegracaoConfig[]>([]);

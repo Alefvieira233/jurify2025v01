@@ -105,15 +105,20 @@ export type Database = {
           created_at: string
           data_assinatura: string | null
           data_envio: string | null
+          data_envio_whatsapp: string | null
+          data_geracao_link: string | null
           id: string
           lead_id: string | null
+          link_assinatura_zapsign: string | null
           nome_cliente: string
           observacoes: string | null
           responsavel: string
           status: string
+          status_assinatura: string | null
           texto_contrato: string
           updated_at: string
           valor_causa: number
+          zapsign_document_id: string | null
         }
         Insert: {
           area_juridica: string
@@ -121,15 +126,20 @@ export type Database = {
           created_at?: string
           data_assinatura?: string | null
           data_envio?: string | null
+          data_envio_whatsapp?: string | null
+          data_geracao_link?: string | null
           id?: string
           lead_id?: string | null
+          link_assinatura_zapsign?: string | null
           nome_cliente: string
           observacoes?: string | null
           responsavel: string
           status?: string
+          status_assinatura?: string | null
           texto_contrato: string
           updated_at?: string
           valor_causa: number
+          zapsign_document_id?: string | null
         }
         Update: {
           area_juridica?: string
@@ -137,15 +147,20 @@ export type Database = {
           created_at?: string
           data_assinatura?: string | null
           data_envio?: string | null
+          data_envio_whatsapp?: string | null
+          data_geracao_link?: string | null
           id?: string
           lead_id?: string | null
+          link_assinatura_zapsign?: string | null
           nome_cliente?: string
           observacoes?: string | null
           responsavel?: string
           status?: string
+          status_assinatura?: string | null
           texto_contrato?: string
           updated_at?: string
           valor_causa?: number
+          zapsign_document_id?: string | null
         }
         Relationships: [
           {
@@ -201,6 +216,41 @@ export type Database = {
           valor_causa?: number | null
         }
         Relationships: []
+      }
+      zapsign_logs: {
+        Row: {
+          contrato_id: string | null
+          created_at: string
+          dados_evento: Json | null
+          data_evento: string
+          evento: string
+          id: string
+        }
+        Insert: {
+          contrato_id?: string | null
+          created_at?: string
+          dados_evento?: Json | null
+          data_evento?: string
+          evento: string
+          id?: string
+        }
+        Update: {
+          contrato_id?: string | null
+          created_at?: string
+          dados_evento?: Json | null
+          data_evento?: string
+          evento?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapsign_logs_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

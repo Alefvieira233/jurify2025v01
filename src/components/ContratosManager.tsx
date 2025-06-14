@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Filter, Download, Send, Eye, Edit } from 'lucide-react';
+import { Plus, Search, Filter, Download, Send, Eye, Edit, FileText, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from '@/components/ui/badge';
 import { NovoContratoForm } from './NovoContratoForm';
 import { DetalhesContrato } from './DetalhesContrato';
+import { GerarAssinaturaZapSign } from './GerarAssinaturaZapSign';
 import { toast } from 'sonner';
 
 interface Contrato {
@@ -28,6 +29,11 @@ interface Contrato {
   clausulas_customizadas?: string;
   observacoes?: string;
   updated_at: string;
+  status_assinatura?: string;
+  link_assinatura_zapsign?: string;
+  zapsign_document_id?: string;
+  data_geracao_link?: string;
+  data_envio_whatsapp?: string;
 }
 
 const ContratosManager = () => {
@@ -35,6 +41,7 @@ const ContratosManager = () => {
   const [statusFilter, setStatusFilter] = useState('todos');
   const [areaFilter, setAreaFilter] = useState('todas');
   const [responsavelFilter, setResponsavelFilter] = useState('todos');
+  const [statusAssinaturaFilter, setStatusAssinaturaFilter] = useState('todos');
   const [isNovoContratoOpen, setIsNovoContratoOpen] = useState(false);
   const [contratoSelecionado, setContratoSelecionado] = useState<Contrato | null>(null);
   const [isDetalhesOpen, setIsDetalhesOpen] = useState(false);
@@ -84,8 +91,9 @@ const ContratosManager = () => {
     const matchesStatus = statusFilter === 'todos' || contrato.status === statusFilter;
     const matchesArea = areaFilter === 'todas' || contrato.area_juridica === areaFilter;
     const matchesResponsavel = responsavelFilter === 'todos' || contrato.responsavel === responsavelFilter;
+    const matchesStatusAssinatura = statusAssinaturaFilter === 'todos' || contrato.status_assinatura === statusAssinaturaFilter;
     
-    return matchesSearch && matchesStatus && matchesArea && matchesResponsavel;
+    return matchesSearch && matchesStatus && matchesArea && matchesResponsavel && matchesStatusAssinatura;
   });
 
   // Obter valores únicos para filtros
@@ -104,6 +112,22 @@ const ContratosManager = () => {
     return <Badge className={config.className}>{config.label}</Badge>;
   };
 
+  const getStatusAssinaturaBadge = (status?: string) => {
+    const statusConfig = {
+      pendente: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800' },
+      assinado: { label: 'Assinado', className: 'bg-green-100 text-green-800' },
+      cancelado: { label: 'Cancelado', className: 'bg-red-100 text-red-800' },
+      expirado: { label: 'Expirado', className: 'bg-gray-100 text-gray-800' }
+    };
+    
+    if (!status) {
+      return <Badge className="bg-gray-100 text-gray-800">Não iniciado</Badge>;
+    }
+    
+    const config = statusConfig[status as keyof typeof statusConfig];
+    return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
   const handleEnviarAssinatura = (contrato: Contrato) => {
     updateStatusMutation.mutate({
       id: contrato.id,
@@ -114,6 +138,10 @@ const ContratosManager = () => {
 
   const handleGerarPDF = (contrato: Contrato) => {
     toast.info('Funcionalidade de PDF será implementada em breve');
+  };
+
+  const handleZapSignSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['contratos'] });
   };
 
   const formatCurrency = (value: number) => {
@@ -152,7 +180,7 @@ const ContratosManager = () => {
       </div>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-white rounded-lg border">
+      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 bg-white rounded-lg border">
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
           <Input
@@ -173,6 +201,19 @@ const ContratosManager = () => {
             <SelectItem value="enviado">Enviado</SelectItem>
             <SelectItem value="assinado">Assinado</SelectItem>
             <SelectItem value="cancelado">Cancelado</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select value={statusAssinaturaFilter} onValueChange={setStatusAssinaturaFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Status Assinatura" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Todos</SelectItem>
+            <SelectItem value="pendente">Pendente</SelectItem>
+            <SelectItem value="assinado">Assinado</SelectItem>
+            <SelectItem value="cancelado">Cancelado</SelectItem>
+            <SelectItem value="expirado">Expirado</SelectItem>
           </SelectContent>
         </Select>
 
@@ -205,12 +246,13 @@ const ContratosManager = () => {
           onClick={() => {
             setSearchTerm('');
             setStatusFilter('todos');
+            setStatusAssinaturaFilter('todos');
             setAreaFilter('todas');
             setResponsavelFilter('todos');
           }}
         >
           <Filter className="h-4 w-4 mr-2" />
-          Limpar Filtros
+          Limpar
         </Button>
       </div>
 
@@ -223,6 +265,7 @@ const ContratosManager = () => {
               <TableHead>Área Jurídica</TableHead>
               <TableHead>Valor da Causa</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Status Assinatura</TableHead>
               <TableHead>Responsável</TableHead>
               <TableHead>Data de Criação</TableHead>
               <TableHead>Ações</TableHead>
@@ -231,13 +274,13 @@ const ContratosManager = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
+                <TableCell colSpan={8} className="text-center py-4">
                   Carregando contratos...
                 </TableCell>
               </TableRow>
             ) : contratosFiltrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-4">
+                <TableCell colSpan={8} className="text-center py-4">
                   Nenhum contrato encontrado
                 </TableCell>
               </TableRow>
@@ -248,6 +291,7 @@ const ContratosManager = () => {
                   <TableCell>{contrato.area_juridica}</TableCell>
                   <TableCell>{formatCurrency(contrato.valor_causa)}</TableCell>
                   <TableCell>{getStatusBadge(contrato.status)}</TableCell>
+                  <TableCell>{getStatusAssinaturaBadge(contrato.status_assinatura)}</TableCell>
                   <TableCell>{contrato.responsavel}</TableCell>
                   <TableCell>{formatDate(contrato.created_at)}</TableCell>
                   <TableCell>
@@ -269,6 +313,12 @@ const ContratosManager = () => {
                       >
                         <Download className="h-4 w-4" />
                       </Button>
+                      {!contrato.link_assinatura_zapsign && contrato.status === 'rascunho' && (
+                        <GerarAssinaturaZapSign 
+                          contrato={contrato}
+                          onSuccess={handleZapSignSuccess}
+                        />
+                      )}
                       {contrato.status === 'rascunho' && (
                         <Button
                           variant="outline"

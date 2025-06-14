@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Download, Send, Edit, Save, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { StatusAssinatura } from './StatusAssinatura';
+import { GerarAssinaturaZapSign } from './GerarAssinaturaZapSign';
 
 interface Contrato {
   id: string;
@@ -24,6 +26,12 @@ interface Contrato {
   clausulas_customizadas?: string;
   observacoes?: string;
   lead_id?: string;
+  status_assinatura?: string;
+  link_assinatura_zapsign?: string;
+  zapsign_document_id?: string;
+  data_geracao_link?: string;
+  data_envio_whatsapp?: string;
+  telefone?: string;
 }
 
 interface DetalhesContratoProps {
@@ -84,6 +92,10 @@ export const DetalhesContrato = ({ contrato, onClose }: DetalhesContratoProps) =
 
   const handleGerarPDF = () => {
     toast.info('Funcionalidade de PDF será implementada em breve');
+  };
+
+  const handleZapSignSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['contratos'] });
   };
 
   const getStatusBadge = (status: string) => {
@@ -194,6 +206,24 @@ export const DetalhesContrato = ({ contrato, onClose }: DetalhesContratoProps) =
             <p>{formatDate(contrato.data_assinatura)}</p>
           </div>
         )}
+      </div>
+
+      {/* Assinatura Digital ZapSign */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <h4 className="font-medium">Assinatura Digital</h4>
+          {!contrato.link_assinatura_zapsign && (
+            <GerarAssinaturaZapSign 
+              contrato={contrato} 
+              onSuccess={handleZapSignSuccess}
+            />
+          )}
+        </div>
+        
+        <StatusAssinatura 
+          contrato={contrato}
+          onStatusUpdate={handleZapSignSuccess}
+        />
       </div>
 
       {/* Texto do contrato */}

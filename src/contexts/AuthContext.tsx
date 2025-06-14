@@ -1,8 +1,8 @@
+
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
-import { useLogActivity } from '@/hooks/useLogActivity';
 
 type Profile = Database['public']['Tables']['profiles']['Row'];
 type UserRole = Database['public']['Tables']['user_roles']['Row'];
@@ -42,8 +42,27 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Hook para logs - colocado após os estados
-  const { logLogin, logLogout } = useLogActivity();
+  // Direct logging function to avoid circular dependency
+  const logActivity = async (
+    tipo_acao: 'login' | 'logout',
+    descricao: string
+  ) => {
+    if (!user) return;
+
+    try {
+      await supabase.rpc('registrar_log_atividade', {
+        _usuario_id: user.id,
+        _nome_usuario: user.email || 'Usuário',
+        _tipo_acao: tipo_acao,
+        _modulo: 'Autenticação',
+        _descricao: descricao,
+        _ip_usuario: null,
+        _detalhes_adicionais: null,
+      });
+    } catch (error) {
+      console.error('Erro ao registrar log:', error);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -100,8 +119,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (data.user) {
         setUser(data.user);
         await fetchProfile(data.user.id);
-        // Registrar log de login após sucesso
-        setTimeout(() => logLogin(), 1000);
+        // Registrar log de login após sucesso - usar setTimeout para evitar problemas de estado
+        setTimeout(() => {
+          logActivity('login', `Usuário ${data.user.email} fez login`);
+        }, 1000);
       }
 
       return { user: data.user, error: null };
@@ -132,7 +153,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signOut = async () => {
     try {
       // Registrar log de logout antes de fazer logout
-      logLogout();
+      if (user) {
+        await logActivity('logout', `Usuário ${user.email} fez logout`);
+      }
       
       const { error } = await supabase.auth.signOut();
       if (error) throw error;

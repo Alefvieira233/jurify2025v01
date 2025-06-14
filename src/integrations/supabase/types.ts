@@ -356,6 +356,53 @@ export type Database = {
         }
         Relationships: []
       }
+      notificacoes: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          created_by: string | null
+          data_criacao: string
+          id: string
+          lido_por: string[] | null
+          mensagem: string
+          tipo: Database["public"]["Enums"]["notification_type"]
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          data_criacao?: string
+          id?: string
+          lido_por?: string[] | null
+          mensagem: string
+          tipo?: Database["public"]["Enums"]["notification_type"]
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          data_criacao?: string
+          id?: string
+          lido_por?: string[] | null
+          mensagem?: string
+          tipo?: Database["public"]["Enums"]["notification_type"]
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacoes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ativo: boolean | null
@@ -504,6 +551,10 @@ export type Database = {
       }
     }
     Functions: {
+      contar_nao_lidas: {
+        Args: { user_id: string }
+        Returns: number
+      }
       get_user_calendar_settings: {
         Args: { user_id: string }
         Returns: {
@@ -533,6 +584,14 @@ export type Database = {
         Args: { user_id: string }
         Returns: boolean
       }
+      marcar_notificacao_lida: {
+        Args: { notificacao_id: string; user_id: string }
+        Returns: boolean
+      }
+      marcar_todas_lidas: {
+        Args: { user_id: string }
+        Returns: number
+      }
     }
     Enums: {
       app_module:
@@ -550,6 +609,7 @@ export type Database = {
         | "comercial"
         | "pos_venda"
         | "suporte"
+      notification_type: "info" | "alerta" | "sucesso" | "erro"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -682,6 +742,7 @@ export const Constants = {
         "pos_venda",
         "suporte",
       ],
+      notification_type: ["info", "alerta", "sucesso", "erro"],
     },
   },
 } as const

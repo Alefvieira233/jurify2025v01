@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Scale, 
   MessageSquare, 
@@ -11,10 +11,13 @@ import {
   Bot,
   TrendingUp,
   UserCog,
-  LogOut
+  LogOut,
+  Bell
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SidebarProps {
   activeSection: string;
@@ -22,7 +25,8 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
-  const { signOut, profile, hasRole } = useAuth();
+  const { signOut, profile, hasRole, user } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
@@ -33,9 +37,34 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'agendamentos', label: 'Agendamentos', icon: Calendar },
     { id: 'agentes', label: 'Agentes IA', icon: Bot },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+    { id: 'notificacoes', label: 'Notificações', icon: Bell },
     ...(hasRole('administrador') ? [{ id: 'usuarios', label: 'Usuários', icon: UserCog }] : []),
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];
+
+  // Buscar contagem de notificações não lidas
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { data, error } = await supabase
+          .rpc('contar_nao_lidas', { user_id: user.id });
+
+        if (!error && data !== null) {
+          setUnreadCount(data);
+        }
+      } catch (error) {
+        console.error('Erro ao buscar notificações:', error);
+      }
+    };
+
+    fetchUnreadCount();
+
+    // Atualizar a cada 30 segundos
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
+  }, [user?.id]);
 
   const handleLogout = async () => {
     await signOut();
@@ -60,18 +89,27 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
       <nav className="flex-1 p-4 space-y-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
+          const isNotifications = item.id === 'notificacoes';
+          
           return (
             <button
               key={item.id}
               onClick={() => onSectionChange(item.id)}
-              className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-left transition-colors ${
                 activeSection === item.id
                   ? 'bg-amber-500 text-white'
                   : 'text-slate-300 hover:bg-slate-800 hover:text-white'
               }`}
             >
-              <Icon className="h-5 w-5" />
-              <span className="text-sm font-medium">{item.label}</span>
+              <div className="flex items-center space-x-3">
+                <Icon className="h-5 w-5" />
+                <span className="text-sm font-medium">{item.label}</span>
+              </div>
+              {isNotifications && unreadCount > 0 && (
+                <Badge variant="destructive" className="ml-2">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Badge>
+              )}
             </button>
           );
         })}

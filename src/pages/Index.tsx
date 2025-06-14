@@ -12,9 +12,10 @@ import RelatoriosGerenciais from "@/components/RelatoriosGerenciais";
 import WhatsAppIA from "@/components/WhatsAppIA";
 import UsuariosManager from "@/components/UsuariosManager";
 import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
+import NotificationsPanel from "@/components/NotificationsPanel";
 import { useSearchParams } from "react-router-dom";
 
-type ActiveTab = 'dashboard' | 'leads' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'usuarios' | 'configuracoes';
+type ActiveTab = 'dashboard' | 'leads' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'usuarios' | 'configuracoes' | 'notificacoes';
 
 const Index = () => {
   const { user, profile, signOut, hasPermission } = useAuth();
@@ -24,7 +25,7 @@ const Index = () => {
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
-    if (tab && ['dashboard', 'leads', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'usuarios', 'configuracoes'].includes(tab)) {
+    if (tab && ['dashboard', 'leads', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'usuarios', 'configuracoes', 'notificacoes'].includes(tab)) {
       setActiveTab(tab);
     }
   }, [searchParams]);
@@ -41,8 +42,8 @@ const Index = () => {
     }
   }, [user, profile]);
 
-  const handleTabChange = (tab: ActiveTab) => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab as ActiveTab);
     setSearchParams({ tab });
   };
 
@@ -80,6 +81,8 @@ const Index = () => {
         return hasPermission('usuarios', 'read') ? <UsuariosManager /> : <div>Sem permissão</div>;
       case 'configuracoes':
         return <ConfiguracoesGerais />;
+      case 'notificacoes':
+        return <NotificationsPanel />;
       default:
         return <Dashboard />;
     }
@@ -99,11 +102,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <Sidebar 
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onLogout={handleLogout}
-        userProfile={profile}
-        hasPermission={hasPermission}
+        activeSection={activeTab}
+        onSectionChange={handleTabChange}
       />
       
       <main className="flex-1 p-6 overflow-auto">

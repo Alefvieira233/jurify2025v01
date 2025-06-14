@@ -217,6 +217,107 @@ export type Database = {
         }
         Relationships: []
       }
+      profiles: {
+        Row: {
+          ativo: boolean | null
+          cargo: string | null
+          created_at: string
+          data_ultimo_acesso: string | null
+          departamento: string | null
+          email: string
+          id: string
+          nome_completo: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          cargo?: string | null
+          created_at?: string
+          data_ultimo_acesso?: string | null
+          departamento?: string | null
+          email: string
+          id: string
+          nome_completo: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean | null
+          cargo?: string | null
+          created_at?: string
+          data_ultimo_acesso?: string | null
+          departamento?: string | null
+          email?: string
+          id?: string
+          nome_completo?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      role_permissions: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          id: string
+          module: Database["public"]["Enums"]["app_module"]
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          id?: string
+          module: Database["public"]["Enums"]["app_module"]
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          id?: string
+          module?: Database["public"]["Enums"]["app_module"]
+          permission?: Database["public"]["Enums"]["app_permission"]
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          ativo: boolean | null
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       zapsign_logs: {
         Row: {
           contrato_id: string | null
@@ -264,10 +365,38 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      has_permission: {
+        Args: {
+          _user_id: string
+          _module: Database["public"]["Enums"]["app_module"]
+          _permission: Database["public"]["Enums"]["app_permission"]
+        }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _user_id: string
+          _role: Database["public"]["Enums"]["app_role"]
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_module:
+        | "leads"
+        | "contratos"
+        | "agendamentos"
+        | "relatorios"
+        | "configuracoes"
+        | "whatsapp_ia"
+        | "usuarios"
+      app_permission: "create" | "read" | "update" | "delete" | "manage"
+      app_role:
+        | "administrador"
+        | "advogado"
+        | "comercial"
+        | "pos_venda"
+        | "suporte"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -382,6 +511,24 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_module: [
+        "leads",
+        "contratos",
+        "agendamentos",
+        "relatorios",
+        "configuracoes",
+        "whatsapp_ia",
+        "usuarios",
+      ],
+      app_permission: ["create", "read", "update", "delete", "manage"],
+      app_role: [
+        "administrador",
+        "advogado",
+        "comercial",
+        "pos_venda",
+        "suporte",
+      ],
+    },
   },
 } as const

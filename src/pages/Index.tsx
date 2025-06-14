@@ -9,6 +9,7 @@ import ContratosManager from '@/components/ContratosManager';
 import AgendamentosManager from '@/components/AgendamentosManager';
 import AgentesIAManager from '@/components/AgentesIAManager';
 import RelatoriosGerenciais from '@/components/RelatoriosGerenciais';
+import UsuariosManager from '@/components/UsuariosManager';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -31,6 +32,8 @@ const Index = () => {
         return <AgentesIAManager />;
       case 'relatorios':
         return <RelatoriosGerenciais />;
+      case 'usuarios':
+        return <UsuariosManager />;
       case 'configuracoes':
         return (
           <div className="p-6">

@@ -9,9 +9,12 @@ import {
   Settings, 
   Users, 
   Bot,
-  Phone,
-  TrendingUp
+  TrendingUp,
+  UserCog,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 
 interface SidebarProps {
   activeSection: string;
@@ -19,6 +22,8 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
+  const { signOut, profile, hasRole } = useAuth();
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'leads', label: 'Leads', icon: Users },
@@ -28,8 +33,13 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'agendamentos', label: 'Agendamentos', icon: Calendar },
     { id: 'agentes', label: 'Agentes IA', icon: Bot },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
+    ...(hasRole('administrador') ? [{ id: 'usuarios', label: 'Usuários', icon: UserCog }] : []),
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];
+
+  const handleLogout = async () => {
+    await signOut();
+  };
 
   return (
     <div className="w-64 bg-slate-900 text-white h-screen flex flex-col">
@@ -69,15 +79,30 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
 
       {/* User Profile */}
       <div className="p-4 border-t border-slate-700">
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-3 mb-3">
           <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
-            <span className="text-sm font-semibold text-white">DR</span>
+            <span className="text-sm font-semibold text-white">
+              {profile?.nome_completo?.charAt(0) || 'U'}
+            </span>
           </div>
-          <div>
-            <p className="text-sm font-medium text-white">Dr. Silva</p>
-            <p className="text-xs text-slate-400">Administrador</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">
+              {profile?.nome_completo || 'Usuário'}
+            </p>
+            <p className="text-xs text-slate-400 truncate">
+              {profile?.cargo || 'Cargo não definido'}
+            </p>
           </div>
         </div>
+        <Button
+          onClick={handleLogout}
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-slate-300 hover:text-white hover:bg-slate-800"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Sair
+        </Button>
       </div>
     </div>
   );

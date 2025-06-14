@@ -149,7 +149,7 @@ export const useGoogleCalendar = () => {
         .update({ google_event_id: event.id })
         .eq('id', agendamentoId);
 
-      // Log da sincronização
+      // Log da sincronização - convertendo eventData para JSON
       await supabase
         .from('google_calendar_sync_logs')
         .insert({
@@ -158,7 +158,7 @@ export const useGoogleCalendar = () => {
           google_event_id: event.id,
           action: 'create',
           status: 'success',
-          sync_data: eventData
+          sync_data: JSON.parse(JSON.stringify(eventData))
         });
 
       toast({
@@ -224,7 +224,7 @@ export const useGoogleCalendar = () => {
       
       const event = await response.json();
 
-      // Log da sincronização
+      // Log da sincronização - convertendo eventData para JSON
       await supabase
         .from('google_calendar_sync_logs')
         .insert({
@@ -233,7 +233,7 @@ export const useGoogleCalendar = () => {
           google_event_id: googleEventId,
           action: 'update',
           status: 'success',
-          sync_data: eventData
+          sync_data: JSON.parse(JSON.stringify(eventData))
         });
 
       toast({
@@ -348,7 +348,13 @@ export const useGoogleCalendar = () => {
         .single();
 
       if (data) {
-        setSettings(data);
+        setSettings({
+          calendar_enabled: data.calendar_enabled,
+          auto_sync: data.auto_sync,
+          calendar_id: data.calendar_id,
+          sync_direction: data.sync_direction as 'jurify_to_google' | 'google_to_jurify' | 'bidirectional',
+          notification_enabled: data.notification_enabled
+        });
       }
     } catch (error) {
       console.error('Error loading settings:', error);

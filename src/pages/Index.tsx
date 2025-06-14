@@ -7,6 +7,7 @@ import WhatsAppIA from '@/components/WhatsAppIA';
 import PipelineJuridico from '@/components/PipelineJuridico';
 import ContratosManager from '@/components/ContratosManager';
 import AgendamentosManager from '@/components/AgendamentosManager';
+import AgentesIAManager from '@/components/AgentesIAManager';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -26,12 +27,7 @@ const Index = () => {
       case 'agendamentos':
         return <AgendamentosManager />;
       case 'agentes':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">Agentes IA</h1>
-            <p className="text-gray-600 mt-2">Configuração de SDR virtuais jurídicos - Em desenvolvimento</p>
-          </div>
-        );
+        return <AgentesIAManager />;
       case 'relatorios':
         return (
           <div className="p-6">

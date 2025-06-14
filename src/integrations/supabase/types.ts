@@ -56,6 +56,48 @@ export type Database = {
           },
         ]
       }
+      agentes_ia: {
+        Row: {
+          area_juridica: string
+          created_at: string
+          delay_resposta: number | null
+          id: string
+          keywords_acao: string[] | null
+          nome: string
+          objetivo: string
+          perguntas_qualificacao: string[] | null
+          script_saudacao: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          area_juridica: string
+          created_at?: string
+          delay_resposta?: number | null
+          id?: string
+          keywords_acao?: string[] | null
+          nome: string
+          objetivo: string
+          perguntas_qualificacao?: string[] | null
+          script_saudacao: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          area_juridica?: string
+          created_at?: string
+          delay_resposta?: number | null
+          id?: string
+          keywords_acao?: string[] | null
+          nome?: string
+          objetivo?: string
+          perguntas_qualificacao?: string[] | null
+          script_saudacao?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       contratos: {
         Row: {
           area_juridica: string
@@ -162,7 +204,14 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      stats_agentes_leads: {
+        Row: {
+          agente_id: string | null
+          agente_nome: string | null
+          total_leads_mes: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never

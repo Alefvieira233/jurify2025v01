@@ -8,6 +8,7 @@ import PipelineJuridico from '@/components/PipelineJuridico';
 import ContratosManager from '@/components/ContratosManager';
 import AgendamentosManager from '@/components/AgendamentosManager';
 import AgentesIAManager from '@/components/AgentesIAManager';
+import RelatoriosGerenciais from '@/components/RelatoriosGerenciais';
 
 const Index = () => {
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -29,12 +30,7 @@ const Index = () => {
       case 'agentes':
         return <AgentesIAManager />;
       case 'relatorios':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">Relatórios Gerenciais</h1>
-            <p className="text-gray-600 mt-2">Business Intelligence jurídico - Em desenvolvimento</p>
-          </div>
-        );
+        return <RelatoriosGerenciais />;
       case 'configuracoes':
         return (
           <div className="p-6">

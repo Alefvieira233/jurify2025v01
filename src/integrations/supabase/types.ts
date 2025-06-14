@@ -172,6 +172,145 @@ export type Database = {
           },
         ]
       }
+      google_calendar_settings: {
+        Row: {
+          auto_sync: boolean | null
+          calendar_enabled: boolean | null
+          calendar_id: string | null
+          created_at: string
+          id: string
+          notification_enabled: boolean | null
+          sync_direction: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_sync?: boolean | null
+          calendar_enabled?: boolean | null
+          calendar_id?: string | null
+          created_at?: string
+          id?: string
+          notification_enabled?: boolean | null
+          sync_direction?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_sync?: boolean | null
+          calendar_enabled?: boolean | null
+          calendar_id?: string | null
+          created_at?: string
+          id?: string
+          notification_enabled?: boolean | null
+          sync_direction?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_settings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_calendar_sync_logs: {
+        Row: {
+          action: string
+          agendamento_id: string | null
+          created_at: string
+          error_message: string | null
+          google_event_id: string | null
+          id: string
+          status: string
+          sync_data: Json | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          agendamento_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          google_event_id?: string | null
+          id?: string
+          status: string
+          sync_data?: Json | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          agendamento_id?: string | null
+          created_at?: string
+          error_message?: string | null
+          google_event_id?: string | null
+          id?: string
+          status?: string
+          sync_data?: Json | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_sync_logs_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "google_calendar_sync_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      google_calendar_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          scope: string
+          token_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          scope: string
+          token_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          scope?: string
+          token_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "google_calendar_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           area_juridica: string
@@ -365,6 +504,16 @@ export type Database = {
       }
     }
     Functions: {
+      get_user_calendar_settings: {
+        Args: { user_id: string }
+        Returns: {
+          calendar_enabled: boolean
+          auto_sync: boolean
+          calendar_id: string
+          sync_direction: string
+          notification_enabled: boolean
+        }[]
+      }
       has_permission: {
         Args: {
           _user_id: string
@@ -378,6 +527,10 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      is_google_token_expired: {
+        Args: { user_id: string }
         Returns: boolean
       }
     }

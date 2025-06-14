@@ -1,57 +1,114 @@
 
-import React, { useState } from 'react';
-import Sidebar from '@/components/Sidebar';
-import Dashboard from '@/components/Dashboard';
-import LeadsPanel from '@/components/LeadsPanel';
-import WhatsAppIA from '@/components/WhatsAppIA';
-import PipelineJuridico from '@/components/PipelineJuridico';
-import ContratosManager from '@/components/ContratosManager';
-import AgendamentosManager from '@/components/AgendamentosManager';
-import AgentesIAManager from '@/components/AgentesIAManager';
-import RelatoriosGerenciais from '@/components/RelatoriosGerenciais';
-import UsuariosManager from '@/components/UsuariosManager';
+import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import Sidebar from "@/components/Sidebar";
+import Dashboard from "@/components/Dashboard";
+import LeadsPanel from "@/components/LeadsPanel";
+import AgendamentosManager from "@/components/AgendamentosManager";
+import ContratosManager from "@/components/ContratosManager";
+import RelatoriosGerenciais from "@/components/RelatoriosGerenciais";
+import WhatsAppIA from "@/components/WhatsAppIA";
+import UsuariosManager from "@/components/UsuariosManager";
+import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
+import { useSearchParams } from "react-router-dom";
+
+type ActiveTab = 'dashboard' | 'leads' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'usuarios' | 'configuracoes';
 
 const Index = () => {
-  const [activeSection, setActiveSection] = useState('dashboard');
+  const { user, profile, signOut, hasPermission } = useAuth();
+  const { toast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+
+  useEffect(() => {
+    const tab = searchParams.get('tab') as ActiveTab;
+    if (tab && ['dashboard', 'leads', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'usuarios', 'configuracoes'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (user && profile) {
+      supabase
+        .from('profiles')
+        .update({ data_ultimo_acesso: new Date().toISOString() })
+        .eq('id', user.id)
+        .then(() => {
+          console.log('Last access updated');
+        });
+    }
+  }, [user, profile]);
+
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Logout realizado",
+        description: "Você foi desconectado com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro no logout",
+        description: "Ocorreu um erro ao fazer logout.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const renderContent = () => {
-    switch (activeSection) {
+    switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
       case 'leads':
-        return <LeadsPanel />;
-      case 'pipeline':
-        return <PipelineJuridico />;
-      case 'whatsapp':
-        return <WhatsAppIA />;
-      case 'contratos':
-        return <ContratosManager />;
+        return hasPermission('leads', 'read') ? <LeadsPanel /> : <div>Sem permissão</div>;
       case 'agendamentos':
-        return <AgendamentosManager />;
-      case 'agentes':
-        return <AgentesIAManager />;
+        return hasPermission('agendamentos', 'read') ? <AgendamentosManager /> : <div>Sem permissão</div>;
+      case 'contratos':
+        return hasPermission('contratos', 'read') ? <ContratosManager /> : <div>Sem permissão</div>;
       case 'relatorios':
-        return <RelatoriosGerenciais />;
+        return hasPermission('relatorios', 'read') ? <RelatoriosGerenciais /> : <div>Sem permissão</div>;
+      case 'whatsapp':
+        return hasPermission('whatsapp_ia', 'read') ? <WhatsAppIA /> : <div>Sem permissão</div>;
       case 'usuarios':
-        return <UsuariosManager />;
+        return hasPermission('usuarios', 'read') ? <UsuariosManager /> : <div>Sem permissão</div>;
       case 'configuracoes':
-        return (
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">Configurações</h1>
-            <p className="text-gray-600 mt-2">Configurações do sistema e integrações - Em desenvolvimento</p>
-          </div>
-        );
+        return <ConfiguracoesGerais />;
       default:
         return <Dashboard />;
     }
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex w-full">
-      <Sidebar activeSection={activeSection} onSectionChange={setActiveSection} />
-      <div className="flex-1 overflow-auto">
-        {renderContent()}
+  if (!user || !profile) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex">
+      <Sidebar 
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onLogout={handleLogout}
+        userProfile={profile}
+        hasPermission={hasPermission}
+      />
+      
+      <main className="flex-1 p-6 overflow-auto">
+        {renderContent()}
+      </main>
     </div>
   );
 };

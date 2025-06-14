@@ -1,8 +1,10 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, User, Phone, Mail, FileText, MapPin } from 'lucide-react';
+import GoogleCalendarSync from './GoogleCalendarSync';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
 interface AgendamentoDetalhes {
   id: string;
@@ -28,6 +30,9 @@ interface DetalhesAgendamentoProps {
 }
 
 export const DetalhesAgendamento = ({ agendamento, onClose }: DetalhesAgendamentoProps) => {
+  const { settings, createCalendarEvent } = useGoogleCalendar();
+  const [syncingToGoogle, setSyncingToGoogle] = useState(false);
+
   const formatDateTime = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return {
@@ -51,6 +56,46 @@ export const DetalhesAgendamento = ({ agendamento, onClose }: DetalhesAgendament
     
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.agendado;
     return <Badge className={config.className}>{config.label}</Badge>;
+  };
+
+  const handleSyncToGoogle = async () => {
+    if (!settings?.calendar_enabled || agendamento.google_event_id) return;
+
+    setSyncingToGoogle(true);
+    
+    try {
+      const startDate = new Date(agendamento.data_hora);
+      const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
+
+      const eventData = {
+        summary: `Reunião - ${agendamento.lead?.nome_completo || 'Cliente'}`,
+        description: `
+Área Jurídica: ${agendamento.area_juridica}
+Responsável: ${agendamento.responsavel}
+${agendamento.observacoes ? `\nObservações: ${agendamento.observacoes}` : ''}
+${agendamento.lead?.telefone ? `\nTelefone: ${agendamento.lead.telefone}` : ''}
+
+Agendamento criado via Jurify
+        `.trim(),
+        start: {
+          dateTime: startDate.toISOString(),
+          timeZone: 'America/Sao_Paulo'
+        },
+        end: {
+          dateTime: endDate.toISOString(),
+          timeZone: 'America/Sao_Paulo'
+        },
+        attendees: agendamento.lead?.email ? [
+          { email: agendamento.lead.email }
+        ] : undefined
+      };
+
+      await createCalendarEvent(eventData, agendamento.id);
+    } catch (error) {
+      console.error('Error syncing to Google Calendar:', error);
+    } finally {
+      setSyncingToGoogle(false);
+    }
   };
 
   const dateTime = formatDateTime(agendamento.data_hora);
@@ -151,9 +196,20 @@ export const DetalhesAgendamento = ({ agendamento, onClose }: DetalhesAgendament
         ) : (
           <div className="flex items-center justify-between">
             <p className="text-sm text-gray-600">Reunião não sincronizada com Google Calendar</p>
-            <Button size="sm" variant="outline">
-              Sincronizar
-            </Button>
+            {settings?.calendar_enabled ? (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={handleSyncToGoogle}
+                disabled={syncingToGoogle}
+              >
+                {syncingToGoogle ? 'Sincronizando...' : 'Sincronizar'}
+              </Button>
+            ) : (
+              <p className="text-xs text-gray-500">
+                Habilite a integração nas configurações
+              </p>
+            )}
           </div>
         )}
       </div>

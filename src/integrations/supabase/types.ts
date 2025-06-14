@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      agendamentos: {
+        Row: {
+          area_juridica: string
+          created_at: string
+          data_hora: string
+          google_event_id: string | null
+          id: string
+          lead_id: string | null
+          observacoes: string | null
+          responsavel: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          area_juridica: string
+          created_at?: string
+          data_hora: string
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          observacoes?: string | null
+          responsavel: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          area_juridica?: string
+          created_at?: string
+          data_hora?: string
+          google_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          observacoes?: string | null
+          responsavel?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contratos: {
         Row: {
           area_juridica: string

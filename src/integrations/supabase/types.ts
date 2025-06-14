@@ -61,39 +61,51 @@ export type Database = {
           area_juridica: string
           created_at: string
           delay_resposta: number | null
+          descricao_funcao: string
           id: string
           keywords_acao: string[] | null
           nome: string
           objetivo: string
+          parametros_avancados: Json | null
           perguntas_qualificacao: string[] | null
+          prompt_base: string
           script_saudacao: string
           status: string
+          tipo_agente: string | null
           updated_at: string
         }
         Insert: {
           area_juridica: string
           created_at?: string
           delay_resposta?: number | null
+          descricao_funcao: string
           id?: string
           keywords_acao?: string[] | null
           nome: string
           objetivo: string
+          parametros_avancados?: Json | null
           perguntas_qualificacao?: string[] | null
+          prompt_base: string
           script_saudacao: string
           status?: string
+          tipo_agente?: string | null
           updated_at?: string
         }
         Update: {
           area_juridica?: string
           created_at?: string
           delay_resposta?: number | null
+          descricao_funcao?: string
           id?: string
           keywords_acao?: string[] | null
           nome?: string
           objetivo?: string
+          parametros_avancados?: Json | null
           perguntas_qualificacao?: string[] | null
+          prompt_base?: string
           script_saudacao?: string
           status?: string
+          tipo_agente?: string | null
           updated_at?: string
         }
         Relationships: []

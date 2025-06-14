@@ -11,7 +11,10 @@ import {
   MessageSquare,
   Settings,
   Filter,
-  Search
+  Search,
+  Code,
+  BarChart,
+  Zap
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -45,9 +48,18 @@ interface AgenteIA {
   perguntas_qualificacao: string[];
   keywords_acao: string[];
   delay_resposta: number;
-  status: string; // Mudado para string para aceitar valores do banco
+  status: string;
   created_at: string;
   updated_at: string;
+  descricao_funcao: string;
+  prompt_base: string;
+  tipo_agente: string;
+  parametros_avancados: {
+    temperatura: number;
+    top_p: number;
+    frequency_penalty: number;
+    presence_penalty: number;
+  };
 }
 
 interface StatsAgente {
@@ -62,6 +74,7 @@ const AgentesIAManager = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
+  const [tipoFilter, setTipoFilter] = useState<string>('todos');
   const [areaFilter, setAreaFilter] = useState<string>('todas');
   const [showNovoAgente, setShowNovoAgente] = useState(false);
   const [selectedAgente, setSelectedAgente] = useState<AgenteIA | null>(null);
@@ -75,6 +88,12 @@ const AgentesIAManager = () => {
     'Direito Previdenciário',
     'Direito Criminal',
     'Direito Empresarial'
+  ];
+
+  const tiposAgente = [
+    { value: 'chat_interno', label: 'Chat Interno', icon: Bot },
+    { value: 'analise_dados', label: 'Análise de Dados', icon: BarChart },
+    { value: 'api_externa', label: 'API Externa', icon: Zap }
   ];
 
   useEffect(() => {
@@ -144,16 +163,22 @@ const AgentesIAManager = () => {
 
   const filteredAgentes = agentes.filter(agente => {
     const matchesSearch = agente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         agente.area_juridica.toLowerCase().includes(searchTerm.toLowerCase());
+                         agente.area_juridica.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         agente.descricao_funcao?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'todos' || agente.status === statusFilter;
+    const matchesTipo = tipoFilter === 'todos' || agente.tipo_agente === tipoFilter;
     const matchesArea = areaFilter === 'todas' || agente.area_juridica === areaFilter;
     
-    return matchesSearch && matchesStatus && matchesArea;
+    return matchesSearch && matchesStatus && matchesTipo && matchesArea;
   });
 
   const getLeadsCount = (agenteId: string) => {
     const stats = statsAgentes.find(s => s.agente_id === agenteId);
     return stats?.total_leads_mes || 0;
+  };
+
+  const getTipoAgenteInfo = (tipo: string) => {
+    return tiposAgente.find(t => t.value === tipo) || tiposAgente[0];
   };
 
   const handleEdit = (agente: AgenteIA) => {
@@ -193,7 +218,7 @@ const AgentesIAManager = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
-          <p className="text-gray-600">Configure SDRs virtuais especializados por área jurídica</p>
+          <p className="text-gray-600">Configure agentes IA especializados por área jurídica</p>
         </div>
         <Button
           onClick={() => setShowNovoAgente(true)}
@@ -205,7 +230,7 @@ const AgentesIAManager = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
@@ -219,7 +244,7 @@ const AgentesIAManager = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Agentes Ativos</p>
+              <p className="text-sm font-medium text-gray-600">Ativos</p>
               <p className="text-2xl font-bold text-green-600">
                 {agentes.filter(a => a.status === 'ativo').length}
               </p>
@@ -231,24 +256,36 @@ const AgentesIAManager = () => {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Leads do Mês</p>
-              <p className="text-2xl font-bold text-amber-600">
-                {statsAgentes.reduce((total, stats) => total + stats.total_leads_mes, 0)}
+              <p className="text-sm font-medium text-gray-600">Chat Interno</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {agentes.filter(a => a.tipo_agente === 'chat_interno').length}
               </p>
             </div>
-            <Users className="h-8 w-8 text-amber-500" />
+            <MessageSquare className="h-8 w-8 text-blue-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Áreas Cobertas</p>
+              <p className="text-sm font-medium text-gray-600">Análise</p>
               <p className="text-2xl font-bold text-purple-600">
-                {new Set(agentes.map(a => a.area_juridica)).size}
+                {agentes.filter(a => a.tipo_agente === 'analise_dados').length}
               </p>
             </div>
-            <MessageSquare className="h-8 w-8 text-purple-500" />
+            <BarChart className="h-8 w-8 text-purple-500" />
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">API Externa</p>
+              <p className="text-2xl font-bold text-amber-600">
+                {agentes.filter(a => a.tipo_agente === 'api_externa').length}
+              </p>
+            </div>
+            <Zap className="h-8 w-8 text-amber-500" />
           </div>
         </div>
       </div>
@@ -260,7 +297,7 @@ const AgentesIAManager = () => {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Buscar por nome ou área..."
+                placeholder="Buscar por nome, área ou descrição..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -276,6 +313,18 @@ const AgentesIAManager = () => {
               <SelectItem value="todos">Todos os Status</SelectItem>
               <SelectItem value="ativo">Ativo</SelectItem>
               <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={tipoFilter} onValueChange={setTipoFilter}>
+            <SelectTrigger className="w-full md:w-48">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Tipos</SelectItem>
+              {tiposAgente.map(tipo => (
+                <SelectItem key={tipo.value} value={tipo.value}>{tipo.label}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
@@ -298,88 +347,100 @@ const AgentesIAManager = () => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome do Agente</TableHead>
+              <TableHead>Agente</TableHead>
+              <TableHead>Tipo</TableHead>
               <TableHead>Área Jurídica</TableHead>
-              <TableHead>Objetivo</TableHead>
+              <TableHead>Descrição</TableHead>
               <TableHead>Leads/Mês</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredAgentes.map((agente) => (
-              <TableRow key={agente.id}>
-                <TableCell>
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                      <Bot className={`h-4 w-4 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
+            {filteredAgentes.map((agente) => {
+              const tipoInfo = getTipoAgenteInfo(agente.tipo_agente);
+              const TipoIcon = tipoInfo.icon;
+              
+              return (
+                <TableRow key={agente.id}>
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      <div className={`p-2 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                        <Bot className={`h-4 w-4 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900">{agente.nome}</p>
+                        <p className="text-sm text-gray-500">
+                          Delay: {agente.delay_resposta}s
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{agente.nome}</p>
-                      <p className="text-sm text-gray-500">
-                        Delay: {agente.delay_resposta}s
-                      </p>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                      <TipoIcon className="h-3 w-3 mr-1" />
+                      {tipoInfo.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                      {agente.area_juridica}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <p className="text-sm text-gray-600 max-w-xs truncate">
+                      {agente.descricao_funcao || agente.objetivo}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Users className="h-4 w-4 text-gray-400" />
+                      <span className="font-medium">{getLeadsCount(agente.id)}</span>
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                    {agente.area_juridica}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <p className="text-sm text-gray-600 max-w-xs truncate">
-                    {agente.objetivo}
-                  </p>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">{getLeadsCount(agente.id)}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={agente.status === 'ativo' ? 'default' : 'secondary'}
-                    className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
-                  >
-                    {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleViewDetails(agente)}
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={agente.status === 'ativo' ? 'default' : 'secondary'}
+                      className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
                     >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleEdit(agente)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleStatus(agente)}
-                      className={agente.status === 'ativo' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
-                    >
-                      {agente.status === 'ativo' ? (
-                        <PowerOff className="h-4 w-4" />
-                      ) : (
-                        <Power className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
+                      {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewDetails(agente)}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleEdit(agente)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleStatus(agente)}
+                        className={agente.status === 'ativo' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+                      >
+                        {agente.status === 'ativo' ? (
+                          <PowerOff className="h-4 w-4" />
+                        ) : (
+                          <Power className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         

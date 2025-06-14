@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { X, Bot, Plus, Trash2 } from 'lucide-react';
+import { X, Bot, Plus, Trash2, Settings, Code, BarChart, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface AgenteIA {
   id: string;
@@ -24,7 +32,16 @@ interface AgenteIA {
   perguntas_qualificacao: string[];
   keywords_acao: string[];
   delay_resposta: number;
-  status: string; // Mudado para string
+  status: string;
+  descricao_funcao: string;
+  prompt_base: string;
+  tipo_agente: string;
+  parametros_avancados: {
+    temperatura: number;
+    top_p: number;
+    frequency_penalty: number;
+    presence_penalty: number;
+  };
 }
 
 interface NovoAgenteFormProps {
@@ -44,7 +61,16 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     perguntas_qualificacao: [''],
     keywords_acao: [''],
     delay_resposta: 3,
-    status: 'ativo' as string // Mudado para string
+    status: 'ativo' as string,
+    descricao_funcao: '',
+    prompt_base: '',
+    tipo_agente: 'chat_interno' as string,
+    parametros_avancados: {
+      temperatura: 0.7,
+      top_p: 0.9,
+      frequency_penalty: 0,
+      presence_penalty: 0
+    }
   });
 
   const areas = [
@@ -54,6 +80,27 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     'Direito Previdenciário',
     'Direito Criminal',
     'Direito Empresarial'
+  ];
+
+  const tiposAgente = [
+    {
+      value: 'chat_interno',
+      label: 'Chat Interno',
+      description: 'Agente para interação direta com clientes via chat',
+      icon: Bot
+    },
+    {
+      value: 'analise_dados',
+      label: 'Análise de Dados',
+      description: 'Agente especializado em análise e processamento de dados',
+      icon: BarChart
+    },
+    {
+      value: 'api_externa',
+      label: 'API Externa',
+      description: 'Agente para integração com APIs e serviços externos',
+      icon: Zap
+    }
   ];
 
   useEffect(() => {
@@ -66,7 +113,16 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
         perguntas_qualificacao: agente.perguntas_qualificacao.length > 0 ? agente.perguntas_qualificacao : [''],
         keywords_acao: agente.keywords_acao.length > 0 ? agente.keywords_acao : [''],
         delay_resposta: agente.delay_resposta,
-        status: agente.status
+        status: agente.status,
+        descricao_funcao: agente.descricao_funcao || '',
+        prompt_base: agente.prompt_base || '',
+        tipo_agente: agente.tipo_agente || 'chat_interno',
+        parametros_avancados: agente.parametros_avancados || {
+          temperatura: 0.7,
+          top_p: 0.9,
+          frequency_penalty: 0,
+          presence_penalty: 0
+        }
       });
     }
   }, [agente]);
@@ -75,6 +131,16 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
+    }));
+  };
+
+  const handleParametroChange = (field: string, value: number) => {
+    setFormData(prev => ({
+      ...prev,
+      parametros_avancados: {
+        ...prev.parametros_avancados,
+        [field]: value
+      }
     }));
   };
 
@@ -99,8 +165,51 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     }));
   };
 
+  const validateForm = () => {
+    if (!formData.nome.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "O nome do agente é obrigatório",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!formData.descricao_funcao.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "A descrição/função do agente é obrigatória",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!formData.prompt_base.trim()) {
+      toast({
+        title: "Campo obrigatório",
+        description: "O prompt base é obrigatório",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    if (!formData.area_juridica) {
+      toast({
+        title: "Campo obrigatório",
+        description: "A área jurídica é obrigatória",
+        variant: "destructive",
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateForm()) return;
+    
     setLoading(true);
 
     try {
@@ -154,9 +263,14 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     }
   };
 
+  const getTipoAgenteIcon = (tipo: string) => {
+    const tipoObj = tiposAgente.find(t => t.value === tipo);
+    return tipoObj ? tipoObj.icon : Bot;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center space-x-3">
@@ -175,162 +289,331 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Nome do Agente */}
-            <div className="md:col-span-2">
-              <Label htmlFor="nome">Nome do Agente</Label>
-              <Input
-                id="nome"
-                value={formData.nome}
-                onChange={(e) => handleInputChange('nome', e.target.value)}
-                placeholder="Ex: Sofia - Especialista Trabalhista"
-                required
-              />
-            </div>
+          {/* Informações Básicas */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="h-5 w-5" />
+                <span>Informações Básicas</span>
+              </CardTitle>
+              <CardDescription>
+                Configure as informações principais do agente IA
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Nome do Agente */}
+              <div className="md:col-span-2">
+                <Label htmlFor="nome">Nome do Agente *</Label>
+                <Input
+                  id="nome"
+                  value={formData.nome}
+                  onChange={(e) => handleInputChange('nome', e.target.value)}
+                  placeholder="Ex: Sofia - Especialista Trabalhista"
+                  required
+                />
+              </div>
 
-            {/* Área Jurídica */}
-            <div>
-              <Label htmlFor="area_juridica">Área Jurídica</Label>
-              <Select value={formData.area_juridica} onValueChange={(value) => handleInputChange('area_juridica', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a área" />
-                </SelectTrigger>
-                <SelectContent>
-                  {areas.map(area => (
-                    <SelectItem key={area} value={area}>{area}</SelectItem>
+              {/* Descrição/Função */}
+              <div className="md:col-span-2">
+                <Label htmlFor="descricao_funcao">Descrição / Função *</Label>
+                <Textarea
+                  id="descricao_funcao"
+                  value={formData.descricao_funcao}
+                  onChange={(e) => handleInputChange('descricao_funcao', e.target.value)}
+                  placeholder="Descreva o objetivo e a atuação do agente..."
+                  rows={3}
+                  required
+                />
+              </div>
+
+              {/* Tipo de Agente */}
+              <div>
+                <Label htmlFor="tipo_agente">Tipo de Agente *</Label>
+                <Select value={formData.tipo_agente} onValueChange={(value) => handleInputChange('tipo_agente', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tiposAgente.map(tipo => {
+                      const Icon = tipo.icon;
+                      return (
+                        <SelectItem key={tipo.value} value={tipo.value}>
+                          <div className="flex items-center space-x-2">
+                            <Icon className="h-4 w-4" />
+                            <div>
+                              <div className="font-medium">{tipo.label}</div>
+                              <div className="text-xs text-gray-500">{tipo.description}</div>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Área Jurídica */}
+              <div>
+                <Label htmlFor="area_juridica">Área Jurídica *</Label>
+                <Select value={formData.area_juridica} onValueChange={(value) => handleInputChange('area_juridica', value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a área" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {areas.map(area => (
+                      <SelectItem key={area} value={area}>{area}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <Label htmlFor="status">Status</Label>
+                <Select value={formData.status} onValueChange={(value: string) => handleInputChange('status', value)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Delay de Resposta */}
+              <div>
+                <Label htmlFor="delay_resposta">Delay de Resposta (segundos)</Label>
+                <Input
+                  id="delay_resposta"
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={formData.delay_resposta}
+                  onChange={(e) => handleInputChange('delay_resposta', parseInt(e.target.value))}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Prompt Base */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Code className="h-5 w-5" />
+                <span>Configuração de IA</span>
+              </CardTitle>
+              <CardDescription>
+                Configure o comportamento e as instruções do agente IA
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Prompt Base */}
+              <div>
+                <Label htmlFor="prompt_base">Prompt Base (Instruções do Agente) *</Label>
+                <Textarea
+                  id="prompt_base"
+                  value={formData.prompt_base}
+                  onChange={(e) => handleInputChange('prompt_base', e.target.value)}
+                  placeholder="Insira as instruções detalhadas que vão orientar o comportamento do agente IA..."
+                  rows={8}
+                  required
+                  className="font-mono text-sm"
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Este prompt será usado como base para todas as interações do agente
+                </div>
+              </div>
+
+              {/* Objetivo (mantido para compatibilidade) */}
+              <div>
+                <Label htmlFor="objetivo">Objetivo Resumido</Label>
+                <Input
+                  id="objetivo"
+                  value={formData.objetivo}
+                  onChange={(e) => handleInputChange('objetivo', e.target.value)}
+                  placeholder="Ex: Captar leads e qualificar casos trabalhistas"
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Parâmetros Avançados */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Settings className="h-5 w-5" />
+                <span>Parâmetros Avançados</span>
+              </CardTitle>
+              <CardDescription>
+                Configure os parâmetros de geração de texto da IA
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <Label htmlFor="temperatura">Temperatura (0.0 - 1.0)</Label>
+                <Input
+                  id="temperatura"
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={formData.parametros_avancados.temperatura}
+                  onChange={(e) => handleParametroChange('temperatura', parseFloat(e.target.value))}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Controla a criatividade das respostas
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="top_p">Top P (0.0 - 1.0)</Label>
+                <Input
+                  id="top_p"
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={formData.parametros_avancados.top_p}
+                  onChange={(e) => handleParametroChange('top_p', parseFloat(e.target.value))}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Controla a diversidade do vocabulário
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="frequency_penalty">Frequency Penalty (0.0 - 2.0)</Label>
+                <Input
+                  id="frequency_penalty"
+                  type="number"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={formData.parametros_avancados.frequency_penalty}
+                  onChange={(e) => handleParametroChange('frequency_penalty', parseFloat(e.target.value))}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Reduz repetição de palavras
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="presence_penalty">Presence Penalty (0.0 - 2.0)</Label>
+                <Input
+                  id="presence_penalty"
+                  type="number"
+                  min="0"
+                  max="2"
+                  step="0.1"
+                  value={formData.parametros_avancados.presence_penalty}
+                  onChange={(e) => handleParametroChange('presence_penalty', parseFloat(e.target.value))}
+                />
+                <div className="text-xs text-gray-500 mt-1">
+                  Incentiva novos tópicos
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Configurações de Chat (mantidas para compatibilidade) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Configurações de Interação</CardTitle>
+              <CardDescription>
+                Configure como o agente interage com os usuários
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Script de Saudação */}
+              <div>
+                <Label htmlFor="script_saudacao">Script de Saudação</Label>
+                <Textarea
+                  id="script_saudacao"
+                  value={formData.script_saudacao}
+                  onChange={(e) => handleInputChange('script_saudacao', e.target.value)}
+                  placeholder="Escreva a mensagem inicial que o agente enviará..."
+                  rows={4}
+                />
+              </div>
+
+              {/* Perguntas de Qualificação */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Perguntas de Qualificação</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem('perguntas_qualificacao')}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  {formData.perguntas_qualificacao.map((pergunta, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Input
+                        value={pergunta}
+                        onChange={(e) => handleArrayChange('perguntas_qualificacao', index, e.target.value)}
+                        placeholder={`Pergunta ${index + 1}`}
+                      />
+                      {formData.perguntas_qualificacao.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeArrayItem('perguntas_qualificacao', index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status */}
-            <div>
-              <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value: string) => handleInputChange('status', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Objetivo */}
-            <div className="md:col-span-2">
-              <Label htmlFor="objetivo">Objetivo do Agente</Label>
-              <Input
-                id="objetivo"
-                value={formData.objetivo}
-                onChange={(e) => handleInputChange('objetivo', e.target.value)}
-                placeholder="Ex: Captar leads e qualificar casos trabalhistas"
-                required
-              />
-            </div>
-
-            {/* Delay de Resposta */}
-            <div>
-              <Label htmlFor="delay_resposta">Delay de Resposta (segundos)</Label>
-              <Input
-                id="delay_resposta"
-                type="number"
-                min="1"
-                max="30"
-                value={formData.delay_resposta}
-                onChange={(e) => handleInputChange('delay_resposta', parseInt(e.target.value))}
-              />
-            </div>
-          </div>
-
-          {/* Script de Saudação */}
-          <div>
-            <Label htmlFor="script_saudacao">Script de Saudação</Label>
-            <Textarea
-              id="script_saudacao"
-              value={formData.script_saudacao}
-              onChange={(e) => handleInputChange('script_saudacao', e.target.value)}
-              placeholder="Escreva a mensagem inicial que o agente enviará..."
-              rows={4}
-              required
-            />
-          </div>
-
-          {/* Perguntas de Qualificação */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <Label>Perguntas de Qualificação</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addArrayItem('perguntas_qualificacao')}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Adicionar
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {formData.perguntas_qualificacao.map((pergunta, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <Input
-                    value={pergunta}
-                    onChange={(e) => handleArrayChange('perguntas_qualificacao', index, e.target.value)}
-                    placeholder={`Pergunta ${index + 1}`}
-                  />
-                  {formData.perguntas_qualificacao.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeArrayItem('perguntas_qualificacao', index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Keywords de Ação */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <Label>Keywords de Ação</Label>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addArrayItem('keywords_acao')}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Adicionar
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {formData.keywords_acao.map((keyword, index) => (
-                <div key={index} className="flex items-center space-x-2">
-                  <Input
-                    value={keyword}
-                    onChange={(e) => handleArrayChange('keywords_acao', index, e.target.value)}
-                    placeholder={`Keyword ${index + 1}`}
-                  />
-                  {formData.keywords_acao.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeArrayItem('keywords_acao', index)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
+              {/* Keywords de Ação */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <Label>Keywords de Ação</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => addArrayItem('keywords_acao')}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Adicionar
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </div>
+                <div className="space-y-3">
+                  {formData.keywords_acao.map((keyword, index) => (
+                    <div key={index} className="flex items-center space-x-2">
+                      <Input
+                        value={keyword}
+                        onChange={(e) => handleArrayChange('keywords_acao', index, e.target.value)}
+                        placeholder={`Keyword ${index + 1}`}
+                      />
+                      {formData.keywords_acao.length > 1 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeArrayItem('keywords_acao', index)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Actions */}
           <div className="flex justify-end space-x-3 pt-6 border-t border-gray-200">

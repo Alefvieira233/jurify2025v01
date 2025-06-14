@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Bot, 
@@ -54,12 +53,7 @@ interface AgenteIA {
   descricao_funcao: string;
   prompt_base: string;
   tipo_agente: string;
-  parametros_avancados: {
-    temperatura: number;
-    top_p: number;
-    frequency_penalty: number;
-    presence_penalty: number;
-  };
+  parametros_avancados: any; // Changed from specific type to any for Supabase Json compatibility
 }
 
 interface StatsAgente {
@@ -109,7 +103,19 @@ const AgentesIAManager = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setAgentes(data || []);
+      
+      // Transform data to ensure parametros_avancados has the right structure
+      const transformedData = (data || []).map(agente => ({
+        ...agente,
+        parametros_avancados: agente.parametros_avancados || {
+          temperatura: 0.7,
+          top_p: 0.9,
+          frequency_penalty: 0,
+          presence_penalty: 0
+        }
+      }));
+      
+      setAgentes(transformedData);
     } catch (error) {
       console.error('Erro ao buscar agentes:', error);
       toast({

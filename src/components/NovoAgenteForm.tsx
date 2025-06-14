@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { X, Bot, Plus, Trash2, Settings, Code, BarChart, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,12 +35,7 @@ interface AgenteIA {
   descricao_funcao: string;
   prompt_base: string;
   tipo_agente: string;
-  parametros_avancados: {
-    temperatura: number;
-    top_p: number;
-    frequency_penalty: number;
-    presence_penalty: number;
-  };
+  parametros_avancados: any; // Using any for JSON compatibility
 }
 
 interface NovoAgenteFormProps {
@@ -117,12 +111,13 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
         descricao_funcao: agente.descricao_funcao || '',
         prompt_base: agente.prompt_base || '',
         tipo_agente: agente.tipo_agente || 'chat_interno',
-        parametros_avancados: agente.parametros_avancados || {
-          temperatura: 0.7,
-          top_p: 0.9,
-          frequency_penalty: 0,
-          presence_penalty: 0
-        }
+        parametros_avancados: typeof agente.parametros_avancados === 'object' && agente.parametros_avancados ? 
+          agente.parametros_avancados : {
+            temperatura: 0.7,
+            top_p: 0.9,
+            frequency_penalty: 0,
+            presence_penalty: 0
+          }
       });
     }
   }, [agente]);

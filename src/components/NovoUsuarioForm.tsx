@@ -1,11 +1,9 @@
 
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,48 +34,14 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Criar usuário no auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: data.password,
-        user_metadata: {
-          nome_completo: data.nomeCompleto
-        }
+      // Simular criação de usuário - em produção, isso seria feito via API admin
+      toast({
+        title: "Funcionalidade em desenvolvimento",
+        description: "A criação de usuários via admin será implementada em breve.",
+        variant: "default",
       });
-
-      if (authError) throw authError;
-
-      const userId = authData.user.id;
-
-      // Criar perfil
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          nome_completo: data.nomeCompleto,
-          email: data.email,
-          telefone: data.telefone || null,
-          cargo: data.cargo || null,
-          departamento: data.departamento || null
-        });
-
-      if (profileError) throw profileError;
-
-      // Adicionar roles
-      if (data.selectedRoles.length > 0) {
-        const rolesData = data.selectedRoles.map(role => ({
-          user_id: userId,
-          role: role as any
-        }));
-
-        const { error: rolesError } = await supabase
-          .from('user_roles')
-          .insert(rolesData);
-
-        if (rolesError) throw rolesError;
-      }
-
-      return authData;
+      
+      return { success: true };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });

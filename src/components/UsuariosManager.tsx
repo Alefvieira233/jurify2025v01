@@ -25,7 +25,7 @@ interface Usuario {
   departamento?: string;
   ativo: boolean;
   data_ultimo_acesso?: string;
-  roles?: Array<{
+  user_roles?: Array<{
     role: string;
     ativo: boolean;
   }>;
@@ -59,7 +59,7 @@ const UsuariosManager = () => {
         .order('nome_completo');
 
       if (error) throw error;
-      return data;
+      return data as Usuario[];
     },
     enabled: canManageUsers
   });

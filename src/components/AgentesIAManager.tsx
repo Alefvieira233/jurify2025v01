@@ -83,13 +83,6 @@ const AgentesIAManager = () => {
   
   const { agentes, loading, error, updateAgente } = useAgentesIA();
 
-  console.log('🤖 AgentesIAManager - Estado atual:', { 
-    agentesCount: agentes?.length || 0, 
-    loading, 
-    error,
-    hasAgentes: !!agentes 
-  });
-
   const areas = [
     'Direito Trabalhista',
     'Direito de Família', 
@@ -148,9 +141,7 @@ const AgentesIAManager = () => {
     setSelectedAgente(null);
   };
 
-  // Estado de loading
   if (loading) {
-    console.log('🔄 AgentesIAManager - Exibindo loading...');
     return (
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
@@ -172,7 +163,6 @@ const AgentesIAManager = () => {
           </TabsList>
 
           <TabsContent value="agentes" className="space-y-6">
-            {/* Stats Cards Skeleton */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
@@ -187,7 +177,6 @@ const AgentesIAManager = () => {
               ))}
             </div>
 
-            {/* Filtros Skeleton */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Skeleton className="h-10 w-full" />
@@ -197,7 +186,6 @@ const AgentesIAManager = () => {
               </div>
             </div>
 
-            {/* Tabela Skeleton */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
               <div className="p-4">
                 <div className="space-y-4">
@@ -226,9 +214,7 @@ const AgentesIAManager = () => {
     );
   }
 
-  // Estado de erro
   if (error) {
-    console.log('❌ AgentesIAManager - Exibindo erro:', error);
     return (
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
@@ -249,21 +235,19 @@ const AgentesIAManager = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar agentes IA</h3>
             <p className="text-gray-600 mb-4">{error}</p>
-            <button 
+            <Button 
               onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+              className="bg-blue-600 hover:bg-blue-700"
             >
               Tentar novamente
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Estado sem dados
   if (!agentes || agentes.length === 0) {
-    console.log('🤖 AgentesIAManager - Nenhum agente encontrado');
     return (
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
@@ -296,7 +280,6 @@ const AgentesIAManager = () => {
           </div>
         </div>
 
-        {/* Modal de novo agente */}
         {showNovoAgente && (
           <NovoAgenteForm
             agente={selectedAgente}
@@ -306,8 +289,6 @@ const AgentesIAManager = () => {
       </div>
     );
   }
-
-  console.log('✅ AgentesIAManager - Renderizando interface principal com', agentes.length, 'agentes');
 
   return (
     <div className="p-6 space-y-6">

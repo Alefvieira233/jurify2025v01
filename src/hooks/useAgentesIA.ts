@@ -11,27 +11,24 @@ export type CreateAgenteData = Database['public']['Tables']['agentes_ia']['Inser
 
 export const useAgentesIA = () => {
   const [agentes, setAgentes] = useState<AgenteIA[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const { logAgenteCreated, logAgenteUpdated, logAgenteExecution, logError } = useLogActivity();
 
   const fetchAgentes = async () => {
-    console.log('🤖 useAgentesIA - Iniciando busca de agentes...');
-    
     if (!user) {
-      console.log('❌ useAgentesIA - Usuário não autenticado');
+      setAgentes([]);
       setLoading(false);
-      setError('Usuário não autenticado');
+      setError(null);
+      setInitialized(true);
       return;
     }
 
-    setLoading(true);
-    setError(null);
-
     try {
-      console.log('🔍 useAgentesIA - Executando query no Supabase...');
+      setError(null);
       
       const { data, error: supabaseError } = await supabase
         .from('agentes_ia')
@@ -39,29 +36,25 @@ export const useAgentesIA = () => {
         .order('created_at', { ascending: false });
 
       if (supabaseError) {
-        console.error('❌ useAgentesIA - Erro na consulta Supabase:', supabaseError);
         throw supabaseError;
       }
       
-      console.log('✅ useAgentesIA - Agentes carregados com sucesso:', data?.length || 0);
       setAgentes(data || []);
-      setError(null);
       
     } catch (error: any) {
-      console.error('❌ useAgentesIA - Erro capturado:', error);
-      const errorMessage = error.message || 'Erro desconhecido ao carregar agentes';
-      setError(errorMessage);
+      console.error('Erro ao carregar agentes IA:', error);
+      setError(error.message || 'Erro ao carregar agentes IA');
       setAgentes([]);
       
-      logError('Agentes IA', 'Falha ao buscar agentes', { error: errorMessage });
+      logError('Agentes IA', 'Falha ao buscar agentes', { error: error.message });
       toast({
         title: 'Erro ao carregar agentes IA',
-        description: errorMessage,
+        description: error.message || 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
-      console.log('🏁 useAgentesIA - Finalizando carregamento');
       setLoading(false);
+      setInitialized(true);
     }
   };
 
@@ -259,17 +252,10 @@ export const useAgentesIA = () => {
   };
 
   useEffect(() => {
-    console.log('🔄 useAgentesIA - useEffect disparado, user:', user?.email);
-    
-    if (user) {
+    if (!initialized) {
       fetchAgentes();
-    } else {
-      console.log('⏳ useAgentesIA - Aguardando autenticação...');
-      setLoading(false);
-      setAgentes([]);
-      setError(null);
     }
-  }, [user]);
+  }, [user, initialized]);
 
   return {
     agentes,

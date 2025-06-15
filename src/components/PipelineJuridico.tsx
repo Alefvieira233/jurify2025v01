@@ -5,6 +5,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 import { useToast } from '@/hooks/use-toast';
 import { useLeads } from '@/hooks/useLeads';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface Lead {
   id: string;
@@ -26,14 +27,6 @@ const PipelineJuridico = () => {
   const { toast } = useToast();
   const { leads, loading, error, updateLead } = useLeads();
 
-  console.log('🔄 PipelineJuridico - Estado atual:', { 
-    leadsCount: leads?.length || 0, 
-    loading, 
-    error,
-    hasLeads: !!leads 
-  });
-
-  // Configuração das etapas do pipeline
   const stages = [
     { id: 'novo_lead', title: 'Novos Leads', color: 'bg-blue-100 border-blue-300' },
     { id: 'em_qualificacao', title: 'Em Qualificação', color: 'bg-yellow-100 border-yellow-300' },
@@ -43,7 +36,6 @@ const PipelineJuridico = () => {
     { id: 'lead_perdido', title: 'Leads Perdidos', color: 'bg-red-100 border-red-300' }
   ];
 
-  // Filtrar leads
   const filteredLeads = leads?.filter(lead => {
     const matchesSearch = lead.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     const matchesArea = filterArea === '' || lead.area_juridica === filterArea;
@@ -52,20 +44,16 @@ const PipelineJuridico = () => {
     return matchesSearch && matchesArea && matchesResponsavel;
   }) || [];
 
-  // Agrupar leads por status
   const groupedLeads = stages.reduce((acc, stage) => {
     acc[stage.id] = filteredLeads.filter(lead => lead.status === stage.id);
     return acc;
   }, {} as Record<string, Lead[]>);
 
-  // Função de drag and drop
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) return;
     if (destination.droppableId === source.droppableId) return;
-
-    console.log('🎯 PipelineJuridico - Atualizando status do lead:', draggableId, 'para:', destination.droppableId);
 
     const success = await updateLead(draggableId, { status: destination.droppableId });
     
@@ -77,13 +65,10 @@ const PipelineJuridico = () => {
     }
   };
 
-  // Obter áreas jurídicas únicas para filtro
   const areasJuridicas = [...new Set(leads?.map(lead => lead.area_juridica).filter(Boolean) || [])];
   const responsaveis = [...new Set(leads?.map(lead => lead.responsavel).filter(Boolean) || [])];
 
-  // Estado de loading
   if (loading) {
-    console.log('🔄 PipelineJuridico - Exibindo loading...');
     return (
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
@@ -91,10 +76,10 @@ const PipelineJuridico = () => {
             <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
             <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
           </div>
-          <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-            <Plus className="h-4 w-4" />
-            <span>Novo Lead</span>
-          </button>
+          <Button className="bg-amber-500 hover:bg-amber-600">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Lead
+          </Button>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
@@ -115,9 +100,7 @@ const PipelineJuridico = () => {
     );
   }
 
-  // Estado de erro
   if (error) {
-    console.log('❌ PipelineJuridico - Exibindo erro:', error);
     return (
       <div className="p-6">
         <div className="flex justify-between items-center mb-6">
@@ -125,10 +108,10 @@ const PipelineJuridico = () => {
             <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
             <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
           </div>
-          <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-            <Plus className="h-4 w-4" />
-            <span>Novo Lead</span>
-          </button>
+          <Button className="bg-amber-500 hover:bg-amber-600">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Lead
+          </Button>
         </div>
 
         <div className="flex items-center justify-center h-64">
@@ -140,21 +123,19 @@ const PipelineJuridico = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar pipeline</h3>
             <p className="text-gray-600 mb-4">{error}</p>
-            <button 
+            <Button 
               onClick={() => window.location.reload()}
-              className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg"
+              className="bg-amber-500 hover:bg-amber-600"
             >
               Tentar novamente
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     );
   }
 
-  // Estado sem dados
   if (!leads || leads.length === 0) {
-    console.log('📭 PipelineJuridico - Nenhum lead encontrado');
     return (
       <div className="p-6 space-y-6">
         <div className="flex justify-between items-center">
@@ -162,10 +143,10 @@ const PipelineJuridico = () => {
             <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
             <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
           </div>
-          <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-            <Plus className="h-4 w-4" />
-            <span>Novo Lead</span>
-          </button>
+          <Button className="bg-amber-500 hover:bg-amber-600">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Lead
+          </Button>
         </div>
 
         <div className="flex items-center justify-center h-64">
@@ -177,16 +158,14 @@ const PipelineJuridico = () => {
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum lead cadastrado ainda</h3>
             <p className="text-gray-600 mb-4">Comece criando seu primeiro lead para visualizar o pipeline.</p>
-            <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg">
+            <Button className="bg-amber-500 hover:bg-amber-600">
               Criar primeiro lead
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     );
   }
-
-  console.log('✅ PipelineJuridico - Renderizando interface principal com', leads.length, 'leads');
 
   return (
     <div className="p-6 space-y-6">
@@ -196,10 +175,10 @@ const PipelineJuridico = () => {
           <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
           <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
         </div>
-        <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-          <Plus className="h-4 w-4" />
-          <span>Novo Lead</span>
-        </button>
+        <Button className="bg-amber-500 hover:bg-amber-600">
+          <Plus className="h-4 w-4 mr-2" />
+          Novo Lead
+        </Button>
       </div>
 
       {/* Filtros */}

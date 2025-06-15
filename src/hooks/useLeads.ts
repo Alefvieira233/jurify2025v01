@@ -10,26 +10,23 @@ export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
 
 export const useLeads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchLeads = async () => {
-    console.log('📡 useLeads - Iniciando busca de leads...');
-    
     if (!user) {
-      console.log('❌ useLeads - Usuário não autenticado');
+      setLeads([]);
       setLoading(false);
-      setError('Usuário não autenticado');
+      setError(null);
+      setInitialized(true);
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    
     try {
-      console.log('🔍 useLeads - Executando query no Supabase...');
+      setError(null);
       
       const { data, error: supabaseError } = await supabase
         .from('leads')
@@ -37,28 +34,24 @@ export const useLeads = () => {
         .order('created_at', { ascending: false });
 
       if (supabaseError) {
-        console.error('❌ useLeads - Erro na consulta Supabase:', supabaseError);
         throw supabaseError;
       }
       
-      console.log('✅ useLeads - Leads carregados com sucesso:', data?.length || 0);
       setLeads(data || []);
-      setError(null);
       
     } catch (error: any) {
-      console.error('❌ useLeads - Erro capturado:', error);
-      const errorMessage = error.message || 'Erro desconhecido ao carregar leads';
-      setError(errorMessage);
+      console.error('Erro ao carregar leads:', error);
+      setError(error.message || 'Erro ao carregar leads');
       setLeads([]);
       
       toast({
         title: 'Erro ao carregar leads',
-        description: errorMessage,
+        description: error.message || 'Erro desconhecido',
         variant: 'destructive',
       });
     } finally {
-      console.log('🏁 useLeads - Finalizando carregamento');
       setLoading(false);
+      setInitialized(true);
     }
   };
 
@@ -157,17 +150,10 @@ export const useLeads = () => {
   };
 
   useEffect(() => {
-    console.log('🔄 useLeads - useEffect disparado, user:', user?.email);
-    
-    if (user) {
+    if (!initialized) {
       fetchLeads();
-    } else {
-      console.log('⏳ useLeads - Aguardando autenticação...');
-      setLoading(false);
-      setLeads([]);
-      setError(null);
     }
-  }, [user]);
+  }, [user, initialized]);
 
   return {
     leads,

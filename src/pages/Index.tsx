@@ -28,17 +28,7 @@ const Index = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [initializationComplete, setInitializationComplete] = useState(false);
-
-  // Debug logs
-  console.log('📊 Index - Estado completo:', { 
-    user: user?.email, 
-    profile: profile?.nome_completo, 
-    authLoading: loading,
-    hasUser: !!user,
-    hasProfile: !!profile,
-    initializationComplete
-  });
+  const [systemReady, setSystemReady] = useState(false);
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
@@ -48,48 +38,22 @@ const Index = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    // Quando a autenticação estiver completa, inicializar
     if (!loading && user) {
-      console.log('🎯 Index - Usuário carregado, inicializando sistema...');
+      console.log('✅ Sistema inicializado - Usuário:', user.email);
+      setSystemReady(true);
       
-      // Timeout para garantir que não trave indefinidamente
-      const timeout = setTimeout(() => {
-        console.log('⏰ Index - Timeout de inicialização, continuando sem perfil');
-        setInitializationComplete(true);
-      }, 5000);
-
-      // Se perfil carregar antes do timeout, continuar imediatamente
-      if (profile) {
-        console.log('✅ Index - Perfil disponível, sistema pronto');
-        clearTimeout(timeout);
-        setInitializationComplete(true);
-      }
-
-      return () => clearTimeout(timeout);
-    } else if (!loading && !user) {
-      // Se não tiver usuário e não estiver carregando, é redirecionamento
-      console.log('🚫 Index - Sem usuário, será redirecionado');
-      setInitializationComplete(false);
-    }
-  }, [loading, user, profile]);
-
-  useEffect(() => {
-    // Atualizar último acesso apenas quando tudo estiver pronto
-    if (user && profile && initializationComplete) {
-      console.log('📝 Index - Atualizando último acesso para:', user.email);
+      // Atualizar último acesso
       supabase
         .from('profiles')
         .update({ data_ultimo_acesso: new Date().toISOString() })
         .eq('id', user.id)
         .then(({ error }) => {
           if (error) {
-            console.error('❌ Erro ao atualizar último acesso:', error);
-          } else {
-            console.log('✅ Último acesso atualizado');
+            console.error('Erro ao atualizar último acesso:', error);
           }
         });
     }
-  }, [user, profile, initializationComplete]);
+  }, [loading, user]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as ActiveTab);
@@ -113,7 +77,6 @@ const Index = () => {
   };
 
   const renderContent = () => {
-    // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode acessar qualquer seção
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
@@ -146,26 +109,14 @@ const Index = () => {
     }
   };
 
-  // Se ainda estiver carregando autenticação
-  if (loading) {
-    console.log('🔄 Index - Auth ainda carregando');
-    return <LoadingSpinner fullScreen text="Carregando sistema..." />;
+  if (loading || !systemReady) {
+    return <LoadingSpinner fullScreen text="Inicializando sistema..." />;
   }
 
-  // Se não tiver usuário, o ProtectedRoute deve interceptar
   if (!user) {
-    console.log('🚫 Index - Usuário não encontrado');
     return <LoadingSpinner fullScreen text="Redirecionando..." />;
   }
 
-  // Se tiver usuário mas ainda não completou inicialização
-  if (!initializationComplete) {
-    console.log('🔄 Index - Finalizando inicialização...');
-    return <LoadingSpinner fullScreen text="Finalizando carregamento..." />;
-  }
-
-  // Renderizar interface principal
-  console.log('✅ Index - Renderizando interface principal');
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <OnboardingFlow />

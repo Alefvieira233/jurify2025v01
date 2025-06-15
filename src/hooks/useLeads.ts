@@ -67,8 +67,8 @@ export const useLeads = () => {
 
       console.log('✅ [useLeads] Lead criado com sucesso:', newLead.id);
       
-      // Optimistic update
-      setLeads(prev => [newLead, ...prev]);
+      // Optimistic update with proper typing
+      setLeads([newLead, ...leads]);
       
       toast({
         title: 'Sucesso',
@@ -85,7 +85,7 @@ export const useLeads = () => {
       });
       return false;
     }
-  }, [user, toast, setLeads]);
+  }, [user, toast, setLeads, leads]);
 
   const updateLead = useCallback(async (id: string, updateData: Partial<Lead>): Promise<boolean> => {
     if (!user) return false;
@@ -103,8 +103,8 @@ export const useLeads = () => {
 
       console.log('✅ [useLeads] Lead atualizado com sucesso');
       
-      // Optimistic update
-      setLeads(prev => prev.map(lead => 
+      // Optimistic update with proper typing
+      setLeads(leads.map(lead => 
         lead.id === id ? { ...lead, ...updatedLead } : lead
       ));
 
@@ -123,7 +123,7 @@ export const useLeads = () => {
       });
       return false;
     }
-  }, [user, toast, setLeads]);
+  }, [user, toast, setLeads, leads]);
 
   const deleteLead = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
@@ -139,8 +139,8 @@ export const useLeads = () => {
 
       console.log('✅ [useLeads] Lead removido com sucesso');
       
-      // Optimistic update
-      setLeads(prev => prev.filter(lead => lead.id !== id));
+      // Optimistic update with proper typing
+      setLeads(leads.filter(lead => lead.id !== id));
 
       toast({
         title: 'Sucesso',
@@ -157,7 +157,7 @@ export const useLeads = () => {
       });
       return false;
     }
-  }, [user, toast, setLeads]);
+  }, [user, toast, setLeads, leads]);
 
   const getLeadsByStatus = useCallback((status: string) => {
     return leads.filter(lead => lead.status === status);

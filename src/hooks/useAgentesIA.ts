@@ -69,8 +69,8 @@ export const useAgentesIA = () => {
 
       console.log('✅ [useAgentesIA] Agente IA criado com sucesso:', newAgente.id);
       
-      // Optimistic update
-      setAgentes(prev => [newAgente, ...prev]);
+      // Optimistic update with proper typing
+      setAgentes([newAgente, ...agentes]);
       
       logAgenteCreated(data.nome);
       toast({
@@ -92,7 +92,7 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  }, [user, toast, logAgenteCreated, logError, setAgentes]);
+  }, [user, toast, logAgenteCreated, logError, setAgentes, agentes]);
 
   const updateAgente = useCallback(async (id: string, updateData: Partial<AgenteIA>): Promise<boolean> => {
     if (!user) return false;
@@ -115,8 +115,8 @@ export const useAgentesIA = () => {
 
       console.log('✅ [useAgentesIA] Agente IA atualizado com sucesso');
       
-      // Optimistic update
-      setAgentes(prev => prev.map(agente => 
+      // Optimistic update with proper typing
+      setAgentes(agentes.map(agente => 
         agente.id === id ? { ...agente, ...updatedAgente } : agente
       ));
 
@@ -161,8 +161,8 @@ export const useAgentesIA = () => {
 
       console.log('✅ [useAgentesIA] Agente IA removido com sucesso');
       
-      // Optimistic update
-      setAgentes(prev => prev.filter(agente => agente.id !== id));
+      // Optimistic update with proper typing
+      setAgentes(agentes.filter(agente => agente.id !== id));
 
       toast({
         title: 'Sucesso',

@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -11,25 +10,24 @@ export type CreateAgenteData = Database['public']['Tables']['agentes_ia']['Inser
 
 export const useAgentesIA = () => {
   const [agentes, setAgentes] = useState<AgenteIA[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const { logAgenteCreated, logAgenteUpdated, logAgenteExecution, logError } = useLogActivity();
 
-  const fetchAgentes = async () => {
+  const fetchAgentes = useCallback(async () => {
     if (!user) {
       setAgentes([]);
       setLoading(false);
       setError(null);
-      setInitialized(true);
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setError(null);
-      
       const { data, error: supabaseError } = await supabase
         .from('agentes_ia')
         .select('*')
@@ -54,9 +52,8 @@ export const useAgentesIA = () => {
       });
     } finally {
       setLoading(false);
-      setInitialized(true);
     }
-  };
+  }, [user, toast, logError]);
 
   const createAgente = async (data: CreateAgenteData) => {
     if (!user) return false;
@@ -252,10 +249,8 @@ export const useAgentesIA = () => {
   };
 
   useEffect(() => {
-    if (!initialized) {
-      fetchAgentes();
-    }
-  }, [user, initialized]);
+    fetchAgentes();
+  }, [fetchAgentes]);
 
   return {
     agentes,

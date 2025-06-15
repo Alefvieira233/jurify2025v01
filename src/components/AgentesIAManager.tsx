@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Bot, 
   Plus, 
@@ -98,6 +98,25 @@ const AgentesIAManager = () => {
     { value: 'api_externa', label: 'API Externa', icon: Zap }
   ];
 
+  const filteredAgentes = useMemo(() => {
+    if (!agentes) return [];
+    
+    return agentes.filter(agente => {
+      const matchesSearch = agente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           agente.area_juridica.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           agente.descricao_funcao?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'todos' || agente.status === statusFilter;
+      const matchesTipo = tipoFilter === 'todos' || agente.tipo_agente === tipoFilter;
+      const matchesArea = areaFilter === 'todas' || agente.area_juridica === areaFilter;
+      
+      return matchesSearch && matchesStatus && matchesTipo && matchesArea;
+    });
+  }, [agentes, searchTerm, statusFilter, tipoFilter, areaFilter]);
+
+  const agentesAtivos = useMemo(() => {
+    return agentes?.filter(a => a.status === 'ativo').length || 0;
+  }, [agentes]);
+
   const toggleStatus = async (agente: AgenteIA) => {
     const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
     const success = await updateAgente(agente.id, { status: novoStatus });
@@ -109,17 +128,6 @@ const AgentesIAManager = () => {
       });
     }
   };
-
-  const filteredAgentes = agentes?.filter(agente => {
-    const matchesSearch = agente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         agente.area_juridica.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         agente.descricao_funcao?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'todos' || agente.status === statusFilter;
-    const matchesTipo = tipoFilter === 'todos' || agente.tipo_agente === tipoFilter;
-    const matchesArea = areaFilter === 'todas' || agente.area_juridica === areaFilter;
-    
-    return matchesSearch && matchesStatus && matchesTipo && matchesArea;
-  }) || [];
 
   const getTipoAgenteInfo = (tipo: string) => {
     return tiposAgente.find(t => t.value === tipo) || tiposAgente[0];
@@ -341,9 +349,7 @@ const AgentesIAManager = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Agentes Ativos</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    {agentes.filter(a => a.status === 'ativo').length}
-                  </p>
+                  <p className="text-2xl font-bold text-green-600">{agentesAtivos}</p>
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-500" />
               </div>

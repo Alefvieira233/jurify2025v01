@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -10,24 +10,23 @@ export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
 
 export const useLeads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [initialized, setInitialized] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     if (!user) {
       setLeads([]);
       setLoading(false);
       setError(null);
-      setInitialized(true);
       return;
     }
 
+    setLoading(true);
+    setError(null);
+
     try {
-      setError(null);
-      
       const { data, error: supabaseError } = await supabase
         .from('leads')
         .select('*')
@@ -51,9 +50,8 @@ export const useLeads = () => {
       });
     } finally {
       setLoading(false);
-      setInitialized(true);
     }
-  };
+  }, [user, toast]);
 
   const createLead = async (data: CreateLeadData) => {
     if (!user) return false;
@@ -141,19 +139,17 @@ export const useLeads = () => {
     }
   };
 
-  const getLeadsByStatus = (status: string) => {
+  const getLeadsByStatus = useCallback((status: string) => {
     return leads.filter(lead => lead.status === status);
-  };
+  }, [leads]);
 
-  const getLeadsByArea = (area: string) => {
+  const getLeadsByArea = useCallback((area: string) => {
     return leads.filter(lead => lead.area_juridica === area);
-  };
+  }, [leads]);
 
   useEffect(() => {
-    if (!initialized) {
-      fetchLeads();
-    }
-  }, [user, initialized]);
+    fetchLeads();
+  }, [fetchLeads]);
 
   return {
     leads,

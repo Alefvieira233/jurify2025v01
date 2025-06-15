@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useToast } from '@/hooks/use-toast';
@@ -36,18 +36,32 @@ const PipelineJuridico = () => {
     { id: 'lead_perdido', title: 'Leads Perdidos', color: 'bg-red-100 border-red-300' }
   ];
 
-  const filteredLeads = leads?.filter(lead => {
-    const matchesSearch = lead.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    const matchesArea = filterArea === '' || lead.area_juridica === filterArea;
-    const matchesResponsavel = filterResponsavel === '' || lead.responsavel === filterResponsavel;
+  const filteredLeads = useMemo(() => {
+    if (!leads) return [];
     
-    return matchesSearch && matchesArea && matchesResponsavel;
-  }) || [];
+    return leads.filter(lead => {
+      const matchesSearch = lead.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      const matchesArea = filterArea === '' || lead.area_juridica === filterArea;
+      const matchesResponsavel = filterResponsavel === '' || lead.responsavel === filterResponsavel;
+      
+      return matchesSearch && matchesArea && matchesResponsavel;
+    });
+  }, [leads, searchTerm, filterArea, filterResponsavel]);
 
-  const groupedLeads = stages.reduce((acc, stage) => {
-    acc[stage.id] = filteredLeads.filter(lead => lead.status === stage.id);
-    return acc;
-  }, {} as Record<string, Lead[]>);
+  const groupedLeads = useMemo(() => {
+    return stages.reduce((acc, stage) => {
+      acc[stage.id] = filteredLeads.filter(lead => lead.status === stage.id);
+      return acc;
+    }, {} as Record<string, Lead[]>);
+  }, [filteredLeads, stages]);
+
+  const areasJuridicas = useMemo(() => {
+    return [...new Set(leads?.map(lead => lead.area_juridica).filter(Boolean) || [])];
+  }, [leads]);
+
+  const responsaveis = useMemo(() => {
+    return [...new Set(leads?.map(lead => lead.responsavel).filter(Boolean) || [])];
+  }, [leads]);
 
   const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -64,9 +78,6 @@ const PipelineJuridico = () => {
       });
     }
   };
-
-  const areasJuridicas = [...new Set(leads?.map(lead => lead.area_juridica).filter(Boolean) || [])];
-  const responsaveis = [...new Set(leads?.map(lead => lead.responsavel).filter(Boolean) || [])];
 
   if (loading) {
     return (

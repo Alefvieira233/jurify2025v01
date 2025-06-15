@@ -140,6 +140,44 @@ export type Database = {
         }
         Relationships: []
       }
+      api_rate_limits: {
+        Row: {
+          api_key_id: string | null
+          created_at: string
+          current_usage: number | null
+          daily_limit: number | null
+          id: string
+          reset_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          api_key_id?: string | null
+          created_at?: string
+          current_usage?: number | null
+          daily_limit?: number | null
+          id?: string
+          reset_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          api_key_id?: string | null
+          created_at?: string
+          current_usage?: number | null
+          daily_limit?: number | null
+          id?: string
+          reset_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_rate_limits_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       configuracoes_integracoes: {
         Row: {
           api_key: string
@@ -579,6 +617,53 @@ export type Database = {
           },
         ]
       }
+      notification_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_type: string
+          id: string
+          is_active: boolean | null
+          name: string
+          roles_enabled: string[] | null
+          template: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_type: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          roles_enabled?: string[] | null
+          template: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_type?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          roles_enabled?: string[] | null
+          template?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ativo: boolean | null
@@ -644,6 +729,50 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
+      }
+      system_settings: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_sensitive: boolean | null
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string | null
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_sensitive?: boolean | null
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "system_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -766,6 +895,10 @@ export type Database = {
         Args: { user_id: string }
         Returns: number
       }
+      get_system_setting: {
+        Args: { _key: string }
+        Returns: string
+      }
       get_user_calendar_settings: {
         Args: { user_id: string }
         Returns: {
@@ -814,6 +947,10 @@ export type Database = {
           _detalhes_adicionais?: Json
         }
         Returns: string
+      }
+      update_system_setting: {
+        Args: { _key: string; _value: string; _user_id: string }
+        Returns: boolean
       }
       validar_api_key: {
         Args: { _key_value: string }

@@ -17,6 +17,7 @@ import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import LogsPanel from "@/components/LogsPanel";
 import IntegracoesConfig from "@/components/IntegracoesConfig";
+import OnboardingFlow from "@/components/OnboardingFlow";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { useSearchParams } from "react-router-dom";
 
@@ -231,6 +232,8 @@ const Index = () => {
   console.log('Index - Renderizando interface principal');
   return (
     <div className="min-h-screen bg-gray-100 flex">
+      <OnboardingFlow />
+      
       <Sidebar 
         activeSection={activeTab}
         onSectionChange={handleTabChange}

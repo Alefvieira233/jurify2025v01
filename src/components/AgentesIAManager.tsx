@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
   Bot, 
   Plus, 
@@ -21,7 +21,6 @@ import {
   CheckCircle,
   Clock
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,7 +46,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useAgentesIA } from '@/hooks/useAgentesIA';
 import NovoAgenteForm from './NovoAgenteForm';
 import DetalhesAgente from './DetalhesAgente';
 import ApiKeysManager from './ApiKeysManager';
@@ -71,12 +71,6 @@ interface AgenteIA {
   parametros_avancados: any;
 }
 
-interface StatsAgente {
-  agente_id: string;
-  agente_nome: string;
-  total_leads_mes: number;
-}
-
 const AgentesIAManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
@@ -86,9 +80,15 @@ const AgentesIAManager = () => {
   const [selectedAgente, setSelectedAgente] = useState<AgenteIA | null>(null);
   const [showDetalhes, setShowDetalhes] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  
+  const { agentes, loading, error, updateAgente } = useAgentesIA();
 
-  console.log('🤖 AgentesIAManager - Componente montado');
+  console.log('🤖 AgentesIAManager - Estado atual:', { 
+    agentesCount: agentes?.length || 0, 
+    loading, 
+    error,
+    hasAgentes: !!agentes 
+  });
 
   const areas = [
     'Direito Trabalhista',
@@ -105,120 +105,16 @@ const AgentesIAManager = () => {
     { value: 'api_externa', label: 'API Externa', icon: Zap }
   ];
 
-  // Buscar agentes com tratamento de erro melhorado
-  const { data: agentes, isLoading: agentesLoading, error: agentesError, isError: agentesIsError } = useQuery({
-    queryKey: ['agentes_ia'],
-    queryFn: async () => {
-      console.log('📡 AgentesIAManager - Iniciando busca de agentes...');
-      
-      try {
-        const { data, error } = await supabase
-          .from('agentes_ia')
-          .select('*')
-          .order('created_at', { ascending: false });
-
-        if (error) {
-          console.error('❌ AgentesIAManager - Erro na consulta de agentes:', error);
-          throw error;
-        }
-        
-        const transformedData = (data || []).map(agente => ({
-          ...agente,
-          parametros_avancados: agente.parametros_avancados || {
-            temperatura: 0.7,
-            top_p: 0.9,
-            frequency_penalty: 0,
-            presence_penalty: 0
-          }
-        }));
-        
-        console.log('✅ AgentesIAManager - Agentes carregados:', transformedData.length);
-        return transformedData as AgenteIA[];
-      } catch (err) {
-        console.error('❌ AgentesIAManager - Erro no fetch de agentes:', err);
-        throw err;
-      }
-    },
-    retry: 3,
-    retryDelay: 1000,
-  });
-
-  // Buscar estatísticas com tratamento de erro
-  const { data: statsAgentes } = useQuery({
-    queryKey: ['stats_agentes_leads'],
-    queryFn: async () => {
-      console.log('📊 AgentesIAManager - Buscando estatísticas...');
-      
-      try {
-        const { data, error } = await supabase
-          .from('stats_agentes_leads')
-          .select('*');
-
-        if (error) {
-          console.error('⚠️ AgentesIAManager - Erro nas estatísticas (não crítico):', error);
-          return [];
-        }
-        
-        console.log('✅ AgentesIAManager - Estatísticas carregadas:', data?.length || 0);
-        return data as StatsAgente[] || [];
-      } catch (err) {
-        console.error('⚠️ AgentesIAManager - Erro no fetch de estatísticas:', err);
-        return [];
-      }
-    },
-    retry: 1,
-    retryDelay: 1000,
-  });
-
-  // Exibir erro no toast se houver
-  useEffect(() => {
-    if (agentesIsError && agentesError) {
-      console.error('❌ AgentesIAManager - Erro detectado:', agentesError);
-      toast({
-        title: "Erro ao carregar agentes IA",
-        description: "Não foi possível carregar os dados dos agentes. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  }, [agentesIsError, agentesError, toast]);
-
-  // Mutação para alternar status
-  const toggleStatusMutation = useMutation({
-    mutationFn: async ({ id, novoStatus }: { id: string; novoStatus: string }) => {
-      console.log('🔄 AgentesIAManager - Alterando status do agente:', id, 'para:', novoStatus);
-      
-      const { error } = await supabase
-        .from('agentes_ia')
-        .update({ status: novoStatus })
-        .eq('id', id);
-
-      if (error) {
-        console.error('❌ AgentesIAManager - Erro ao alterar status:', error);
-        throw error;
-      }
-      
-      console.log('✅ AgentesIAManager - Status alterado com sucesso');
-    },
-    onSuccess: (_, { novoStatus }) => {
-      queryClient.invalidateQueries({ queryKey: ['agentes_ia'] });
+  const toggleStatus = async (agente: AgenteIA) => {
+    const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
+    const success = await updateAgente(agente.id, { status: novoStatus });
+    
+    if (success) {
       toast({
         title: "Status Atualizado",
         description: `Agente ${novoStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso`,
       });
-    },
-    onError: (error) => {
-      console.error('❌ AgentesIAManager - Erro na mutação de status:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível alterar o status do agente",
-        variant: "destructive",
-      });
     }
-  });
-
-  const toggleStatus = (agente: AgenteIA) => {
-    const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
-    toggleStatusMutation.mutate({ id: agente.id, novoStatus });
   };
 
   const filteredAgentes = agentes?.filter(agente => {
@@ -231,11 +127,6 @@ const AgentesIAManager = () => {
     
     return matchesSearch && matchesStatus && matchesTipo && matchesArea;
   }) || [];
-
-  const getLeadsCount = (agenteId: string) => {
-    const stats = statsAgentes?.find(s => s.agente_id === agenteId);
-    return stats?.total_leads_mes || 0;
-  };
 
   const getTipoAgenteInfo = (tipo: string) => {
     return tiposAgente.find(t => t.value === tipo) || tiposAgente[0];
@@ -255,38 +146,111 @@ const AgentesIAManager = () => {
     setShowNovoAgente(false);
     setShowDetalhes(false);
     setSelectedAgente(null);
-    queryClient.invalidateQueries({ queryKey: ['agentes_ia'] });
   };
 
   // Estado de loading
-  if (agentesLoading) {
+  if (loading) {
     console.log('🔄 AgentesIAManager - Exibindo loading...');
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Carregando agentes IA...</p>
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
+            <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
           </div>
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agente
+          </Button>
         </div>
+
+        <Tabs defaultValue="agentes" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="agentes">Agentes IA</TabsTrigger>
+            <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+            <TabsTrigger value="logs">Monitoramento</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="agentes" className="space-y-6">
+            {/* Stats Cards Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-24" />
+                      <Skeleton className="h-8 w-12" />
+                    </div>
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Filtros Skeleton */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </div>
+
+            {/* Tabela Skeleton */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="p-4">
+                <div className="space-y-4">
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="flex items-center space-x-4">
+                      <Skeleton className="h-12 w-12 rounded-full" />
+                      <div className="space-y-2 flex-1">
+                        <Skeleton className="h-4 w-48" />
+                        <Skeleton className="h-3 w-32" />
+                      </div>
+                      <Skeleton className="h-6 w-16" />
+                      <Skeleton className="h-6 w-20" />
+                      <div className="flex space-x-2">
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                        <Skeleton className="h-8 w-8" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
 
   // Estado de erro
-  if (agentesIsError) {
-    console.log('❌ AgentesIAManager - Exibindo erro...');
+  if (error) {
+    console.log('❌ AgentesIAManager - Exibindo erro:', error);
     return (
       <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
+            <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
+          </div>
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agente
+          </Button>
+        </div>
+
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-red-500 mb-4">
               <AlertCircle className="h-12 w-12 mx-auto" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar agentes IA</h3>
-            <p className="text-gray-600 mb-4">Não foi possível carregar os dados dos agentes.</p>
+            <p className="text-gray-600 mb-4">{error}</p>
             <button 
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['agentes_ia'] })}
+              onClick={() => window.location.reload()}
               className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
             >
               Tentar novamente
@@ -408,9 +372,7 @@ const AgentesIAManager = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-600">Leads Capturados</p>
-                  <p className="text-2xl font-bold text-blue-600">
-                    {statsAgentes?.reduce((acc, stats) => acc + stats.total_leads_mes, 0) || 0}
-                  </p>
+                  <p className="text-2xl font-bold text-blue-600">0</p>
                 </div>
                 <Users className="h-8 w-8 text-blue-500" />
               </div>
@@ -536,9 +498,7 @@ const AgentesIAManager = () => {
                       </TableCell>
                       <TableCell>
                         <div className="text-center">
-                          <span className="text-lg font-semibold text-blue-600">
-                            {getLeadsCount(agente.id)}
-                          </span>
+                          <span className="text-lg font-semibold text-blue-600">0</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -569,7 +529,6 @@ const AgentesIAManager = () => {
                             size="sm"
                             onClick={() => toggleStatus(agente)}
                             className={agente.status === 'ativo' ? 'hover:bg-red-50' : 'hover:bg-green-50'}
-                            disabled={toggleStatusMutation.isPending}
                           >
                             {agente.status === 'ativo' ? (
                               <PowerOff className="h-4 w-4 text-red-600" />

@@ -11,29 +11,53 @@ export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
 export const useLeads = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
   const fetchLeads = async () => {
-    if (!user) return;
+    console.log('📡 useLeads - Iniciando busca de leads...');
+    
+    if (!user) {
+      console.log('❌ useLeads - Usuário não autenticado');
+      setLoading(false);
+      setError('Usuário não autenticado');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase
+      console.log('🔍 useLeads - Executando query no Supabase...');
+      
+      const { data, error: supabaseError } = await supabase
         .from('leads')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (supabaseError) {
+        console.error('❌ useLeads - Erro na consulta Supabase:', supabaseError);
+        throw supabaseError;
+      }
+      
+      console.log('✅ useLeads - Leads carregados com sucesso:', data?.length || 0);
       setLeads(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar leads:', error);
+      setError(null);
+      
+    } catch (error: any) {
+      console.error('❌ useLeads - Erro capturado:', error);
+      const errorMessage = error.message || 'Erro desconhecido ao carregar leads';
+      setError(errorMessage);
+      setLeads([]);
+      
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os leads.',
+        title: 'Erro ao carregar leads',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
+      console.log('🏁 useLeads - Finalizando carregamento');
       setLoading(false);
     }
   };
@@ -55,7 +79,7 @@ export const useLeads = () => {
 
       await fetchLeads();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar lead:', error);
       toast({
         title: 'Erro',
@@ -84,7 +108,7 @@ export const useLeads = () => {
 
       await fetchLeads();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar lead:', error);
       toast({
         title: 'Erro',
@@ -113,7 +137,7 @@ export const useLeads = () => {
 
       await fetchLeads();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao remover lead:', error);
       toast({
         title: 'Erro',
@@ -133,12 +157,22 @@ export const useLeads = () => {
   };
 
   useEffect(() => {
-    fetchLeads();
+    console.log('🔄 useLeads - useEffect disparado, user:', user?.email);
+    
+    if (user) {
+      fetchLeads();
+    } else {
+      console.log('⏳ useLeads - Aguardando autenticação...');
+      setLoading(false);
+      setLeads([]);
+      setError(null);
+    }
   }, [user]);
 
   return {
     leads,
     loading,
+    error,
     fetchLeads,
     createLead,
     updateLead,

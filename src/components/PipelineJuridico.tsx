@@ -1,10 +1,10 @@
 
-import React, { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState } from 'react';
 import { Search, Filter, Plus } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { useToast } from '@/hooks/use-toast';
+import { useLeads } from '@/hooks/useLeads';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Lead {
   id: string;
@@ -23,84 +23,14 @@ const PipelineJuridico = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('');
-  const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { leads, loading, error, updateLead } = useLeads();
 
-  // Debug: Log quando o componente é montado
-  console.log('🔄 PipelineJuridico - Componente montado');
-
-  // Buscar leads do Supabase com tratamento de erro melhorado
-  const { data: leads, isLoading, error, isError } = useQuery({
-    queryKey: ['leads'],
-    queryFn: async () => {
-      console.log('📡 PipelineJuridico - Iniciando busca de leads...');
-      
-      try {
-        const { data, error } = await supabase
-          .from('leads')
-          .select('*')
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('❌ PipelineJuridico - Erro na consulta:', error);
-          throw error;
-        }
-        
-        console.log('✅ PipelineJuridico - Leads carregados:', data?.length || 0);
-        return data as Lead[];
-      } catch (err) {
-        console.error('❌ PipelineJuridico - Erro no fetch:', err);
-        throw err;
-      }
-    },
-    retry: 3,
-    retryDelay: 1000,
-  });
-
-  // Exibir erro no toast se houver
-  useEffect(() => {
-    if (isError && error) {
-      console.error('❌ PipelineJuridico - Erro detectado:', error);
-      toast({
-        title: "Erro ao carregar leads",
-        description: "Não foi possível carregar os dados do pipeline. Tente novamente.",
-        variant: "destructive",
-      });
-    }
-  }, [isError, error, toast]);
-
-  // Mutação para atualizar status do lead
-  const updateLeadMutation = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
-      console.log('🔄 PipelineJuridico - Atualizando lead:', id, 'para status:', status);
-      
-      const { error } = await supabase
-        .from('leads')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', id);
-      
-      if (error) {
-        console.error('❌ PipelineJuridico - Erro ao atualizar:', error);
-        throw error;
-      }
-      
-      console.log('✅ PipelineJuridico - Lead atualizado com sucesso');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      toast({
-        title: "Lead atualizado",
-        description: "Status do lead foi atualizado com sucesso.",
-      });
-    },
-    onError: (error) => {
-      console.error('❌ PipelineJuridico - Erro na mutação:', error);
-      toast({
-        title: "Erro ao atualizar",
-        description: "Não foi possível atualizar o status do lead.",
-        variant: "destructive",
-      });
-    }
+  console.log('🔄 PipelineJuridico - Estado atual:', { 
+    leadsCount: leads?.length || 0, 
+    loading, 
+    error,
+    hasLeads: !!leads 
   });
 
   // Configuração das etapas do pipeline
@@ -115,11 +45,11 @@ const PipelineJuridico = () => {
 
   // Filtrar leads
   const filteredLeads = leads?.filter(lead => {
-    return (
-      lead.nome_completo.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filterArea === '' || lead.area_juridica === filterArea) &&
-      (filterResponsavel === '' || lead.responsavel === filterResponsavel)
-    );
+    const matchesSearch = lead.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const matchesArea = filterArea === '' || lead.area_juridica === filterArea;
+    const matchesResponsavel = filterResponsavel === '' || lead.responsavel === filterResponsavel;
+    
+    return matchesSearch && matchesArea && matchesResponsavel;
   }) || [];
 
   // Agrupar leads por status
@@ -129,42 +59,78 @@ const PipelineJuridico = () => {
   }, {} as Record<string, Lead[]>);
 
   // Função de drag and drop
-  const onDragEnd = (result: DropResult) => {
+  const onDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
     if (!destination) return;
     if (destination.droppableId === source.droppableId) return;
 
-    updateLeadMutation.mutate({
-      id: draggableId,
-      status: destination.droppableId
-    });
+    console.log('🎯 PipelineJuridico - Atualizando status do lead:', draggableId, 'para:', destination.droppableId);
+
+    const success = await updateLead(draggableId, { status: destination.droppableId });
+    
+    if (success) {
+      toast({
+        title: "Lead atualizado",
+        description: "Status do lead foi atualizado com sucesso.",
+      });
+    }
   };
 
   // Obter áreas jurídicas únicas para filtro
-  const areasJuridicas = [...new Set(leads?.map(lead => lead.area_juridica) || [])];
-  const responsaveis = [...new Set(leads?.map(lead => lead.responsavel) || [])];
+  const areasJuridicas = [...new Set(leads?.map(lead => lead.area_juridica).filter(Boolean) || [])];
+  const responsaveis = [...new Set(leads?.map(lead => lead.responsavel).filter(Boolean) || [])];
 
   // Estado de loading
-  if (isLoading) {
+  if (loading) {
     console.log('🔄 PipelineJuridico - Exibindo loading...');
     return (
       <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Carregando pipeline jurídico...</p>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
+            <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
           </div>
+          <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+            <Plus className="h-4 w-4" />
+            <span>Novo Lead</span>
+          </button>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+          {stages.map(stage => (
+            <div key={stage.id} className={`rounded-lg border-2 ${stage.color} min-h-96 p-4`}>
+              <div className="mb-4">
+                <Skeleton className="h-6 w-32 mb-2" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <div className="space-y-3">
+                <Skeleton className="h-24 w-full" />
+                <Skeleton className="h-24 w-full" />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
   }
 
   // Estado de erro
-  if (isError) {
-    console.log('❌ PipelineJuridico - Exibindo erro...');
+  if (error) {
+    console.log('❌ PipelineJuridico - Exibindo erro:', error);
     return (
       <div className="p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Pipeline Jurídico</h1>
+            <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
+          </div>
+          <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+            <Plus className="h-4 w-4" />
+            <span>Novo Lead</span>
+          </button>
+        </div>
+
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-red-500 mb-4">
@@ -173,9 +139,9 @@ const PipelineJuridico = () => {
               </svg>
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar pipeline</h3>
-            <p className="text-gray-600 mb-4">Não foi possível carregar os dados do pipeline jurídico.</p>
+            <p className="text-gray-600 mb-4">{error}</p>
             <button 
-              onClick={() => queryClient.invalidateQueries({ queryKey: ['leads'] })}
+              onClick={() => window.location.reload()}
               className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg"
             >
               Tentar novamente

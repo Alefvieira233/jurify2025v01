@@ -12,31 +12,55 @@ export type CreateAgenteData = Database['public']['Tables']['agentes_ia']['Inser
 export const useAgentesIA = () => {
   const [agentes, setAgentes] = useState<AgenteIA[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const { logAgenteCreated, logAgenteUpdated, logAgenteExecution, logError } = useLogActivity();
 
   const fetchAgentes = async () => {
-    if (!user) return;
+    console.log('🤖 useAgentesIA - Iniciando busca de agentes...');
+    
+    if (!user) {
+      console.log('❌ useAgentesIA - Usuário não autenticado');
+      setLoading(false);
+      setError('Usuário não autenticado');
+      return;
+    }
 
     setLoading(true);
+    setError(null);
+
     try {
-      const { data, error } = await supabase
+      console.log('🔍 useAgentesIA - Executando query no Supabase...');
+      
+      const { data, error: supabaseError } = await supabase
         .from('agentes_ia')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (supabaseError) {
+        console.error('❌ useAgentesIA - Erro na consulta Supabase:', supabaseError);
+        throw supabaseError;
+      }
+      
+      console.log('✅ useAgentesIA - Agentes carregados com sucesso:', data?.length || 0);
       setAgentes(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar agentes IA:', error);
-      logError('Agentes IA', 'Falha ao buscar agentes', { error: error.message });
+      setError(null);
+      
+    } catch (error: any) {
+      console.error('❌ useAgentesIA - Erro capturado:', error);
+      const errorMessage = error.message || 'Erro desconhecido ao carregar agentes';
+      setError(errorMessage);
+      setAgentes([]);
+      
+      logError('Agentes IA', 'Falha ao buscar agentes', { error: errorMessage });
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os agentes IA.',
+        title: 'Erro ao carregar agentes IA',
+        description: errorMessage,
         variant: 'destructive',
       });
     } finally {
+      console.log('🏁 useAgentesIA - Finalizando carregamento');
       setLoading(false);
     }
   };
@@ -59,7 +83,7 @@ export const useAgentesIA = () => {
 
       await fetchAgentes();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar agente IA:', error);
       logError('Agentes IA', 'Falha ao criar agente', { 
         error: error.message, 
@@ -97,7 +121,7 @@ export const useAgentesIA = () => {
 
       await fetchAgentes();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao atualizar agente IA:', error);
       logError('Agentes IA', 'Falha ao atualizar agente', { 
         error: error.message, 
@@ -136,7 +160,7 @@ export const useAgentesIA = () => {
 
       await fetchAgentes();
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao remover agente IA:', error);
       logError('Agentes IA', 'Falha ao remover agente', { 
         error: error.message, 
@@ -175,7 +199,7 @@ export const useAgentesIA = () => {
       }
 
       return data;
-    } catch (error) {
+    } catch (error: any) {
       const executionTime = Date.now() - startTime;
       console.error('Erro ao executar agente IA:', error);
       
@@ -223,7 +247,7 @@ export const useAgentesIA = () => {
         });
         return false;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro no teste de conexão:', error);
       toast({
         title: 'Erro',
@@ -235,12 +259,22 @@ export const useAgentesIA = () => {
   };
 
   useEffect(() => {
-    fetchAgentes();
+    console.log('🔄 useAgentesIA - useEffect disparado, user:', user?.email);
+    
+    if (user) {
+      fetchAgentes();
+    } else {
+      console.log('⏳ useAgentesIA - Aguardando autenticação...');
+      setLoading(false);
+      setAgentes([]);
+      setError(null);
+    }
   }, [user]);
 
   return {
     agentes,
     loading,
+    error,
     fetchAgentes,
     createAgente,
     updateAgente,

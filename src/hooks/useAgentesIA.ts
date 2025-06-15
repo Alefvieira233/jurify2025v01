@@ -3,7 +3,6 @@ import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useLogActivity } from '@/hooks/useLogActivity';
 import { useSupabaseQuery } from './useSupabaseQuery';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -13,7 +12,6 @@ export type CreateAgenteData = Database['public']['Tables']['agentes_ia']['Inser
 export const useAgentesIA = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const { logAgenteCreated, logAgenteUpdated, logAgenteExecution, logError } = useLogActivity();
 
   const fetchAgentesQuery = useCallback(async () => {
     console.log('🔍 [useAgentesIA] Buscando agentes IA...');
@@ -42,8 +40,8 @@ export const useAgentesIA = () => {
     isStale
   } = useSupabaseQuery<AgenteIA>('agentes_ia', fetchAgentesQuery, {
     enabled: !!user,
-    staleTime: 15000, // 15 seconds
-    retryCount: 3,
+    staleTime: 15000,
+    retryCount: 1,
     retryDelay: 2000
   });
 
@@ -69,10 +67,8 @@ export const useAgentesIA = () => {
 
       console.log('✅ [useAgentesIA] Agente IA criado com sucesso:', newAgente.id);
       
-      // Optimistic update with proper typing
       setAgentes([newAgente, ...agentes]);
       
-      logAgenteCreated(data.nome);
       toast({
         title: 'Sucesso',
         description: 'Agente IA criado com sucesso!',
@@ -81,10 +77,6 @@ export const useAgentesIA = () => {
       return true;
     } catch (error: any) {
       console.error('❌ [useAgentesIA] Erro ao criar agente IA:', error);
-      logError('Agentes IA', 'Falha ao criar agente', { 
-        error: error.message, 
-        agenteName: data.nome 
-      });
       toast({
         title: 'Erro',
         description: error.message || 'Não foi possível criar o agente IA.',
@@ -92,7 +84,7 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  }, [user, toast, logAgenteCreated, logError, setAgentes, agentes]);
+  }, [user, toast, setAgentes, agentes]);
 
   const updateAgente = useCallback(async (id: string, updateData: Partial<AgenteIA>): Promise<boolean> => {
     if (!user) return false;
@@ -108,14 +100,8 @@ export const useAgentesIA = () => {
 
       if (error) throw error;
 
-      const agente = agentes.find(a => a.id === id);
-      if (agente) {
-        logAgenteUpdated(agente.nome);
-      }
-
       console.log('✅ [useAgentesIA] Agente IA atualizado com sucesso');
       
-      // Optimistic update with proper typing
       setAgentes(agentes.map(agente => 
         agente.id === id ? { ...agente, ...updatedAgente } : agente
       ));
@@ -128,10 +114,6 @@ export const useAgentesIA = () => {
       return true;
     } catch (error: any) {
       console.error('❌ [useAgentesIA] Erro ao atualizar agente IA:', error);
-      logError('Agentes IA', 'Falha ao atualizar agente', { 
-        error: error.message, 
-        agenteId: id 
-      });
       toast({
         title: 'Erro',
         description: error.message || 'Não foi possível atualizar o agente IA.',
@@ -139,14 +121,12 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  }, [user, toast, agentes, logAgenteUpdated, logError, setAgentes]);
+  }, [user, toast, agentes, setAgentes]);
 
   const deleteAgente = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      const agente = agentes.find(a => a.id === id);
-      
       console.log(`🔄 [useAgentesIA] Removendo agente IA ${id}...`);
       const { error } = await supabase
         .from('agentes_ia')
@@ -155,13 +135,8 @@ export const useAgentesIA = () => {
 
       if (error) throw error;
 
-      if (agente) {
-        logAgenteUpdated(`${agente.nome} (removido)`);
-      }
-
       console.log('✅ [useAgentesIA] Agente IA removido com sucesso');
       
-      // Optimistic update with proper typing
       setAgentes(agentes.filter(agente => agente.id !== id));
 
       toast({
@@ -172,10 +147,6 @@ export const useAgentesIA = () => {
       return true;
     } catch (error: any) {
       console.error('❌ [useAgentesIA] Erro ao remover agente IA:', error);
-      logError('Agentes IA', 'Falha ao remover agente', { 
-        error: error.message, 
-        agenteId: id 
-      });
       toast({
         title: 'Erro',
         description: error.message || 'Não foi possível remover o agente IA.',
@@ -183,7 +154,7 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  }, [user, toast, agentes, logAgenteUpdated, logError, setAgentes]);
+  }, [user, toast, agentes, setAgentes]);
 
   const executeAgente = useCallback(async (agenteId: string, input: string) => {
     if (!user) return null;
@@ -205,27 +176,12 @@ export const useAgentesIA = () => {
 
       if (error) throw error;
 
-      if (agente) {
-        logAgenteExecution(agente.nome, 'sucesso', executionTime);
-      }
-
       console.log(`✅ [useAgentesIA] Agente IA executado com sucesso em ${executionTime}ms`);
       return data;
     } catch (error: any) {
       const executionTime = Date.now() - startTime;
       console.error('❌ [useAgentesIA] Erro ao executar agente IA:', error);
       
-      if (agente) {
-        logAgenteExecution(agente.nome, 'erro', executionTime);
-      }
-      
-      logError('Agentes IA', 'Falha na execução', { 
-        error: error.message, 
-        agenteId,
-        input: input.substring(0, 100) + '...',
-        executionTime
-      });
-
       toast({
         title: 'Erro',
         description: error.message || 'Não foi possível executar o agente IA.',
@@ -233,7 +189,7 @@ export const useAgentesIA = () => {
       });
       return null;
     }
-  }, [user, agentes, logAgenteExecution, logError, toast]);
+  }, [user, agentes, toast]);
 
   return {
     agentes,

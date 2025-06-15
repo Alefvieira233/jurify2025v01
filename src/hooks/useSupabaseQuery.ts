@@ -37,17 +37,15 @@ export const useSupabaseQuery = <T>(
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const hasExecutedRef = useRef(false);
 
-  const executeQuery = useCallback(async (isRetry = false) => {
-    if (!user || !enabled) {
-      setData([]);
-      setLoading(false);
-      setError(null);
+  const executeQuery = useCallback(async (isRetry = false, force = false) => {
+    if (!user || !enabled || (!force && hasExecutedRef.current)) {
       return;
     }
 
-    // Check cache validity (skip for retries)
-    if (!isRetry && !refetchOnMount && data.length > 0) {
+    // Check cache validity (skip for retries or force)
+    if (!isRetry && !force && !refetchOnMount && data.length > 0) {
       const now = Date.now();
       if ((now - lastFetch) < staleTime) {
         console.log(`📋 [${queryKey}] Cache válido, usando dados em cache`);
@@ -73,6 +71,8 @@ export const useSupabaseQuery = <T>(
       setError(null);
       setRetryAttempt(0);
     }
+
+    hasExecutedRef.current = true;
 
     try {
       console.log(`🔄 [${queryKey}] ${isRetry ? `Tentativa ${retryAttempt + 1}` : 'Iniciando query'}...`);
@@ -117,26 +117,33 @@ export const useSupabaseQuery = <T>(
         setError(errorMessage);
         setData([]);
         
-        // Only show toast for final failure
-        toast({
-          title: 'Erro ao carregar dados',
-          description: `${errorMessage} (após ${retryCount} tentativas)`,
-          variant: 'destructive',
-        });
+        // Only show toast for final failure and not during initial load
+        if (hasExecutedRef.current) {
+          toast({
+            title: 'Erro ao carregar dados',
+            description: `${errorMessage} (após ${retryCount} tentativas)`,
+            variant: 'destructive',
+          });
+        }
       }
     } finally {
       if (mountedRef.current && !isRetry) {
         setLoading(false);
       }
     }
-  }, [user, enabled, queryKey, queryFn, refetchOnMount, staleTime, data.length, lastFetch, toast, retryCount, retryDelay, retryAttempt]);
+  }, [user, enabled, queryKey, queryFn, refetchOnMount, staleTime, toast, retryCount, retryDelay, retryAttempt, data.length, lastFetch]);
 
   useEffect(() => {
     mountedRef.current = true;
-    executeQuery();
+    hasExecutedRef.current = false;
+    
+    if (user && enabled) {
+      executeQuery();
+    }
 
     return () => {
       mountedRef.current = false;
+      hasExecutedRef.current = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
@@ -144,12 +151,13 @@ export const useSupabaseQuery = <T>(
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [executeQuery]);
+  }, [user, enabled]); // Simplified dependencies
 
   const refetch = useCallback(() => {
     setLastFetch(0); // Force refetch
     setRetryAttempt(0); // Reset retry count
-    executeQuery();
+    hasExecutedRef.current = false;
+    executeQuery(false, true);
   }, [executeQuery]);
 
   const mutate = useCallback((newData: T[]) => {

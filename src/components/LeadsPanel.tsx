@@ -1,221 +1,327 @@
 
 import React, { useState } from 'react';
-import { 
-  Search, 
-  Filter, 
-  Plus, 
-  Phone, 
-  MessageSquare, 
-  Mail,
-  Calendar,
-  MoreVertical,
-  Eye
-} from 'lucide-react';
+import { Plus, Search, Filter, Eye, Edit, Trash2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useLeads } from '@/hooks/useLeads';
 
 const LeadsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterStatus, setFilterStatus] = useState('');
+  const { leads, loading, error, isEmpty, fetchLeads } = useLeads();
 
-  const leads = [
-    {
-      id: 1,
-      nome: 'Maria Silva',
-      telefone: '(11) 99999-1234',
-      email: 'maria.silva@email.com',
-      areaJuridica: 'Direito Trabalhista',
-      origem: 'Facebook Ads',
-      status: 'novo',
-      valorCausa: 'R$ 25.000',
-      ultimaInteracao: '5 min atrás',
-      responsavel: 'IA Jurídica'
-    },
-    {
-      id: 2,
-      nome: 'João Santos',
-      telefone: '(11) 99999-5678',
-      email: 'joao.santos@email.com',
-      areaJuridica: 'Direito de Família',
-      origem: 'Google Ads',
-      status: 'qualificacao',
-      valorCausa: 'R$ 15.000',
-      ultimaInteracao: '2 horas atrás',
-      responsavel: 'Dr. Silva'
-    },
-    {
-      id: 3,
-      nome: 'Ana Costa',
-      telefone: '(11) 99999-9012',
-      email: 'ana.costa@email.com',
-      areaJuridica: 'Direito Previdenciário',
-      origem: 'Instagram',
-      status: 'proposta',
-      valorCausa: 'R$ 40.000',
-      ultimaInteracao: '1 dia atrás',
-      responsavel: 'Dra. Oliveira'
-    },
-    {
-      id: 4,
-      nome: 'Carlos Mendes',
-      telefone: '(11) 99999-3456',
-      email: 'carlos.mendes@email.com',
-      areaJuridica: 'Direito Civil',
-      origem: 'Site',
-      status: 'contrato',
-      valorCausa: 'R$ 60.000',
-      ultimaInteracao: '3 horas atrás',
-      responsavel: 'Dr. Silva'
-    }
-  ];
+  const filteredLeads = leads.filter(lead => {
+    const matchesSearch = lead.nome_completo?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const matchesStatus = filterStatus === '' || lead.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
   const getStatusColor = (status: string) => {
     const colors = {
-      novo: 'bg-blue-100 text-blue-800',
-      qualificacao: 'bg-yellow-100 text-yellow-800',
-      proposta: 'bg-purple-100 text-purple-800',
-      contrato: 'bg-green-100 text-green-800',
-      perdido: 'bg-red-100 text-red-800'
+      novo_lead: 'bg-blue-100 text-blue-800',
+      em_qualificacao: 'bg-yellow-100 text-yellow-800',
+      proposta_enviada: 'bg-purple-100 text-purple-800',
+      contrato_assinado: 'bg-green-100 text-green-800',
+      em_atendimento: 'bg-indigo-100 text-indigo-800',
+      lead_perdido: 'bg-red-100 text-red-800'
     };
-    return colors[status as keyof typeof colors] || 'bg-gray-100 text-gray-800';
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   const getStatusLabel = (status: string) => {
     const labels = {
-      novo: 'Novo Lead',
-      qualificacao: 'Em Qualificação',
-      proposta: 'Proposta Enviada',
-      contrato: 'Contrato Assinado',
-      perdido: 'Lead Perdido'
+      novo_lead: 'Novo Lead',
+      em_qualificacao: 'Em Qualificação',
+      proposta_enviada: 'Proposta Enviada',
+      contrato_assinado: 'Contrato Assinado',
+      em_atendimento: 'Em Atendimento',
+      lead_perdido: 'Lead Perdido'
     };
-    return labels[status as keyof typeof labels] || status;
+    return labels[status] || status;
   };
 
+  const handleRetry = () => {
+    console.log('🔄 Tentando recarregar leads...');
+    fetchLeads();
+  };
+
+  // Loading State
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+                <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardHeader>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-40" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <div className="grid gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-64" />
+                  </div>
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Error State
+  if (error) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+                <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
+              </div>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Lead
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-red-900 mb-2">Erro ao carregar leads</h3>
+              <p className="text-red-700 mb-4">{error}</p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  onClick={handleRetry}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+                <Button 
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Recarregar página
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Empty State
+  if (isEmpty) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+                <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
+              </div>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Lead
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <div className="text-blue-400 mb-4">
+                <svg className="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum lead cadastrado</h3>
+              <p className="text-blue-700 mb-6">Comece criando seu primeiro lead para começar a gerenciar suas oportunidades de negócio.</p>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Criar primeiro lead
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Main Content
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestão de Leads</h1>
-          <p className="text-gray-600">Controle total dos seus leads jurídicos</p>
-        </div>
-        <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
-          <Plus className="h-4 w-4" />
-          <span>Novo Lead</span>
-        </button>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <input
-                type="text"
-                placeholder="Buscar por nome, telefone ou email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              />
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+              <p className="text-gray-600">
+                Gerencie seus leads e oportunidades • {leads.length} leads no total
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRetry}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Lead
+              </Button>
             </div>
           </div>
-          <div className="flex gap-2">
+        </CardHeader>
+      </Card>
+
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Buscar por nome do lead..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
-              <option value="todos">Todos os Status</option>
-              <option value="novo">Novos Leads</option>
-              <option value="qualificacao">Em Qualificação</option>
-              <option value="proposta">Proposta Enviada</option>
-              <option value="contrato">Contrato Assinado</option>
+              <option value="">Todos os Status</option>
+              <option value="novo_lead">Novo Lead</option>
+              <option value="em_qualificacao">Em Qualificação</option>
+              <option value="proposta_enviada">Proposta Enviada</option>
+              <option value="contrato_assinado">Contrato Assinado</option>
+              <option value="em_atendimento">Em Atendimento</option>
+              <option value="lead_perdido">Lead Perdido</option>
             </select>
-            <button className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
-              <Filter className="h-4 w-4" />
-              <span>Filtros</span>
-            </button>
           </div>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* Lista de Leads */}
+      <div className="grid gap-4">
+        {filteredLeads.map((lead) => (
+          <Card key={lead.id}>
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start">
+                <div className="space-y-3 flex-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {lead.nome_completo}
+                    </h3>
+                    <Badge className={getStatusColor(lead.status)}>
+                      {getStatusLabel(lead.status)}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Telefone:</span> {lead.telefone || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Email:</span> {lead.email || 'N/A'}
+                    </div>
+                    <div>
+                      <span className="font-medium">Área Jurídica:</span> {lead.area_juridica}
+                    </div>
+                    <div>
+                      <span className="font-medium">Responsável:</span> {lead.responsavel}
+                    </div>
+                    <div>
+                      <span className="font-medium">Origem:</span> {lead.origem}
+                    </div>
+                    {lead.valor_causa && (
+                      <div>
+                        <span className="font-medium">Valor da Causa:</span> R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}
+                      </div>
+                    )}
+                  </div>
+
+                  {lead.observacoes && (
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Observações:</span> {lead.observacoes}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500">
+                    Criado em: {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 ml-4">
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Leads Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Lead
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Área Jurídica
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Origem
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Valor da Causa
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Responsável
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {leads.map((lead) => (
-                <tr key={lead.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div>
-                      <div className="text-sm font-medium text-gray-900">{lead.nome}</div>
-                      <div className="text-sm text-gray-500">{lead.telefone}</div>
-                      <div className="text-sm text-gray-500">{lead.email}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{lead.areaJuridica}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm text-gray-900">{lead.origem}</span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(lead.status)}`}>
-                      {getStatusLabel(lead.status)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {lead.valorCausa}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {lead.responsavel}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-2">
-                      <button className="text-blue-600 hover:text-blue-900">
-                        <Eye className="h-4 w-4" />
-                      </button>
-                      <button className="text-green-600 hover:text-green-900">
-                        <MessageSquare className="h-4 w-4" />
-                      </button>
-                      <button className="text-purple-600 hover:text-purple-900">
-                        <Phone className="h-4 w-4" />
-                      </button>
-                      <button className="text-gray-400 hover:text-gray-600">
-                        <MoreVertical className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {filteredLeads.length === 0 && searchTerm && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <Search className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-yellow-900 mb-2">Nenhum resultado encontrado</h3>
+              <p className="text-yellow-700">
+                Não foram encontrados leads com o termo "{searchTerm}". Tente ajustar sua busca.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

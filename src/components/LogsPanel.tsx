@@ -1,243 +1,330 @@
 
-import React, { useState, useEffect } from 'react';
-import { Activity, Download, Trash, Search, Filter, Calendar } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { Activity, Search, Filter, AlertCircle, CheckCircle, Clock, RefreshCw } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useActivityLogs, LogAtividade, FiltrosLog } from '@/hooks/useActivityLogs';
-import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const LogsPanel = () => {
-  const { logs, loading, totalCount, fetchLogs, clearOldLogs, exportLogs } = useActivityLogs();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filtros, setFiltros] = useState<FiltrosLog>({});
+  const [loading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const { toast } = useToast();
+  const [filterStatus, setFilterStatus] = useState('');
+  
+  // Dados simulados de logs
+  const [logs] = useState([
+    {
+      id: '1',
+      agente_id: 'agent-1',
+      agente_nome: 'Assistente Jurídico',
+      input_recebido: 'Como funciona o processo de rescisão trabalhista?',
+      resposta_ia: 'A rescisão trabalhista é o término do contrato de trabalho...',
+      status: 'success',
+      tempo_execucao: 1250,
+      created_at: new Date().toISOString(),
+      n8n_status: 'success'
+    },
+    {
+      id: '2',
+      agente_id: 'agent-2',
+      agente_nome: 'Qualificador de Leads',
+      input_recebido: 'Preciso de ajuda com um processo de divórcio',
+      resposta_ia: 'Entendo que você precisa de assistência com divórcio...',
+      status: 'success',
+      tempo_execucao: 980,
+      created_at: new Date(Date.now() - 300000).toISOString(),
+      n8n_status: 'success'
+    },
+    {
+      id: '3',
+      agente_id: 'agent-1',
+      agente_nome: 'Assistente Jurídico',
+      input_recebido: 'Teste de conectividade',
+      status: 'error',
+      erro_detalhes: 'Timeout na conexão com N8N',
+      tempo_execucao: 5000,
+      created_at: new Date(Date.now() - 600000).toISOString(),
+      n8n_status: 'error'
+    }
+  ]);
 
-  const ITEMS_PER_PAGE = 50;
+  const filteredLogs = logs.filter(log => {
+    const matchesSearch = log.agente_nome?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                         log.input_recebido?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filterStatus === '' || log.status === filterStatus;
+    return matchesSearch && matchesStatus;
+  });
 
-  useEffect(() => {
-    handleSearch();
-  }, [currentPage, filtros]);
-
-  const handleSearch = async () => {
-    const offset = (currentPage - 1) * ITEMS_PER_PAGE;
-    const filtrosComBusca = {
-      ...filtros,
-      ...(searchTerm && { modulo: searchTerm })
-    };
-    await fetchLogs(ITEMS_PER_PAGE, offset, filtrosComBusca);
-  };
-
-  const handleFilterChange = (key: keyof FiltrosLog, value: string) => {
-    setFiltros(prev => ({
-      ...prev,
-      [key]: value || undefined
-    }));
-    setCurrentPage(1);
-  };
-
-  const handleClearOldLogs = async () => {
-    const confirmed = window.confirm('Tem certeza que deseja remover logs antigos (90+ dias)?');
-    if (confirmed) {
-      await clearOldLogs(90);
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-600" />;
+      case 'processing':
+        return <Clock className="h-4 w-4 text-yellow-600" />;
+      default:
+        return <Activity className="h-4 w-4 text-gray-600" />;
     }
   };
 
-  const handleExportLogs = async () => {
-    await exportLogs(filtros);
-  };
-
-  const getActionBadgeColor = (tipo: string) => {
-    switch (tipo) {
-      case 'criacao': return 'bg-green-100 text-green-800';
-      case 'edicao': return 'bg-blue-100 text-blue-800';
-      case 'exclusao': return 'bg-red-100 text-red-800';
-      case 'login': return 'bg-purple-100 text-purple-800';
-      case 'logout': return 'bg-gray-100 text-gray-800';
-      case 'erro': return 'bg-red-100 text-red-800';
-      default: return 'bg-yellow-100 text-yellow-800';
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'bg-green-100 text-green-800';
+      case 'error':
+        return 'bg-red-100 text-red-800';
+      case 'processing':
+        return 'bg-yellow-100 text-yellow-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'success':
+        return 'Sucesso';
+      case 'error':
+        return 'Erro';
+      case 'processing':
+        return 'Processando';
+      default:
+        return status;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Logs do Sistema</CardTitle>
+                <p className="text-gray-600">Histórico de execuções e atividades</p>
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardHeader>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-40" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <div className="space-y-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-8 w-8 rounded" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-5 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <Activity className="h-6 w-6 text-blue-600" />
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-3">
+              <Activity className="h-8 w-8 text-purple-600" />
               <div>
-                <CardTitle>Logs de Atividade</CardTitle>
-                <CardDescription>
-                  Monitoramento completo das ações do sistema
-                </CardDescription>
+                <CardTitle className="text-2xl">Logs do Sistema</CardTitle>
+                <p className="text-gray-600">
+                  Histórico de execuções e atividades • {logs.length} registros
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <Button onClick={handleExportLogs} variant="outline" size="sm">
-                <Download className="h-4 w-4 mr-2" />
-                Exportar
-              </Button>
-              <Button onClick={handleClearOldLogs} variant="outline" size="sm">
-                <Trash className="h-4 w-4 mr-2" />
-                Limpar Antigos
-              </Button>
-            </div>
+            <Button variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Atualizar
+            </Button>
           </div>
         </CardHeader>
+      </Card>
 
-        <CardContent>
-          {/* Filtros */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-            <div className="relative">
-              <Search className="h-4 w-4 absolute left-3 top-3 text-gray-400" />
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
-                placeholder="Buscar por módulo..."
+                placeholder="Buscar por agente ou input..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
-            
             <select
-              value={filtros.tipo_acao || ''}
-              onChange={(e) => handleFilterChange('tipo_acao', e.target.value)}
-              className="px-3 py-2 border rounded-md"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              <option value="">Todas as ações</option>
-              <option value="criacao">Criação</option>
-              <option value="edicao">Edição</option>
-              <option value="exclusao">Exclusão</option>
-              <option value="login">Login</option>
-              <option value="logout">Logout</option>
-              <option value="erro">Erro</option>
-              <option value="outro">Outro</option>
+              <option value="">Todos os Status</option>
+              <option value="success">Sucesso</option>
+              <option value="error">Erro</option>
+              <option value="processing">Processando</option>
             </select>
-
-            <Input
-              type="date"
-              placeholder="Data início"
-              value={filtros.data_inicio || ''}
-              onChange={(e) => handleFilterChange('data_inicio', e.target.value)}
-            />
-
-            <Input
-              type="date"
-              placeholder="Data fim"
-              value={filtros.data_fim || ''}
-              onChange={(e) => handleFilterChange('data_fim', e.target.value)}
-            />
-
-            <Button onClick={handleSearch} className="w-full">
-              <Filter className="h-4 w-4 mr-2" />
-              Filtrar
-            </Button>
-          </div>
-
-          {/* Estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{totalCount}</div>
-              <div className="text-sm text-blue-800">Total de Logs</div>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">
-                {logs.filter(log => log.tipo_acao === 'criacao').length}
-              </div>
-              <div className="text-sm text-green-800">Criações</div>
-            </div>
-            <div className="bg-yellow-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600">
-                {logs.filter(log => log.tipo_acao === 'edicao').length}
-              </div>
-              <div className="text-sm text-yellow-800">Edições</div>
-            </div>
-            <div className="bg-red-50 p-4 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">
-                {logs.filter(log => log.tipo_acao === 'erro').length}
-              </div>
-              <div className="text-sm text-red-800">Erros</div>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Lista de Logs */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="flex items-center justify-center p-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle className="h-8 w-8 text-green-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Execuções Bem-sucedidas</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {logs.filter(l => l.status === 'success').length}
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="divide-y">
-              {logs.map((log) => (
-                <div key={log.id} className="p-4 hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-2">
-                        <Badge className={getActionBadgeColor(log.tipo_acao)}>
-                          {log.tipo_acao.toUpperCase()}
-                        </Badge>
-                        <span className="font-medium text-gray-900">{log.modulo}</span>
-                        <span className="text-sm text-gray-500">{log.nome_usuario}</span>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-8 w-8 text-red-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Erros</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {logs.filter(l => l.status === 'error').length}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Clock className="h-8 w-8 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-gray-600">Tempo Médio</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Math.round(logs.reduce((acc, log) => acc + (log.tempo_execucao || 0), 0) / logs.length)}ms
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Lista de Logs */}
+      <div className="space-y-4">
+        {filteredLogs.length === 0 ? (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardContent className="p-8">
+              <div className="text-center">
+                <Activity className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum log encontrado</h3>
+                <p className="text-blue-700">
+                  {searchTerm 
+                    ? `Não foram encontrados logs com o termo "${searchTerm}".`
+                    : 'Aguardando execuções de agentes IA para gerar logs.'
+                  }
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          filteredLogs.map((log) => (
+            <Card key={log.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1">
+                    {getStatusIcon(log.status)}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div>
+                        <h4 className="font-medium text-gray-900">{log.agente_nome}</h4>
+                        <p className="text-sm text-gray-600">ID: {log.agente_id}</p>
                       </div>
-                      <p className="text-gray-700 mb-2">{log.descricao}</p>
-                      {log.detalhes_adicionais && (
-                        <details className="text-xs text-gray-500">
-                          <summary className="cursor-pointer">Detalhes adicionais</summary>
-                          <pre className="mt-2 bg-gray-100 p-2 rounded text-xs overflow-x-auto">
-                            {JSON.stringify(log.detalhes_adicionais, null, 2)}
-                          </pre>
-                        </details>
+                      <div className="flex items-center gap-2">
+                        <Badge className={getStatusColor(log.status)}>
+                          {getStatusLabel(log.status)}
+                        </Badge>
+                        {log.n8n_status && (
+                          <Badge variant="outline" className="text-xs">
+                            N8N: {log.n8n_status}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-700 mb-1">Input do Usuário:</p>
+                        <p className="text-sm text-gray-600 bg-gray-50 p-2 rounded">
+                          {log.input_recebido}
+                        </p>
+                      </div>
+
+                      {log.resposta_ia && (
+                        <div>
+                          <p className="text-sm font-medium text-gray-700 mb-1">Resposta da IA:</p>
+                          <p className="text-sm text-gray-600 bg-green-50 p-2 rounded">
+                            {log.resposta_ia.length > 200 
+                              ? log.resposta_ia.substring(0, 200) + '...'
+                              : log.resposta_ia
+                            }
+                          </p>
+                        </div>
+                      )}
+
+                      {log.erro_detalhes && (
+                        <div>
+                          <p className="text-sm font-medium text-red-700 mb-1">Detalhes do Erro:</p>
+                          <p className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                            {log.erro_detalhes}
+                          </p>
+                        </div>
                       )}
                     </div>
-                    <div className="text-right text-sm text-gray-500">
-                      <div>{new Date(log.data_hora).toLocaleDateString('pt-BR')}</div>
-                      <div>{new Date(log.data_hora).toLocaleTimeString('pt-BR')}</div>
-                      {log.ip_usuario && (
-                        <div className="text-xs">IP: {log.ip_usuario}</div>
+
+                    <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-200 text-xs text-gray-500">
+                      <span>
+                        {new Date(log.created_at).toLocaleString('pt-BR')}
+                      </span>
+                      {log.tempo_execucao && (
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {log.tempo_execucao}ms
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-
-          {/* Paginação */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-between p-4 border-t">
-              <div className="text-sm text-gray-500">
-                Página {currentPage} de {totalPages} ({totalCount} logs)
-              </div>
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Próxima
-                </Button>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 };

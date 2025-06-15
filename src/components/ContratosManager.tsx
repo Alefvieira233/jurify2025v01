@@ -1,356 +1,328 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Filter, Download, Send, Eye, Edit, FileText, CheckCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Search, Filter, Eye, Edit, FileSignature, Send, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { NovoContratoForm } from './NovoContratoForm';
-import { DetalhesContrato } from './DetalhesContrato';
-import { GerarAssinaturaZapSign } from './GerarAssinaturaZapSign';
-import { toast } from 'sonner';
-
-interface Contrato {
-  id: string;
-  nome_cliente: string;
-  area_juridica: string;
-  valor_causa: number;
-  status: string;
-  responsavel: string;
-  created_at: string;
-  data_envio?: string;
-  data_assinatura?: string;
-  lead_id?: string;
-  texto_contrato: string;
-  clausulas_customizadas?: string;
-  observacoes?: string;
-  updated_at: string;
-  status_assinatura?: string;
-  link_assinatura_zapsign?: string;
-  zapsign_document_id?: string;
-  data_geracao_link?: string;
-  data_envio_whatsapp?: string;
-}
+import { Skeleton } from '@/components/ui/skeleton';
+import { useContratos } from '@/hooks/useContratos';
 
 const ContratosManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('todos');
-  const [areaFilter, setAreaFilter] = useState('todas');
-  const [responsavelFilter, setResponsavelFilter] = useState('todos');
-  const [statusAssinaturaFilter, setStatusAssinaturaFilter] = useState('todos');
-  const [isNovoContratoOpen, setIsNovoContratoOpen] = useState(false);
-  const [contratoSelecionado, setContratoSelecionado] = useState<Contrato | null>(null);
-  const [isDetalhesOpen, setIsDetalhesOpen] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('');
+  const { contratos, loading, error, isEmpty, fetchContratos } = useContratos();
 
-  const queryClient = useQueryClient();
-
-  // Fetch contratos
-  const { data: contratos = [], isLoading } = useQuery({
-    queryKey: ['contratos'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('contratos')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Contrato[];
-    }
+  const filteredContratos = contratos.filter(contrato => {
+    const matchesSearch = contrato.nome_cliente?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const matchesStatus = filterStatus === '' || contrato.status === filterStatus;
+    return matchesSearch && matchesStatus;
   });
 
-  // Mutation para atualizar status
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ id, status, data_envio }: { id: string; status: string; data_envio?: string }) => {
-      const updateData: any = { status };
-      if (data_envio) updateData.data_envio = data_envio;
-      
-      const { error } = await supabase
-        .from('contratos')
-        .update(updateData)
-        .eq('id', id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contratos'] });
-      toast.success('Status do contrato atualizado com sucesso!');
-    },
-    onError: () => {
-      toast.error('Erro ao atualizar status do contrato');
-    }
-  });
-
-  // Filtrar contratos
-  const contratosFiltrados = contratos.filter(contrato => {
-    const matchesSearch = contrato.nome_cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         contrato.area_juridica.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === 'todos' || contrato.status === statusFilter;
-    const matchesArea = areaFilter === 'todas' || contrato.area_juridica === areaFilter;
-    const matchesResponsavel = responsavelFilter === 'todos' || contrato.responsavel === responsavelFilter;
-    const matchesStatusAssinatura = statusAssinaturaFilter === 'todos' || contrato.status_assinatura === statusAssinaturaFilter;
-    
-    return matchesSearch && matchesStatus && matchesArea && matchesResponsavel && matchesStatusAssinatura;
-  });
-
-  // Obter valores únicos para filtros
-  const areasUnicas = [...new Set(contratos.map(c => c.area_juridica))];
-  const responsaveisUnicos = [...new Set(contratos.map(c => c.responsavel))];
-
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      rascunho: { label: 'Rascunho', className: 'bg-gray-100 text-gray-800' },
-      enviado: { label: 'Enviado', className: 'bg-blue-100 text-blue-800' },
-      assinado: { label: 'Assinado', className: 'bg-green-100 text-green-800' },
-      cancelado: { label: 'Cancelado', className: 'bg-red-100 text-red-800' }
+  const getStatusColor = (status: string) => {
+    const colors = {
+      rascunho: 'bg-gray-100 text-gray-800',
+      enviado: 'bg-blue-100 text-blue-800',
+      assinado: 'bg-green-100 text-green-800',
+      cancelado: 'bg-red-100 text-red-800'
     };
-    
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.rascunho;
-    return <Badge className={config.className}>{config.label}</Badge>;
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const getStatusAssinaturaBadge = (status?: string) => {
-    const statusConfig = {
-      pendente: { label: 'Pendente', className: 'bg-yellow-100 text-yellow-800' },
-      assinado: { label: 'Assinado', className: 'bg-green-100 text-green-800' },
-      cancelado: { label: 'Cancelado', className: 'bg-red-100 text-red-800' },
-      expirado: { label: 'Expirado', className: 'bg-gray-100 text-gray-800' }
+  const getStatusLabel = (status: string) => {
+    const labels = {
+      rascunho: 'Rascunho',
+      enviado: 'Enviado',
+      assinado: 'Assinado',
+      cancelado: 'Cancelado'
     };
-    
-    if (!status) {
-      return <Badge className="bg-gray-100 text-gray-800">Não iniciado</Badge>;
-    }
-    
-    const config = statusConfig[status as keyof typeof statusConfig];
-    return <Badge className={config.className}>{config.label}</Badge>;
+    return labels[status] || status;
   };
 
-  const handleEnviarAssinatura = (contrato: Contrato) => {
-    updateStatusMutation.mutate({
-      id: contrato.id,
-      status: 'enviado',
-      data_envio: new Date().toISOString()
-    });
+  const handleRetry = () => {
+    console.log('🔄 Tentando recarregar contratos...');
+    fetchContratos();
   };
 
-  const handleGerarPDF = (contrato: Contrato) => {
-    toast.info('Funcionalidade de PDF será implementada em breve');
-  };
+  // Loading State
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Gestão de Contratos</CardTitle>
+                <p className="text-gray-600">Gerencie contratos e assinaturas digitais</p>
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardHeader>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex gap-4">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-40" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <div className="grid gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i}>
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-6 w-48" />
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-4 w-64" />
+                  </div>
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
-  const handleZapSignSuccess = () => {
-    queryClient.invalidateQueries({ queryKey: ['contratos'] });
-  };
+  // Error State
+  if (error) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Gestão de Contratos</CardTitle>
+                <p className="text-gray-600">Gerencie contratos e assinaturas digitais</p>
+              </div>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Contrato
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  };
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-red-900 mb-2">Erro ao carregar contratos</h3>
+              <p className="text-red-700 mb-4">{error}</p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  onClick={handleRetry}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+                <Button 
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Recarregar página
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
-  };
+  // Empty State
+  if (isEmpty) {
+    return (
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Gestão de Contratos</CardTitle>
+                <p className="text-gray-600">Gerencie contratos e assinaturas digitais</p>
+              </div>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Contrato
+              </Button>
+            </div>
+          </CardHeader>
+        </Card>
 
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <FileSignature className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum contrato cadastrado</h3>
+              <p className="text-blue-700 mb-6">Comece criando seu primeiro contrato para gerenciar assinaturas digitais.</p>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Criar primeiro contrato
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Main Content
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gestão de Contratos</h1>
-          <p className="text-gray-600">Gerencie contratos jurídicos do escritório</p>
-        </div>
-        <Dialog open={isNovoContratoOpen} onOpenChange={setIsNovoContratoOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-amber-500 hover:bg-amber-600">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Contrato
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Criar Novo Contrato</DialogTitle>
-            </DialogHeader>
-            <NovoContratoForm onClose={() => setIsNovoContratoOpen(false)} />
-          </DialogContent>
-        </Dialog>
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl">Gestão de Contratos</CardTitle>
+              <p className="text-gray-600">
+                Gerencie contratos e assinaturas digitais • {contratos.length} contratos no total
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRetry}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Contrato
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
       {/* Filtros */}
-      <div className="grid grid-cols-1 md:grid-cols-6 gap-4 p-4 bg-white rounded-lg border">
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por cliente ou área..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os Status</SelectItem>
-            <SelectItem value="rascunho">Rascunho</SelectItem>
-            <SelectItem value="enviado">Enviado</SelectItem>
-            <SelectItem value="assinado">Assinado</SelectItem>
-            <SelectItem value="cancelado">Cancelado</SelectItem>
-          </SelectContent>
-        </Select>
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Buscar por nome do cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+            >
+              <option value="">Todos os Status</option>
+              <option value="rascunho">Rascunho</option>
+              <option value="enviado">Enviado</option>
+              <option value="assinado">Assinado</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Select value={statusAssinaturaFilter} onValueChange={setStatusAssinaturaFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Status Assinatura" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos</SelectItem>
-            <SelectItem value="pendente">Pendente</SelectItem>
-            <SelectItem value="assinado">Assinado</SelectItem>
-            <SelectItem value="cancelado">Cancelado</SelectItem>
-            <SelectItem value="expirado">Expirado</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={areaFilter} onValueChange={setAreaFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Área Jurídica" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todas">Todas as Áreas</SelectItem>
-            {areasUnicas.map(area => (
-              <SelectItem key={area} value={area}>{area}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={responsavelFilter} onValueChange={setResponsavelFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Responsável" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Todos os Responsáveis</SelectItem>
-            {responsaveisUnicos.map(responsavel => (
-              <SelectItem key={responsavel} value={responsavel}>{responsavel}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Button 
-          variant="outline" 
-          onClick={() => {
-            setSearchTerm('');
-            setStatusFilter('todos');
-            setStatusAssinaturaFilter('todos');
-            setAreaFilter('todas');
-            setResponsavelFilter('todos');
-          }}
-        >
-          <Filter className="h-4 w-4 mr-2" />
-          Limpar
-        </Button>
-      </div>
-
-      {/* Tabela de Contratos */}
-      <div className="bg-white rounded-lg border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cliente</TableHead>
-              <TableHead>Área Jurídica</TableHead>
-              <TableHead>Valor da Causa</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Status Assinatura</TableHead>
-              <TableHead>Responsável</TableHead>
-              <TableHead>Data de Criação</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-4">
-                  Carregando contratos...
-                </TableCell>
-              </TableRow>
-            ) : contratosFiltrados.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-4">
-                  Nenhum contrato encontrado
-                </TableCell>
-              </TableRow>
-            ) : (
-              contratosFiltrados.map((contrato) => (
-                <TableRow key={contrato.id}>
-                  <TableCell className="font-medium">{contrato.nome_cliente}</TableCell>
-                  <TableCell>{contrato.area_juridica}</TableCell>
-                  <TableCell>{formatCurrency(contrato.valor_causa)}</TableCell>
-                  <TableCell>{getStatusBadge(contrato.status)}</TableCell>
-                  <TableCell>{getStatusAssinaturaBadge(contrato.status_assinatura)}</TableCell>
-                  <TableCell>{contrato.responsavel}</TableCell>
-                  <TableCell>{formatDate(contrato.created_at)}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setContratoSelecionado(contrato);
-                          setIsDetalhesOpen(true);
-                        }}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleGerarPDF(contrato)}
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                      {!contrato.link_assinatura_zapsign && contrato.status === 'rascunho' && (
-                        <GerarAssinaturaZapSign 
-                          contrato={contrato}
-                          onSuccess={handleZapSignSuccess}
-                        />
-                      )}
-                      {contrato.status === 'rascunho' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEnviarAssinatura(contrato)}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      )}
+      {/* Lista de Contratos */}
+      <div className="grid gap-4">
+        {filteredContratos.map((contrato) => (
+          <Card key={contrato.id}>
+            <CardContent className="p-6">
+              <div className="flex justify-between items-start">
+                <div className="space-y-3 flex-1">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {contrato.nome_cliente}
+                    </h3>
+                    <Badge className={getStatusColor(contrato.status)}>
+                      {getStatusLabel(contrato.status)}
+                    </Badge>
+                    {contrato.status_assinatura && (
+                      <Badge variant="outline">
+                        {contrato.status_assinatura}
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span className="font-medium">Área Jurídica:</span> {contrato.area_juridica}
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                    <div>
+                      <span className="font-medium">Responsável:</span> {contrato.responsavel}
+                    </div>
+                    <div>
+                      <span className="font-medium">Valor da Causa:</span> R$ {Number(contrato.valor_causa).toLocaleString('pt-BR')}
+                    </div>
+                    {contrato.data_envio && (
+                      <div>
+                        <span className="font-medium">Data de Envio:</span> {new Date(contrato.data_envio).toLocaleDateString('pt-BR')}
+                      </div>
+                    )}
+                    {contrato.data_assinatura && (
+                      <div>
+                        <span className="font-medium">Data de Assinatura:</span> {new Date(contrato.data_assinatura).toLocaleDateString('pt-BR')}
+                      </div>
+                    )}
+                  </div>
+
+                  {contrato.observacoes && (
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">Observações:</span> {contrato.observacoes}
+                    </div>
+                  )}
+
+                  <div className="text-xs text-gray-500">
+                    Criado em: {new Date(contrato.created_at).toLocaleDateString('pt-BR')}
+                  </div>
+                </div>
+
+                <div className="flex gap-2 ml-4">
+                  <Button variant="outline" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  {contrato.status === 'rascunho' && (
+                    <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {contrato.link_assinatura_zapsign && (
+                    <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
+                      <FileSignature className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Dialog de Detalhes do Contrato */}
-      <Dialog open={isDetalhesOpen} onOpenChange={setIsDetalhesOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalhes do Contrato</DialogTitle>
-          </DialogHeader>
-          {contratoSelecionado && (
-            <DetalhesContrato 
-              contrato={contratoSelecionado} 
-              onClose={() => setIsDetalhesOpen(false)}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
+      {filteredContratos.length === 0 && searchTerm && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <Search className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-yellow-900 mb-2">Nenhum resultado encontrado</h3>
+              <p className="text-yellow-700">
+                Não foram encontrados contratos com o termo "{searchTerm}". Tente ajustar sua busca.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

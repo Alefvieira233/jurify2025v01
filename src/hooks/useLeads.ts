@@ -40,9 +40,9 @@ export const useLeads = () => {
     isStale
   } = useSupabaseQuery<Lead>('leads', fetchLeadsQuery, {
     enabled: !!user,
-    staleTime: 10000, // 10 seconds
-    retryCount: 3,
-    retryDelay: 1500
+    staleTime: 10000,
+    retryCount: 2,
+    retryDelay: 1000
   });
 
   const createLead = useCallback(async (data: CreateLeadData): Promise<boolean> => {
@@ -67,7 +67,6 @@ export const useLeads = () => {
 
       console.log('✅ [useLeads] Lead criado com sucesso:', newLead.id);
       
-      // Optimistic update with proper typing
       setLeads([newLead, ...leads]);
       
       toast({
@@ -103,7 +102,6 @@ export const useLeads = () => {
 
       console.log('✅ [useLeads] Lead atualizado com sucesso');
       
-      // Optimistic update with proper typing
       setLeads(leads.map(lead => 
         lead.id === id ? { ...lead, ...updatedLead } : lead
       ));
@@ -123,7 +121,7 @@ export const useLeads = () => {
       });
       return false;
     }
-  }, [user, toast, setLeads, leads]);
+  }, [user, toast, leads, setLeads]);
 
   const deleteLead = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
@@ -139,7 +137,6 @@ export const useLeads = () => {
 
       console.log('✅ [useLeads] Lead removido com sucesso');
       
-      // Optimistic update with proper typing
       setLeads(leads.filter(lead => lead.id !== id));
 
       toast({
@@ -157,15 +154,7 @@ export const useLeads = () => {
       });
       return false;
     }
-  }, [user, toast, setLeads, leads]);
-
-  const getLeadsByStatus = useCallback((status: string) => {
-    return leads.filter(lead => lead.status === status);
-  }, [leads]);
-
-  const getLeadsByArea = useCallback((area: string) => {
-    return leads.filter(lead => lead.area_juridica === area);
-  }, [leads]);
+  }, [user, toast, leads, setLeads]);
 
   return {
     leads,
@@ -177,7 +166,5 @@ export const useLeads = () => {
     createLead,
     updateLead,
     deleteLead,
-    getLeadsByStatus,
-    getLeadsByArea,
   };
 };

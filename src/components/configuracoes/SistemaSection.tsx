@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -8,10 +7,15 @@ import SystemStatus from '../SystemStatus';
 import PerformanceDashboard from '../PerformanceDashboard';
 import LogsMonitoramento from '../LogsMonitoramento';
 import AdminUserSection from './AdminUserSection';
+import SystemHealthCheck from '../SystemHealthCheck';
 
 const SistemaSection = () => {
   return (
     <div className="space-y-6">
+      {/* System Health Check - Nova seção */}
+      <SystemHealthCheck />
+
+      {/* Existing tabs */}
       <Tabs defaultValue="status" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="status" className="flex items-center gap-2">

@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Database } from '@/integrations/supabase/types';
 
-// Use os tipos do Supabase para IntegracaoConfig
 export type IntegracaoConfig = Database['public']['Tables']['configuracoes_integracoes']['Row'];
 export type CreateIntegracaoData = Database['public']['Tables']['configuracoes_integracoes']['Insert'];
 
@@ -31,7 +30,7 @@ export const useIntegracoesConfig = () => {
       console.error('Erro ao buscar integrações:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar as configurações de integrações.',
+        description: 'Não foi possível carregar as integrações.',
         variant: 'destructive',
       });
     } finally {

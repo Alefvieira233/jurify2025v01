@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { useAgentesIA } from '@/hooks/useAgentesIA';
 
 interface TesteAgenteIAProps {
   agenteId: string;
@@ -17,14 +17,14 @@ const TesteAgenteIA: React.FC<TesteAgenteIAProps> = ({ agenteId, agenteName }) =
   const [input, setInput] = useState('');
   const [resposta, setResposta] = useState('');
   const [loading, setLoading] = useState(false);
-  const [apiKey, setApiKey] = useState('');
   const { toast } = useToast();
+  const { executeAgente } = useAgentesIA();
 
   const executarTeste = async () => {
-    if (!input.trim() || !apiKey.trim()) {
+    if (!input.trim()) {
       toast({
         title: "Erro",
-        description: "Preencha o input e a API key",
+        description: "Preencha o input para teste",
         variant: "destructive",
       });
       return;
@@ -32,23 +32,22 @@ const TesteAgenteIA: React.FC<TesteAgenteIAProps> = ({ agenteId, agenteName }) =
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('agentes-ia-api/agentes/executar', {
-        body: {
-          agente_id: agenteId,
-          input: input
-        },
-        headers: {
-          'x-api-key': apiKey
-        }
-      });
-
-      if (error) throw error;
-
-      setResposta(data.resposta || 'Resposta vazia');
-      toast({
-        title: "Sucesso",
-        description: `Execução concluída em ${data.tempo_execucao}ms`,
-      });
+      const result = await executeAgente(agenteId, input);
+      
+      if (result?.success) {
+        setResposta(result.response || 'Resposta vazia');
+        toast({
+          title: "Sucesso",
+          description: `Execução concluída via ${result.source || 'N8N'}`,
+        });
+      } else {
+        setResposta(`Erro: ${result?.error || 'Erro desconhecido'}`);
+        toast({
+          title: "Erro",
+          description: "Falha na execução do teste",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Erro ao executar teste:', error);
       setResposta(`Erro: ${error.message}`);
@@ -89,17 +88,6 @@ const TesteAgenteIA: React.FC<TesteAgenteIAProps> = ({ agenteId, agenteName }) =
       </div>
 
       <div className="space-y-3">
-        <div>
-          <Label htmlFor="api-key">API Key</Label>
-          <Input
-            id="api-key"
-            type="password"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="Insira sua API key aqui..."
-          />
-        </div>
-
         <div>
           <Label htmlFor="input">Input de Teste</Label>
           <Textarea

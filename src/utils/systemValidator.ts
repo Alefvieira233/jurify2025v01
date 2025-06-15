@@ -130,7 +130,7 @@ export class SystemValidator {
       console.log('🛡️ [SystemValidator] Testando Row Level Security...');
       
       // Testar se RLS está ativo nas tabelas críticas
-      const tables = ['leads', 'contratos', 'agendamentos', 'agentes_ia'];
+      const tables = ['leads', 'contratos', 'agendamentos', 'agentes_ia'] as const;
       const rlsStatus: Record<string, boolean> = {};
 
       for (const table of tables) {

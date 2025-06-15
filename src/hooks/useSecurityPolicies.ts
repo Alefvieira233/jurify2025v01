@@ -201,54 +201,18 @@ export const useSecurityPolicies = () => {
         lastScan: new Date().toISOString()
       });
 
-      toast({
-        title: 'Scan de Segurança Concluído',
-        description: `${passedChecks}/${totalChecks} verificações passaram. Score: ${securityScore}%`,
-        variant: securityScore >= 80 ? 'default' : 'destructive',
-      });
+      console.log(`🔒 [Security] Scan completo: ${securityScore}% (${passedChecks}/${totalChecks})`);
 
     } catch (error) {
-      console.error('Erro durante scan de segurança:', error);
+      console.error('❌ [Security] Erro no scan de segurança:', error);
       toast({
-        title: 'Erro no Scan',
-        description: 'Não foi possível completar a verificação de segurança.',
-        variant: 'destructive',
+        title: 'Erro no scan de segurança',
+        description: 'Não foi possível completar a verificação de segurança',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
-  };
-
-  const getChecksByCategory = (category: string) => {
-    return checks.filter(check => check.category === category);
-  };
-
-  const getCriticalIssues = () => {
-    return checks.filter(check => 
-      check.severity === 'critical' && check.status === 'fail'
-    );
-  };
-
-  const getSecurityRecommendations = () => {
-    const recommendations: string[] = [];
-    
-    if (metrics.securityScore < 70) {
-      recommendations.push('Score de segurança baixo - revisar configurações críticas');
-    }
-    
-    if (metrics.failedChecks > 0) {
-      recommendations.push('Corrigir verificações que falharam imediatamente');
-    }
-    
-    if (getCriticalIssues().length > 0) {
-      recommendations.push('Atenção para problemas críticos de segurança');
-    }
-    
-    if (checks.filter(c => c.category === 'authentication' && c.status === 'fail').length > 0) {
-      recommendations.push('Revisar configurações de autenticação');
-    }
-
-    return recommendations;
   };
 
   useEffect(() => {
@@ -262,8 +226,8 @@ export const useSecurityPolicies = () => {
     metrics,
     loading,
     runSecurityScan,
-    getChecksByCategory,
-    getCriticalIssues,
-    getSecurityRecommendations,
+    isSecure: metrics.securityScore >= 80,
+    hasWarnings: metrics.warningChecks > 0,
+    hasCritical: checks.some(c => c.severity === 'critical' && c.status === 'fail')
   };
 };

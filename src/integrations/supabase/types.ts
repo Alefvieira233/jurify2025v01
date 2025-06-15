@@ -110,6 +110,36 @@ export type Database = {
         }
         Relationships: []
       }
+      api_keys: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          criado_por: string | null
+          id: string
+          key_value: string
+          nome: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          criado_por?: string | null
+          id?: string
+          key_value: string
+          nome: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          criado_por?: string | null
+          id?: string
+          key_value?: string
+          nome?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       configuracoes_integracoes: {
         Row: {
           api_key: string
@@ -451,6 +481,57 @@ export type Database = {
           },
         ]
       }
+      logs_execucao_agentes: {
+        Row: {
+          agente_id: string | null
+          api_key_usado: string | null
+          created_at: string | null
+          erro_detalhes: string | null
+          id: string
+          input_recebido: string
+          resposta_ia: string | null
+          status: string
+          tempo_execucao: number | null
+        }
+        Insert: {
+          agente_id?: string | null
+          api_key_usado?: string | null
+          created_at?: string | null
+          erro_detalhes?: string | null
+          id?: string
+          input_recebido: string
+          resposta_ia?: string | null
+          status?: string
+          tempo_execucao?: number | null
+        }
+        Update: {
+          agente_id?: string | null
+          api_key_usado?: string | null
+          created_at?: string | null
+          erro_detalhes?: string | null
+          id?: string
+          input_recebido?: string
+          resposta_ia?: string | null
+          status?: string
+          tempo_execucao?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "logs_execucao_agentes_agente_id_fkey"
+            columns: ["agente_id"]
+            isOneToOne: false
+            referencedRelation: "agentes_ia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "logs_execucao_agentes_agente_id_fkey"
+            columns: ["agente_id"]
+            isOneToOne: false
+            referencedRelation: "stats_agentes_leads"
+            referencedColumns: ["agente_id"]
+          },
+        ]
+      }
       notificacoes: {
         Row: {
           ativo: boolean | null
@@ -646,6 +727,18 @@ export type Database = {
       }
     }
     Functions: {
+      buscar_agente_para_execucao: {
+        Args: { _agente_id: string }
+        Returns: {
+          id: string
+          nome: string
+          descricao_funcao: string
+          prompt_base: string
+          tipo_agente: string
+          status: string
+          parametros_avancados: Json
+        }[]
+      }
       buscar_logs_atividades: {
         Args: {
           _limite?: number
@@ -721,6 +814,10 @@ export type Database = {
           _detalhes_adicionais?: Json
         }
         Returns: string
+      }
+      validar_api_key: {
+        Args: { _key_value: string }
+        Returns: boolean
       }
     }
     Enums: {

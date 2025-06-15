@@ -1,388 +1,356 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  PieChart,
-  Pie,
-  Cell
-} from 'recharts';
-import { 
-  Activity, 
-  TrendingUp, 
-  Users, 
-  Bot, 
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Zap
-} from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { TrendingUp, TrendingDown, Users, FileText, Bot, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+
+interface PerformanceMetrics {
+  totalLeads30d: number;
+  totalContratos30d: number;
+  totalExecucoes30d: number;
+  sucessRate: number;
+  totalErrors30d: number;
+  conversionRate: number;
+}
+
+interface ChartData {
+  name: string;
+  leads: number;
+  contratos: number;
+  execucoes: number;
+}
 
 const PerformanceDashboard = () => {
-  // KPIs principais
-  const { data: kpis = {}, isLoading: loadingKPIs } = useQuery({
-    queryKey: ['performance-kpis'],
-    queryFn: async () => {
-      const now = new Date();
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const [metrics, setMetrics] = useState<PerformanceMetrics>({
+    totalLeads30d: 0,
+    totalContratos30d: 0,
+    totalExecucoes30d: 0,
+    sucessRate: 0,
+    totalErrors30d: 0,
+    conversionRate: 0
+  });
+  const [chartData, setChartData] = useState<ChartData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState('30');
+  const { hasPermission } = useAuth();
+  const { toast } = useToast();
 
-      const [leads, contratos, execucoes, errors] = await Promise.all([
-        supabase.from('leads').select('*', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgo.toISOString()),
-        supabase.from('contratos').select('*', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgo.toISOString()),
-        supabase.from('logs_execucao_agentes').select('*', { count: 'exact' })
-          .gte('created_at', thirtyDaysAgo.toISOString()),
-        supabase.from('logs_atividades').select('*', { count: 'exact' })
+  useEffect(() => {
+    if (hasPermission('relatorios', 'read')) {
+      loadMetrics();
+    }
+  }, [period]);
+
+  const loadMetrics = async () => {
+    setLoading(true);
+    try {
+      const dateLimit = new Date();
+      dateLimit.setDate(dateLimit.getDate() - parseInt(period));
+
+      // Buscar métricas em paralelo
+      const [
+        { count: leadsCount },
+        { count: contratosCount },
+        { count: execucoesCount },
+        { data: execucoesData },
+        { data: logsErrors }
+      ] = await Promise.all([
+        // Total de leads nos últimos X dias
+        supabase
+          .from('leads')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', dateLimit.toISOString()),
+        
+        // Total de contratos nos últimos X dias
+        supabase
+          .from('contratos')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', dateLimit.toISOString()),
+        
+        // Total de execuções de agentes nos últimos X dias
+        supabase
+          .from('logs_execucao_agentes')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', dateLimit.toISOString()),
+        
+        // Dados para taxa de sucesso
+        supabase
+          .from('logs_execucao_agentes')
+          .select('status')
+          .gte('created_at', dateLimit.toISOString()),
+        
+        // Logs de erro
+        supabase
+          .from('logs_atividades')
+          .select('*', { count: 'exact', head: true })
           .eq('tipo_acao', 'erro')
-          .gte('data_hora', thirtyDaysAgo.toISOString())
+          .gte('data_hora', dateLimit.toISOString())
       ]);
 
-      const totalExecucoes = execucoes.count || 0;
-      const sucessos = await supabase.from('logs_execucao_agentes')
-        .select('*', { count: 'exact' })
-        .eq('status', 'success')
-        .gte('created_at', thirtyDaysAgo.toISOString());
+      // Calcular taxa de sucesso
+      const totalExecucoes = execucoesData?.length || 0;
+      const sucessos = execucoesData?.filter(ex => ex.status === 'success')?.length || 0;
+      const sucessRate = totalExecucoes > 0 ? (sucessos / totalExecucoes) * 100 : 0;
 
-      return {
-        totalLeads30d: leads.count || 0,
-        totalContratos30d: contratos.count || 0,
-        totalExecucoes30d: totalExecucoes,
-        sucessRate: totalExecucoes > 0 ? ((sucessos.count || 0) / totalExecucoes * 100) : 0,
-        totalErrors30d: errors.count || 0
-      };
+      // Calcular taxa de conversão
+      const conversionRate = leadsCount && contratosCount ? (contratosCount / leadsCount) * 100 : 0;
+
+      setMetrics({
+        totalLeads30d: leadsCount || 0,
+        totalContratos30d: contratosCount || 0,
+        totalExecucoes30d: execucoesCount || 0,
+        sucessRate: Math.round(sucessRate),
+        totalErrors30d: logsErrors || 0,
+        conversionRate: Math.round(conversionRate)
+      });
+
+      // Gerar dados do gráfico (últimos 7 dias)
+      await generateChartData();
+
+    } catch (error) {
+      console.error('Erro ao carregar métricas:', error);
+      toast({
+        title: "Erro ao carregar métricas",
+        description: "Falha ao buscar dados de performance.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  });
+  };
 
-  // Dados de leads por dia (últimos 30 dias)
-  const { data: leadsChart = [] } = useQuery({
-    queryKey: ['leads-chart-30d'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('leads')
-        .select('created_at')
-        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-        .order('created_at');
-
-      const groupedByDay = (data || []).reduce((acc, lead) => {
-        const day = lead.created_at.split('T')[0];
-        acc[day] = (acc[day] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      return Object.entries(groupedByDay).map(([date, count]) => ({
-        date: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        leads: count
-      }));
-    }
-  });
-
-  // Performance dos agentes IA
-  const { data: agentesPerformance = [] } = useQuery({
-    queryKey: ['agentes-performance'],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('logs_execucao_agentes')
-        .select(`
-          agente_id,
-          status,
-          tempo_execucao,
-          agentes_ia:agente_id(nome)
-        `)
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
-
-      const grouped = (data || []).reduce((acc, log: any) => {
-        const agenteNome = log.agentes_ia?.nome || 'Agente Desconhecido';
-        if (!acc[agenteNome]) {
-          acc[agenteNome] = { 
-            nome: agenteNome, 
-            total: 0, 
-            sucessos: 0, 
-            tempoMedio: 0,
-            tempos: []
-          };
-        }
-        acc[agenteNome].total++;
-        if (log.status === 'success') {
-          acc[agenteNome].sucessos++;
-          if (log.tempo_execucao) {
-            acc[agenteNome].tempos.push(log.tempo_execucao);
-          }
-        }
-        return acc;
-      }, {} as Record<string, any>);
-
-      return Object.values(grouped).map((agente: any) => ({
-        ...agente,
-        taxaSucesso: agente.total > 0 ? (agente.sucessos / agente.total * 100) : 0,
-        tempoMedio: agente.tempos.length > 0 
-          ? agente.tempos.reduce((a: number, b: number) => a + b, 0) / agente.tempos.length 
-          : 0
-      }));
-    }
-  });
-
-  // Taxa de conversão por mês
-  const { data: conversaoChart = [] } = useQuery({
-    queryKey: ['conversao-chart'],
-    queryFn: async () => {
-      const meses = [];
-      for (let i = 5; i >= 0; i--) {
+  const generateChartData = async () => {
+    try {
+      const last7Days = Array.from({ length: 7 }, (_, i) => {
         const date = new Date();
-        date.setMonth(date.getMonth() - i);
-        const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
-        const lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        date.setDate(date.getDate() - (6 - i));
+        return date;
+      });
 
-        const [leads, contratos] = await Promise.all([
-          supabase.from('leads').select('*', { count: 'exact' })
-            .gte('created_at', firstDay.toISOString())
-            .lte('created_at', lastDay.toISOString()),
-          supabase.from('contratos').select('*', { count: 'exact' })
-            .gte('created_at', firstDay.toISOString())
-            .lte('created_at', lastDay.toISOString())
+      const chartPromises = last7Days.map(async (date) => {
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+
+        const [
+          { count: leadsCount },
+          { count: contratosCount },
+          { count: execucoesCount }
+        ] = await Promise.all([
+          supabase
+            .from('leads')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', dayStart.toISOString())
+            .lte('created_at', dayEnd.toISOString()),
+          
+          supabase
+            .from('contratos')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', dayStart.toISOString())
+            .lte('created_at', dayEnd.toISOString()),
+          
+          supabase
+            .from('logs_execucao_agentes')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', dayStart.toISOString())
+            .lte('created_at', dayEnd.toISOString())
         ]);
 
-        const totalLeads = leads.count || 0;
-        const totalContratos = contratos.count || 0;
-        const taxaConversao = totalLeads > 0 ? (totalContratos / totalLeads * 100) : 0;
+        return {
+          name: date.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit' }),
+          leads: leadsCount || 0,
+          contratos: contratosCount || 0,
+          execucoes: execucoesCount || 0
+        };
+      });
 
-        meses.push({
-          mes: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-          leads: totalLeads,
-          contratos: totalContratos,
-          conversao: Number(taxaConversao.toFixed(1))
-        });
-      }
-      return meses;
+      const chartResults = await Promise.all(chartPromises);
+      setChartData(chartResults);
+
+    } catch (error) {
+      console.error('Erro ao gerar dados do gráfico:', error);
     }
-  });
+  };
 
-  // Status dos serviços
-  const statusData = [
-    { name: 'API Agentes IA', status: 'online', uptime: '99.9%' },
-    { name: 'WhatsApp Integration', status: 'online', uptime: '98.5%' },
-    { name: 'ZapSign API', status: 'online', uptime: '99.2%' },
-    { name: 'Google Calendar', status: 'warning', uptime: '97.8%' },
-  ];
+  const MetricCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    trend, 
+    suffix = '' 
+  }: { 
+    title: string; 
+    value: number; 
+    icon: any; 
+    trend?: 'up' | 'down'; 
+    suffix?: string; 
+  }) => (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-bold">
+              {value.toLocaleString()}{suffix}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {trend && (
+              trend === 'up' ? (
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-600" />
+              )
+            )}
+            <Icon className="h-8 w-8 text-gray-400" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
-
-  if (loadingKPIs) {
+  if (!hasPermission('relatorios', 'read')) {
     return (
-      <div className="space-y-6">
-        {[1, 2, 3].map(i => (
-          <Card key={i}>
-            <CardContent className="p-6">
-              <div className="animate-pulse h-32 bg-gray-200 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Acesso Restrito</h3>
+            <p className="text-gray-600">
+              Você não tem permissão para visualizar métricas de performance.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard de Performance</h1>
-        <p className="text-gray-600">Métricas avançadas e monitoramento do sistema</p>
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Dashboard de Performance</h2>
+        <div className="flex items-center gap-4">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="7">Últimos 7 dias</SelectItem>
+              <SelectItem value="30">Últimos 30 dias</SelectItem>
+              <SelectItem value="90">Últimos 90 dias</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={loadMetrics} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
-      {/* KPIs Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      {/* Cards de Métricas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <MetricCard
+          title="Leads Cadastrados"
+          value={metrics.totalLeads30d}
+          icon={Users}
+          trend="up"
+        />
+        
+        <MetricCard
+          title="Contratos Gerados"
+          value={metrics.totalContratos30d}
+          icon={FileText}
+          trend="up"
+        />
+        
+        <MetricCard
+          title="Execuções de IA"
+          value={metrics.totalExecucoes30d}
+          icon={Bot}
+          trend="up"
+        />
+        
+        <MetricCard
+          title="Taxa de Sucesso"
+          value={metrics.sucessRate}
+          icon={TrendingUp}
+          suffix="%"
+        />
+        
+        <MetricCard
+          title="Erros Sistema"
+          value={metrics.totalErrors30d}
+          icon={AlertCircle}
+          trend="down"
+        />
+      </div>
+
+      {/* Gráfico de Atividade */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Atividade dos Últimos 7 Dias</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="name" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="leads" fill="#3b82f6" name="Leads" />
+              <Bar dataKey="contratos" fill="#10b981" name="Contratos" />
+              <Bar dataKey="execucoes" fill="#f59e0b" name="Execuções IA" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Métricas Adicionais */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Leads (30d)</p>
-                <p className="text-2xl font-bold text-gray-900">{kpis.totalLeads30d}</p>
+          <CardHeader>
+            <CardTitle>Taxa de Conversão</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">
+              <div className="text-4xl font-bold text-blue-600 mb-2">
+                {metrics.conversionRate}%
               </div>
-              <Users className="h-8 w-8 text-blue-500" />
+              <p className="text-gray-600">
+                Leads convertidos em contratos
+              </p>
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Contratos (30d)</p>
-                <p className="text-2xl font-bold text-gray-900">{kpis.totalContratos30d}</p>
+          <CardHeader>
+            <CardTitle>Status do Sistema</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span>Agentes IA</span>
+                <span className="text-green-600 font-medium">Online</span>
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Execuções IA</p>
-                <p className="text-2xl font-bold text-gray-900">{kpis.totalExecucoes30d}</p>
+              <div className="flex justify-between">
+                <span>Integrações</span>
+                <span className="text-green-600 font-medium">Funcionando</span>
               </div>
-              <Bot className="h-8 w-8 text-purple-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Taxa Sucesso IA</p>
-                <p className="text-2xl font-bold text-gray-900">{kpis.sucessRate.toFixed(1)}%</p>
+              <div className="flex justify-between">
+                <span>Base de Dados</span>
+                <span className="text-green-600 font-medium">Estável</span>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-500" />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Erros (30d)</p>
-                <p className="text-2xl font-bold text-gray-900">{kpis.totalErrors30d}</p>
-              </div>
-              <AlertTriangle className="h-8 w-8 text-red-500" />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Tabs defaultValue="metricas" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="metricas">Métricas</TabsTrigger>
-          <TabsTrigger value="agentes">Agentes IA</TabsTrigger>
-          <TabsTrigger value="servicos">Status Serviços</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="metricas" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Leads por Dia */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Leads por Dia (30 dias)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={leadsChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" />
-                    <YAxis />
-                    <Tooltip />
-                    <Line type="monotone" dataKey="leads" stroke="#8884d8" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            {/* Taxa de Conversão */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Taxa de Conversão por Mês</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={conversaoChart}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="mes" />
-                    <YAxis />
-                    <Tooltip />
-                    <Bar dataKey="conversao" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="agentes" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Performance dos Agentes IA (7 dias)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {agentesPerformance.map((agente, index) => (
-                  <div key={index} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{agente.nome}</h4>
-                      <Badge variant={agente.taxaSucesso > 90 ? "default" : "secondary"}>
-                        {agente.taxaSucesso.toFixed(1)}% sucesso
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 text-sm">
-                      <div>
-                        <span className="text-gray-600">Total Execuções:</span>
-                        <span className="ml-2 font-medium">{agente.total}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Sucessos:</span>
-                        <span className="ml-2 font-medium">{agente.sucessos}</span>
-                      </div>
-                      <div>
-                        <span className="text-gray-600">Tempo Médio:</span>
-                        <span className="ml-2 font-medium">{agente.tempoMedio.toFixed(0)}ms</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="servicos" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {statusData.map((servico, index) => (
-              <Card key={index}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-medium">{servico.name}</h3>
-                    <div className="flex items-center space-x-2">
-                      {servico.status === 'online' ? (
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                      ) : (
-                        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-                      )}
-                      <Badge variant={servico.status === 'online' ? "default" : "secondary"}>
-                        {servico.status}
-                      </Badge>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">Uptime:</span>
-                      <span className="font-medium">{servico.uptime}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-green-500 h-2 rounded-full" 
-                        style={{ width: servico.uptime }}
-                      ></div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 };

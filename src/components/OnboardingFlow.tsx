@@ -2,19 +2,9 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  CheckCircle, 
-  Circle, 
-  Users, 
-  Calendar, 
-  Bot, 
-  Settings,
-  PlayCircle,
-  ExternalLink,
-  ArrowRight
-} from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { CheckCircle, Circle, Play, X, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -23,340 +13,231 @@ interface OnboardingStep {
   id: string;
   title: string;
   description: string;
-  icon: React.ComponentType<any>;
   completed: boolean;
-  optional?: boolean;
+  action?: () => void;
+  link?: string;
 }
 
 const OnboardingFlow = () => {
-  const { user, profile } = useAuth();
-  const { toast } = useToast();
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [steps, setSteps] = useState<OnboardingStep[]>([
-    {
-      id: 'welcome',
-      title: 'Bem-vindo ao Jurify SaaS',
-      description: 'Configure seu escritório digital em poucos passos',
-      icon: Settings,
-      completed: false
-    },
-    {
-      id: 'users',
-      title: 'Cadastre Usuários',
-      description: 'Adicione sua equipe e configure permissões',
-      icon: Users,
-      completed: false
-    },
-    {
-      id: 'calendar',
-      title: 'Google Calendar',
-      description: 'Sincronize seus agendamentos',
-      icon: Calendar,
-      completed: false,
-      optional: true
-    },
-    {
-      id: 'agents',
-      title: 'Agentes de IA',
-      description: 'Configure seu primeiro agente inteligente',
-      icon: Bot,
-      completed: false
-    },
-    {
-      id: 'complete',
-      title: 'Configuração Completa',
-      description: 'Tudo pronto para começar!',
-      icon: CheckCircle,
-      completed: false
-    }
-  ]);
+  const [steps, setSteps] = useState<OnboardingStep[]>([]);
+  const { user, profile, hasRole } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    checkOnboardingStatus();
-  }, [user]);
+    if (user && profile && hasRole('administrador')) {
+      checkOnboardingStatus();
+    }
+  }, [user, profile]);
 
   const checkOnboardingStatus = async () => {
-    if (!user) return;
-
     try {
-      // Verificar se já completou onboarding
-      const { data: settings } = await supabase
+      // Verificar se o onboarding já foi concluído
+      const { data: setting } = await supabase
         .from('system_settings')
         .select('value')
         .eq('key', 'onboarding_completed')
         .single();
 
-      if (!settings?.value || settings.value === 'false') {
-        setShowOnboarding(true);
-        await checkStepsCompletion();
+      if (setting?.value === 'true') {
+        return; // Onboarding já foi concluído
       }
+
+      // Verificar status de cada etapa
+      const [
+        { data: googleSettings },
+        { data: apiKeys },
+        { data: agentes },
+        { data: usuarios }
+      ] = await Promise.all([
+        supabase.from('google_calendar_settings').select('*').limit(1),
+        supabase.from('api_keys').select('*').limit(1),
+        supabase.from('agentes_ia').select('*').limit(1),
+        supabase.from('user_roles').select('*').gt('created_at', new Date(Date.now() - 24*60*60*1000).toISOString())
+      ]);
+
+      const onboardingSteps: OnboardingStep[] = [
+        {
+          id: 'welcome',
+          title: 'Bem-vindo ao Jurify',
+          description: 'Configure seu sistema de automação jurídica',
+          completed: true
+        },
+        {
+          id: 'google_calendar',
+          title: 'Integração Google Calendar',
+          description: 'Configure a sincronização de agendamentos',
+          completed: (googleSettings && googleSettings.length > 0) || false,
+          link: '/?tab=configuracoes'
+        },
+        {
+          id: 'api_keys',
+          title: 'Configurar API Keys',
+          description: 'Configure chaves para integrações externas',
+          completed: (apiKeys && apiKeys.length > 0) || false,
+          link: '/?tab=configuracoes'
+        },
+        {
+          id: 'agentes_ia',
+          title: 'Criar Agentes IA',
+          description: 'Configure seus assistentes virtuais',
+          completed: (agentes && agentes.length > 0) || false,
+          link: '/?tab=agentes'
+        },
+        {
+          id: 'usuarios',
+          title: 'Gerenciar Usuários',
+          description: 'Convide sua equipe para o sistema',
+          completed: (usuarios && usuarios.length > 1) || false,
+          link: '/?tab=usuarios'
+        }
+      ];
+
+      setSteps(onboardingSteps);
+      
+      // Mostrar onboarding se ainda há etapas pendentes
+      const hasIncompleteSteps = onboardingSteps.some(step => !step.completed);
+      if (hasIncompleteSteps) {
+        setShowOnboarding(true);
+      }
+
     } catch (error) {
       console.error('Erro ao verificar onboarding:', error);
-      setShowOnboarding(true);
-    }
-  };
-
-  const checkStepsCompletion = async () => {
-    try {
-      // Verificar usuários cadastrados
-      const { count: usersCount } = await supabase
-        .from('profiles')
-        .select('*', { count: 'exact' });
-
-      // Verificar agentes IA
-      const { count: agentsCount } = await supabase
-        .from('agentes_ia')
-        .select('*', { count: 'exact' });
-
-      // Verificar Google Calendar
-      const { data: calendarSettings } = await supabase
-        .from('google_calendar_settings')
-        .select('calendar_enabled')
-        .eq('user_id', user?.id)
-        .single();
-
-      setSteps(prev => prev.map(step => {
-        switch (step.id) {
-          case 'welcome':
-            return { ...step, completed: true };
-          case 'users':
-            return { ...step, completed: (usersCount || 0) > 1 };
-          case 'calendar':
-            return { ...step, completed: calendarSettings?.calendar_enabled || false };
-          case 'agents':
-            return { ...step, completed: (agentsCount || 0) > 0 };
-          case 'complete':
-            return { ...step, completed: false };
-          default:
-            return step;
-        }
-      }));
-    } catch (error) {
-      console.error('Erro ao verificar steps:', error);
     }
   };
 
   const completeOnboarding = async () => {
     try {
-      // Marcar onboarding como completo
       await supabase
         .from('system_settings')
         .upsert({
           key: 'onboarding_completed',
           value: 'true',
           category: 'sistema',
-          description: 'Onboarding completo'
+          description: 'Onboarding do administrador foi concluído'
         });
 
       setShowOnboarding(false);
+      
       toast({
-        title: "Configuração Completa!",
-        description: "Seu escritório digital está pronto para uso.",
+        title: "Configuração concluída!",
+        description: "Seu sistema Jurify está pronto para uso."
       });
+
     } catch (error) {
-      console.error('Erro ao completar onboarding:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao salvar configuração.",
-        variant: "destructive",
-      });
+      console.error('Erro ao concluir onboarding:', error);
     }
   };
 
-  const getProgressPercentage = () => {
-    const completedSteps = steps.filter(step => step.completed).length;
-    return (completedSteps / steps.length) * 100;
-  };
+  const completedSteps = steps.filter(step => step.completed).length;
+  const progress = steps.length > 0 ? (completedSteps / steps.length) * 100 : 0;
 
-  const goToStep = (stepId: string) => {
-    switch (stepId) {
-      case 'users':
-        window.location.href = '/?tab=usuarios';
-        break;
-      case 'calendar':
-        window.location.href = '/?tab=integracoes';
-        break;
-      case 'agents':
-        window.location.href = '/?tab=agentes';
-        break;
-      default:
-        break;
-    }
-  };
-
-  if (!showOnboarding) return null;
-
-  const currentStepData = steps[currentStep];
-  const isLastStep = currentStep === steps.length - 1;
-  const allRequiredCompleted = steps.filter(s => !s.optional).every(s => s.completed);
+  if (!showOnboarding) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold text-blue-600">
-            Configuração Inicial
-          </CardTitle>
-          <div className="mt-4">
-            <Progress value={getProgressPercentage()} className="h-2" />
-            <p className="text-sm text-gray-600 mt-2">
-              {Math.round(getProgressPercentage())}% concluído
-            </p>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">
+              🎉 Configuração Inicial - Jurify
+            </CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowOnboarding(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span>{completedSteps} de {steps.length} etapas concluídas</span>
+              <span>{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} className="w-full" />
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          {currentStepData.id === 'welcome' && (
-            <div className="text-center space-y-4">
-              <div className="text-6xl mb-4">🎉</div>
-              <h3 className="text-xl font-semibold">
-                Bem-vindo ao Jurify SaaS!
-              </h3>
-              <p className="text-gray-600">
-                Olá, <strong>{profile?.nome_completo}</strong>! 
-                Vamos configurar seu escritório digital em alguns passos simples.
-              </p>
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium text-blue-900 mb-2">O que você vai configurar:</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Cadastro de usuários e permissões</li>
-                  <li>• Integração com Google Calendar</li>
-                  <li>• Configuração de agentes de IA</li>
-                  <li>• Personalização do sistema</li>
-                </ul>
-              </div>
-            </div>
-          )}
-
-          {currentStepData.id !== 'welcome' && currentStepData.id !== 'complete' && (
-            <div className="space-y-4">
-              <div className="flex items-center space-x-3">
-                <currentStepData.icon className="h-8 w-8 text-blue-600" />
-                <div>
-                  <h3 className="text-xl font-semibold">{currentStepData.title}</h3>
-                  <p className="text-gray-600">{currentStepData.description}</p>
-                  {currentStepData.optional && (
-                    <Badge variant="secondary" className="mt-1">Opcional</Badge>
-                  )}
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <Button 
-                  onClick={() => goToStep(currentStepData.id)}
-                  className="w-full"
-                  variant={currentStepData.completed ? "outline" : "default"}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  {currentStepData.completed ? 'Revisar Configuração' : 'Configurar Agora'}
-                </Button>
-              </div>
-
-              {currentStepData.completed && (
-                <div className="flex items-center space-x-2 text-green-600">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="text-sm font-medium">Configuração completa</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {currentStepData.id === 'complete' && (
-            <div className="text-center space-y-4">
-              <div className="text-6xl mb-4">🚀</div>
-              <h3 className="text-xl font-semibold text-green-600">
-                Configuração Completa!
-              </h3>
-              <p className="text-gray-600">
-                Parabéns! Seu Jurify SaaS está configurado e pronto para uso.
-              </p>
-              <div className="bg-green-50 p-4 rounded-lg">
-                <h4 className="font-medium text-green-900 mb-2">Próximos passos:</h4>
-                <ul className="text-sm text-green-800 space-y-1">
-                  <li>• Explore o dashboard principal</li>
-                  <li>• Cadastre seus primeiros leads</li>
-                  <li>• Teste os agentes de IA</li>
-                  <li>• Configure integrações adicionais</li>
-                </ul>
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={() => window.open('/docs', '_blank')}
-                  variant="outline"
-                  size="sm"
-                >
-                  <PlayCircle className="h-4 w-4 mr-2" />
-                  Ver Tutorial
-                </Button>
-                <Button 
-                  onClick={completeOnboarding}
-                  className="flex-1"
-                >
-                  Começar a Usar
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Lista de todos os steps */}
-          <div className="border-t pt-4">
-            <h4 className="font-medium mb-3">Progresso da Configuração</h4>
-            <div className="space-y-2">
-              {steps.map((step, index) => (
-                <div 
-                  key={step.id} 
-                  className={`flex items-center space-x-3 p-2 rounded ${
-                    index === currentStep ? 'bg-blue-50' : ''
-                  }`}
-                >
+        <CardContent className="space-y-4">
+          {steps.map((step, index) => (
+            <div
+              key={step.id}
+              className={`p-4 rounded-lg border transition-colors ${
+                step.completed 
+                  ? 'bg-green-50 border-green-200' 
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-1">
                   {step.completed ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-green-600" />
                   ) : (
                     <Circle className="h-5 w-5 text-gray-400" />
                   )}
-                  <span className={`text-sm ${step.completed ? 'text-green-600' : 'text-gray-600'}`}>
-                    {step.title}
-                  </span>
-                  {step.optional && (
-                    <Badge variant="outline" size="sm">Opcional</Badge>
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="font-medium">{step.title}</h3>
+                    <Badge variant="outline">
+                      {step.completed ? 'Concluído' : 'Pendente'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-600 mb-3">
+                    {step.description}
+                  </p>
+                  
+                  {!step.completed && step.link && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        window.location.href = step.link!;
+                        setShowOnboarding(false);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      Configurar
+                    </Button>
                   )}
                 </div>
-              ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="pt-6 border-t">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-medium mb-1">🚀 Tutorial em Vídeo</h4>
+                <p className="text-sm text-gray-600">
+                  Assista ao guia completo do sistema
+                </p>
+              </div>
+              <Button variant="outline" size="sm">
+                <Play className="h-4 w-4 mr-2" />
+                Assistir
+              </Button>
             </div>
           </div>
 
-          {/* Navegação */}
-          <div className="flex justify-between pt-4 border-t">
+          <div className="flex justify-between pt-4">
             <Button 
               variant="outline" 
-              onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-              disabled={currentStep === 0}
+              onClick={() => setShowOnboarding(false)}
             >
-              Anterior
+              Fazer Depois
             </Button>
             
-            <div className="flex space-x-2">
-              {!isLastStep && (
-                <Button 
-                  onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
-                  disabled={currentStep === steps.length - 1}
-                >
-                  Próximo
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              )}
-              
-              {allRequiredCompleted && (
-                <Button 
-                  onClick={completeOnboarding}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  Finalizar Configuração
-                </Button>
-              )}
-            </div>
+            {progress === 100 && (
+              <Button onClick={completeOnboarding}>
+                Finalizar Configuração
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

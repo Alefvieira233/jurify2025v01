@@ -41,8 +41,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
+  const [authTimeout, setAuthTimeout] = useState<NodeJS.Timeout | null>(null);
 
-  // Direct logging function to avoid circular dependency
+  // Log de atividade direto para evitar dependência circular
   const logActivity = async (
     tipo_acao: 'login' | 'logout',
     descricao: string
@@ -66,7 +67,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      console.log('Buscando perfil para usuário:', userId);
+      console.log('🔍 Buscando perfil para usuário:', userId);
       
       // Buscar perfil
       const { data: profileData, error: profileError } = await supabase
@@ -76,11 +77,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .single();
 
       if (profileError) {
-        console.error('Erro ao buscar perfil:', profileError);
+        console.error('❌ Erro ao buscar perfil:', profileError);
         
         // Se não encontrar perfil, criar um básico
         if (profileError.code === 'PGRST116') {
-          console.log('Perfil não encontrado, criando novo...');
+          console.log('📝 Perfil não encontrado, criando novo...');
           const { data: userData } = await supabase.auth.getUser();
           if (userData.user) {
             const { data: newProfile, error: createError } = await supabase
@@ -95,20 +96,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               .single();
             
             if (!createError && newProfile) {
-              console.log('Novo perfil criado:', newProfile);
+              console.log('✅ Novo perfil criado:', newProfile);
               setProfile(newProfile);
             } else {
-              console.error('Erro ao criar perfil:', createError);
+              console.error('❌ Erro ao criar perfil:', createError);
+              throw new Error('Falha ao criar perfil do usuário');
             }
           }
+        } else {
+          throw profileError;
         }
       } else if (profileData) {
-        console.log('Perfil encontrado:', profileData);
+        console.log('✅ Perfil encontrado:', profileData);
         setProfile(profileData);
       }
 
       // Buscar roles
-      console.log('Buscando roles do usuário...');
+      console.log('🔍 Buscando roles do usuário...');
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
@@ -116,10 +120,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .eq('ativo', true);
 
       if (rolesError) {
-        console.error('Erro ao buscar roles:', rolesError);
+        console.error('❌ Erro ao buscar roles:', rolesError);
         
         // Se não encontrar roles, atribuir role padrão
-        console.log('Roles não encontradas, criando role padrão...');
+        console.log('📝 Roles não encontradas, criando role padrão...');
         const { data: newRole, error: insertRoleError } = await supabase
           .from('user_roles')
           .insert({
@@ -131,18 +135,19 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           .single();
         
         if (!insertRoleError && newRole) {
-          console.log('Role padrão criada:', newRole);
+          console.log('✅ Role padrão criada:', newRole);
           setUserRoles([newRole]);
         } else {
-          console.error('Erro ao criar role padrão:', insertRoleError);
-          setUserRoles([]);
+          console.error('❌ Erro ao criar role padrão:', insertRoleError);
+          throw new Error('Falha ao configurar permissões do usuário');
         }
       } else {
-        console.log('Roles encontradas:', rolesData);
+        console.log('✅ Roles encontradas:', rolesData);
         setUserRoles(rolesData || []);
       }
     } catch (error) {
-      console.error('Erro geral ao buscar perfil:', error);
+      console.error('💥 Erro geral ao buscar perfil:', error);
+      throw error;
     }
   };
 
@@ -159,7 +164,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (userRoles.some(role => role.role === 'administrador')) return true;
     
     // Implementar verificação de permissões baseada nas roles
-    // Esta é uma verificação simplificada - em produção, use a função do banco
     return userRoles.length > 0;
   };
 
@@ -170,7 +174,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      console.log('Iniciando login para:', email);
+      console.log('🔐 Iniciando login para:', email);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -178,14 +182,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       if (error) {
-        console.error('Erro no login:', error);
+        console.error('❌ Erro no login:', error);
         throw error;
       }
 
-      console.log('Login bem-sucedido:', data.user?.email);
+      console.log('✅ Login bem-sucedido:', data.user?.email);
       return { user: data.user, error: null };
     } catch (error: any) {
-      console.error('Erro no login:', error);
+      console.error('💥 Erro no login:', error);
       return { user: null, error };
     }
   };
@@ -222,7 +226,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setProfile(null);
       setUserRoles([]);
     } catch (error) {
-      console.error('Erro no logout:', error);
+      console.error('❌ Erro no logout:', error);
       throw error;
     }
   };
@@ -230,53 +234,92 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     let mounted = true;
 
-    // Set up auth state listener
+    console.log('🚀 Inicializando AuthProvider...');
+
+    // Configurar timeout de 10 segundos para autenticação
+    const timeout = setTimeout(() => {
+      if (mounted && loading) {
+        console.log('⏰ Timeout de autenticação atingido');
+        setLoading(false);
+        console.error('Timeout: Falha ao validar sessão em 10 segundos');
+      }
+    }, 10000);
+
+    setAuthTimeout(timeout);
+
+    // Configurar listener de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
+        console.log('🔄 Auth state changed:', event, session?.user?.email);
         
         if (!mounted) return;
+
+        // Limpar timeout se o estado mudar
+        if (authTimeout) {
+          clearTimeout(authTimeout);
+        }
 
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch profile data for authenticated user
-          console.log('Usuário autenticado, buscando perfil...');
-          await fetchProfile(session.user.id);
+          console.log('👤 Usuário autenticado, buscando perfil...');
+          try {
+            await fetchProfile(session.user.id);
+            console.log('✅ Perfil carregado com sucesso');
+          } catch (error) {
+            console.error('💥 Erro ao carregar perfil:', error);
+            // Em caso de erro, ainda permite acesso mas com funcionalidade limitada
+          } finally {
+            setLoading(false);
+          }
         } else {
-          console.log('Usuário não autenticado, limpando estado...');
+          console.log('👤 Usuário não autenticado, limpando estado...');
           setProfile(null);
           setUserRoles([]);
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
-    // Check for existing session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Verificar sessão existente
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
       if (!mounted) return;
       
-      console.log('Session inicial verificada:', session?.user?.email);
+      if (error) {
+        console.error('❌ Erro ao verificar sessão:', error);
+        setLoading(false);
+        return;
+      }
+      
+      console.log('🔍 Session inicial verificada:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        console.log('Session existente encontrada, buscando perfil...');
-        fetchProfile(session.user.id).finally(() => {
+        console.log('🔄 Session existente encontrada, buscando perfil...');
+        fetchProfile(session.user.id).then(() => {
+          if (mounted) {
+            console.log('✅ Inicialização completa');
+            setLoading(false);
+          }
+        }).catch((error) => {
+          console.error('💥 Erro na inicialização:', error);
           if (mounted) {
             setLoading(false);
           }
         });
       } else {
-        console.log('Nenhuma session existente');
+        console.log('🔍 Nenhuma session existente');
         setLoading(false);
       }
     });
 
     return () => {
       mounted = false;
+      if (authTimeout) {
+        clearTimeout(authTimeout);
+      }
       subscription.unsubscribe();
     };
   }, []);

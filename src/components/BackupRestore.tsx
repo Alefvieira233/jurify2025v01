@@ -1,112 +1,75 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  Download, 
-  Upload, 
-  AlertTriangle, 
-  CheckCircle,
-  Database,
-  FileText,
-  Shield
-} from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Download, Upload, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-interface BackupData {
-  timestamp: string;
-  version: string;
-  data: {
-    system_settings: any[];
-    notification_templates: any[];
-    agentes_ia: any[];
-    api_keys: any[];
-    google_calendar_settings: any[];
-    configuracoes_integracoes: any[];
-  };
-}
-
 const BackupRestore = () => {
+  const [loading, setLoading] = useState(false);
+  const [backupData, setBackupData] = useState('');
   const { toast } = useToast();
   const { hasRole } = useAuth();
-  const [isExporting, setIsExporting] = useState(false);
-  const [isImporting, setIsImporting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [showConfirmation, setShowConfirmation] = useState(false);
 
-  const isSuperAdmin = hasRole('administrador');
-
-  if (!isSuperAdmin) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">
-            <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Restrito</h3>
-            <p className="text-gray-600">
-              Apenas super administradores podem acessar backup/restore.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  // Lista de tabelas para backup (apenas as necessárias)
+  const BACKUP_TABLES = [
+    'system_settings',
+    'notification_templates', 
+    'agentes_ia',
+    'api_keys',
+    'google_calendar_settings',
+    'configuracoes_integracoes'
+  ];
 
   const exportConfigurations = async () => {
-    setIsExporting(true);
-    try {
-      // Buscar todas as configurações
-      const tables = [
-        'system_settings',
-        'notification_templates', 
-        'agentes_ia',
-        'api_keys',
-        'google_calendar_settings',
-        'configuracoes_integracoes'
-      ];
+    if (!hasRole('administrador')) {
+      toast({
+        title: "Acesso negado",
+        description: "Apenas administradores podem exportar configurações.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      const backupData: BackupData = {
-        timestamp: new Date().toISOString(),
-        version: '1.0.0',
-        data: {} as any
+    setLoading(true);
+    try {
+      const backupObj: any = {
+        version: "1.0",
+        exported_at: new Date().toISOString(),
+        data: {}
       };
 
-      for (const table of tables) {
+      // Exportar cada tabela
+      for (const table of BACKUP_TABLES) {
+        console.log(`Exportando tabela: ${table}`);
+        
         const { data, error } = await supabase
-          .from(table)
+          .from(table as any)
           .select('*');
 
         if (error) {
-          console.error(`Erro ao buscar ${table}:`, error);
+          console.error(`Erro ao exportar ${table}:`, error);
           continue;
         }
 
-        // Mascarar dados sensíveis nas API keys
-        if (table === 'api_keys') {
-          backupData.data[table] = data?.map(item => ({
-            ...item,
-            key_value: '***MASKED***'
-          })) || [];
-        } else if (table === 'system_settings') {
-          backupData.data[table] = data?.map(item => ({
-            ...item,
-            value: item.is_sensitive ? '***MASKED***' : item.value
-          })) || [];
+        // Para system_settings, filtrar dados sensíveis
+        if (table === 'system_settings') {
+          backupObj.data[table] = data?.filter((item: any) => !item.is_sensitive) || [];
         } else {
-          backupData.data[table] = data || [];
+          backupObj.data[table] = data || [];
         }
       }
 
-      // Criar arquivo para download
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], {
-        type: 'application/json'
-      });
-      
+      const jsonString = JSON.stringify(backupObj, null, 2);
+      setBackupData(jsonString);
+
+      // Criar download automático
+      const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -117,260 +80,175 @@ const BackupRestore = () => {
       URL.revokeObjectURL(url);
 
       toast({
-        title: "Backup Criado",
-        description: "Configurações exportadas com sucesso.",
+        title: "Backup criado",
+        description: "Configurações exportadas com sucesso."
       });
+
     } catch (error) {
       console.error('Erro no backup:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao criar backup.",
-        variant: "destructive",
+        title: "Erro no backup",
+        description: "Falha ao exportar configurações.",
+        variant: "destructive"
       });
     } finally {
-      setIsExporting(false);
+      setLoading(false);
     }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file && file.type === 'application/json') {
-      setSelectedFile(file);
-    } else {
-      toast({
-        title: "Arquivo Inválido",
-        description: "Selecione um arquivo JSON válido.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const validateBackupFile = async (backupData: BackupData): Promise<boolean> => {
-    // Validações básicas
-    if (!backupData.timestamp || !backupData.data) {
-      return false;
-    }
-
-    // Verificar se tem as tabelas essenciais
-    const requiredTables = ['system_settings', 'agentes_ia'];
-    for (const table of requiredTables) {
-      if (!backupData.data[table]) {
-        return false;
-      }
-    }
-
-    return true;
   };
 
   const importConfigurations = async () => {
-    if (!selectedFile) return;
+    if (!hasRole('administrador')) {
+      toast({
+        title: "Acesso negado", 
+        description: "Apenas administradores podem importar configurações.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    setIsImporting(true);
+    if (!backupData.trim()) {
+      toast({
+        title: "Dados inválidos",
+        description: "Por favor, cole o JSON de backup.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
     try {
-      const fileContent = await selectedFile.text();
-      const backupData: BackupData = JSON.parse(fileContent);
-
-      // Validar arquivo
-      if (!await validateBackupFile(backupData)) {
-        throw new Error('Arquivo de backup inválido');
+      const parsedData = JSON.parse(backupData);
+      
+      if (!parsedData.data) {
+        throw new Error('Formato de backup inválido');
       }
 
       // Confirmar antes de importar
-      if (!showConfirmation) {
-        setShowConfirmation(true);
-        setIsImporting(false);
+      const confirmed = window.confirm(
+        'ATENÇÃO: Esta ação irá sobrescrever as configurações atuais. Tem certeza?'
+      );
+      
+      if (!confirmed) {
+        setLoading(false);
         return;
       }
 
-      // Importar dados (apenas configurações não sensíveis)
-      for (const [tableName, tableData] of Object.entries(backupData.data)) {
-        if (!Array.isArray(tableData) || tableData.length === 0) continue;
-
-        // Pular dados sensíveis mascarados
-        const filteredData = tableData.filter(item => {
-          if (tableName === 'api_keys') {
-            return item.key_value !== '***MASKED***';
+      // Importar cada tabela
+      for (const table of BACKUP_TABLES) {
+        if (parsedData.data[table] && Array.isArray(parsedData.data[table])) {
+          console.log(`Importando tabela: ${table}`);
+          
+          // Limpar tabela atual (exceto dados críticos)
+          if (table !== 'api_keys') {
+            await supabase.from(table as any).delete().neq('id', '00000000-0000-0000-0000-000000000000');
           }
-          if (tableName === 'system_settings') {
-            return item.value !== '***MASKED***';
+          
+          // Inserir novos dados
+          const { error } = await supabase
+            .from(table as any)
+            .insert(parsedData.data[table]);
+
+          if (error) {
+            console.error(`Erro ao importar ${table}:`, error);
           }
-          return true;
-        });
-
-        if (filteredData.length === 0) continue;
-
-        // Upsert dados
-        const { error } = await supabase
-          .from(tableName)
-          .upsert(filteredData, { onConflict: 'id' });
-
-        if (error) {
-          console.error(`Erro ao importar ${tableName}:`, error);
         }
       }
 
       toast({
-        title: "Restore Completo",
-        description: "Configurações restauradas com sucesso.",
+        title: "Importação concluída",
+        description: "Configurações restauradas com sucesso."
       });
 
-      setSelectedFile(null);
-      setShowConfirmation(false);
+      setBackupData('');
+
     } catch (error) {
-      console.error('Erro no restore:', error);
+      console.error('Erro na importação:', error);
       toast({
-        title: "Erro",
-        description: "Erro ao restaurar configurações.",
-        variant: "destructive",
+        title: "Erro na importação",
+        description: "Falha ao importar configurações. Verifique o formato do JSON.",
+        variant: "destructive"
       });
     } finally {
-      setIsImporting(false);
+      setLoading(false);
     }
   };
 
+  if (!hasRole('administrador')) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center">
+            <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Acesso Restrito</h3>
+            <p className="text-gray-600">
+              Apenas administradores podem acessar o sistema de backup e restore.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Export/Backup */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            <span>Backup de Configurações</span>
+            Exportar Configurações
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Exporte todas as configurações do sistema em um arquivo JSON.
-            Dados sensíveis como senhas e tokens serão mascarados.
+            Exporte todas as configurações do sistema para backup.
           </p>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <Database className="h-4 w-4 text-blue-500" />
-              <span>Configurações do Sistema</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <FileText className="h-4 w-4 text-green-500" />
-              <span>Templates de Notificação</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Shield className="h-4 w-4 text-purple-500" />
-              <span>Agentes IA (sem tokens)</span>
-            </div>
-          </div>
-
           <Button 
-            onClick={exportConfigurations}
-            disabled={isExporting}
+            onClick={exportConfigurations} 
+            disabled={loading}
             className="w-full"
           >
-            <Download className="h-4 w-4 mr-2" />
-            {isExporting ? 'Exportando...' : 'Exportar Configurações'}
+            {loading ? 'Exportando...' : 'Criar Backup'}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Import/Restore */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
+          <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            <span>Restore de Configurações</span>
+            Importar Configurações
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Alert>
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Atenção:</strong> Esta operação irá sobrescrever as configurações existentes.
-              Faça um backup antes de continuar.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-3">
-            <Label htmlFor="backup-file">Arquivo de Backup (JSON)</Label>
-            <Input
-              id="backup-file"
-              type="file"
-              accept=".json"
-              onChange={handleFileSelect}
+          <div className="space-y-2">
+            <Label htmlFor="backup-data">JSON de Backup</Label>
+            <Textarea
+              id="backup-data"
+              placeholder="Cole aqui o JSON de backup..."
+              value={backupData}
+              onChange={(e) => setBackupData(e.target.value)}
+              rows={10}
             />
           </div>
-
-          {selectedFile && (
-            <div className="bg-blue-50 p-3 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Arquivo selecionado:</strong> {selectedFile.name}
-              </p>
-              <p className="text-xs text-blue-600">
-                Tamanho: {(selectedFile.size / 1024).toFixed(2)} KB
-              </p>
+          
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-600" />
+              <span className="font-medium text-yellow-800">Atenção</span>
             </div>
-          )}
-
-          {showConfirmation && (
-            <Alert>
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>
-                Confirma a restauração das configurações? Esta ação não pode ser desfeita.
-              </AlertDescription>
-            </Alert>
-          )}
-
-          <div className="flex space-x-2">
-            {showConfirmation && (
-              <Button 
-                variant="outline"
-                onClick={() => {
-                  setShowConfirmation(false);
-                  setSelectedFile(null);
-                }}
-              >
-                Cancelar
-              </Button>
-            )}
-            <Button 
-              onClick={importConfigurations}
-              disabled={!selectedFile || isImporting}
-              variant={showConfirmation ? "destructive" : "default"}
-              className="flex-1"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {isImporting ? 'Restaurando...' : 
-               showConfirmation ? 'Confirmar Restore' : 'Restaurar Configurações'}
-            </Button>
+            <p className="text-sm text-yellow-700 mt-1">
+              Esta ação irá sobrescrever as configurações atuais. Faça um backup antes de prosseguir.
+            </p>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Informações sobre o Backup */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Informações do Backup</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-              <h4 className="font-medium mb-2">Dados Incluídos</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Configurações do sistema</li>
-                <li>• Templates de notificação</li>
-                <li>• Configuração de agentes IA</li>
-                <li>• Configurações de integrações</li>
-                <li>• Configurações do Google Calendar</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-medium mb-2">Dados Excluídos</h4>
-              <ul className="space-y-1 text-gray-600">
-                <li>• Leads e contratos</li>
-                <li>• Logs de atividades</li>
-                <li>• Dados de usuários</li>
-                <li>• Tokens e senhas (mascarados)</li>
-                <li>• Histórico de execuções</li>
-              </ul>
-            </div>
-          </div>
+          
+          <Button 
+            onClick={importConfigurations} 
+            disabled={loading || !backupData.trim()}
+            variant="destructive"
+            className="w-full"
+          >
+            {loading ? 'Importando...' : 'Restaurar Backup'}
+          </Button>
         </CardContent>
       </Card>
     </div>

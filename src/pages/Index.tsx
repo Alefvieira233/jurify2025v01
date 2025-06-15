@@ -28,16 +28,16 @@ const Index = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [initializationComplete, setInitializationComplete] = useState(false);
 
   // Debug logs
-  console.log('Index - Estado completo da autenticação:', { 
+  console.log('📊 Index - Estado completo:', { 
     user: user?.email, 
     profile: profile?.nome_completo, 
     authLoading: loading,
-    profileLoading,
     hasUser: !!user,
-    hasProfile: !!profile 
+    hasProfile: !!profile,
+    initializationComplete
   });
 
   useEffect(() => {
@@ -48,43 +48,48 @@ const Index = () => {
   }, [searchParams]);
 
   useEffect(() => {
-    // Controlar o loading do perfil separadamente
+    // Quando a autenticação estiver completa, inicializar
     if (!loading && user) {
-      console.log('Usuário carregado, aguardando perfil...');
-      // Dar um tempo para o perfil carregar
-      const timer = setTimeout(() => {
-        setProfileLoading(false);
-        console.log('Timeout do perfil atingido, continuando sem perfil se necessário');
-      }, 3000); // 3 segundos de timeout
+      console.log('🎯 Index - Usuário carregado, inicializando sistema...');
+      
+      // Timeout para garantir que não trave indefinidamente
+      const timeout = setTimeout(() => {
+        console.log('⏰ Index - Timeout de inicialização, continuando sem perfil');
+        setInitializationComplete(true);
+      }, 5000);
 
+      // Se perfil carregar antes do timeout, continuar imediatamente
       if (profile) {
-        console.log('Perfil carregado, limpando timeout');
-        clearTimeout(timer);
-        setProfileLoading(false);
+        console.log('✅ Index - Perfil disponível, sistema pronto');
+        clearTimeout(timeout);
+        setInitializationComplete(true);
       }
 
-      return () => clearTimeout(timer);
+      return () => clearTimeout(timeout);
     } else if (!loading && !user) {
-      setProfileLoading(false);
+      // Se não tiver usuário e não estiver carregando, é redirecionamento
+      console.log('🚫 Index - Sem usuário, será redirecionado');
+      setInitializationComplete(false);
     }
   }, [loading, user, profile]);
 
   useEffect(() => {
-    if (user && profile) {
-      console.log('Atualizando último acesso para:', user.email);
+    // Atualizar último acesso apenas quando tudo estiver pronto
+    if (user && profile && initializationComplete) {
+      console.log('📝 Index - Atualizando último acesso para:', user.email);
       supabase
         .from('profiles')
         .update({ data_ultimo_acesso: new Date().toISOString() })
         .eq('id', user.id)
         .then(({ error }) => {
           if (error) {
-            console.error('Erro ao atualizar último acesso:', error);
+            console.error('❌ Erro ao atualizar último acesso:', error);
           } else {
-            console.log('Último acesso atualizado com sucesso');
+            console.log('✅ Último acesso atualizado');
           }
         });
     }
-  }, [user, profile]);
+  }, [user, profile, initializationComplete]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab as ActiveTab);
@@ -212,24 +217,24 @@ const Index = () => {
 
   // Se ainda estiver carregando autenticação
   if (loading) {
-    console.log('Index - Auth ainda carregando');
+    console.log('🔄 Index - Auth ainda carregando');
     return <LoadingSpinner fullScreen text="Carregando sistema..." />;
   }
 
-  // Se não tiver usuário, não deveria chegar aqui (ProtectedRoute deveria interceptar)
+  // Se não tiver usuário, o ProtectedRoute deve interceptar
   if (!user) {
-    console.log('Index - Usuário não encontrado');
+    console.log('🚫 Index - Usuário não encontrado');
     return <LoadingSpinner fullScreen text="Redirecionando..." />;
   }
 
-  // Se tiver usuário mas ainda estiver carregando perfil (com timeout)
-  if (profileLoading) {
-    console.log('Index - Carregando perfil do usuário');
-    return <LoadingSpinner fullScreen text="Carregando perfil do usuário..." />;
+  // Se tiver usuário mas ainda não completou inicialização
+  if (!initializationComplete) {
+    console.log('🔄 Index - Finalizando inicialização...');
+    return <LoadingSpinner fullScreen text="Finalizando carregamento..." />;
   }
 
-  // Renderizar interface mesmo sem perfil (será criado automaticamente)
-  console.log('Index - Renderizando interface principal');
+  // Renderizar interface principal
+  console.log('✅ Index - Renderizando interface principal');
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <OnboardingFlow />

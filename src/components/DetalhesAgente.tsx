@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { X, Bot, Edit, Clock, MessageSquare, Tags, Target, Code, BarChart, Zap } from 'lucide-react';
+import { X, Bot, Edit, Clock, MessageSquare, Tags, Target, Code, BarChart, Zap, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 

@@ -8,6 +8,8 @@ interface QueryOptions {
   enabled?: boolean;
   refetchOnMount?: boolean;
   staleTime?: number;
+  retryCount?: number;
+  retryDelay?: number;
 }
 
 export const useSupabaseQuery = <T>(
@@ -15,7 +17,14 @@ export const useSupabaseQuery = <T>(
   queryFn: () => Promise<{ data: T[] | null; error: any }>,
   options: QueryOptions = {}
 ) => {
-  const { enabled = true, refetchOnMount = true, staleTime = 30000 } = options;
+  const { 
+    enabled = true, 
+    refetchOnMount = true, 
+    staleTime = 30000,
+    retryCount = 2,
+    retryDelay = 1000
+  } = options;
+  
   const { user } = useAuth();
   const { toast } = useToast();
   
@@ -23,11 +32,13 @@ export const useSupabaseQuery = <T>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number>(0);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   
   const abortControllerRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const executeQuery = useCallback(async () => {
+  const executeQuery = useCallback(async (isRetry = false) => {
     if (!user || !enabled) {
       setData([]);
       setLoading(false);
@@ -35,10 +46,13 @@ export const useSupabaseQuery = <T>(
       return;
     }
 
-    // Check cache validity
-    const now = Date.now();
-    if (!refetchOnMount && data.length > 0 && (now - lastFetch) < staleTime) {
-      return;
+    // Check cache validity (skip for retries)
+    if (!isRetry && !refetchOnMount && data.length > 0) {
+      const now = Date.now();
+      if ((now - lastFetch) < staleTime) {
+        console.log(`📋 [${queryKey}] Cache válido, usando dados em cache`);
+        return;
+      }
     }
 
     // Cancel previous request
@@ -46,13 +60,22 @@ export const useSupabaseQuery = <T>(
       abortControllerRef.current.abort();
     }
 
+    // Clear any existing timeouts
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
     abortControllerRef.current = new AbortController();
     
-    setLoading(true);
-    setError(null);
+    if (!isRetry) {
+      setLoading(true);
+      setError(null);
+      setRetryAttempt(0);
+    }
 
     try {
-      console.log(`🔄 [${queryKey}] Iniciando query...`);
+      console.log(`🔄 [${queryKey}] ${isRetry ? `Tentativa ${retryAttempt + 1}` : 'Iniciando query'}...`);
       const startTime = Date.now();
       
       const result = await queryFn();
@@ -67,7 +90,9 @@ export const useSupabaseQuery = <T>(
       }
 
       setData(result.data || []);
-      setLastFetch(now);
+      setLastFetch(Date.now());
+      setError(null);
+      setRetryAttempt(0);
       
     } catch (error: any) {
       if (!mountedRef.current) return;
@@ -75,22 +100,36 @@ export const useSupabaseQuery = <T>(
       console.error(`❌ [${queryKey}] Erro na query:`, error);
       
       if (error.name !== 'AbortError') {
+        // Retry logic
+        if (retryAttempt < retryCount) {
+          console.log(`🔄 [${queryKey}] Tentando novamente em ${retryDelay}ms (tentativa ${retryAttempt + 1}/${retryCount})`);
+          setRetryAttempt(prev => prev + 1);
+          
+          timeoutRef.current = setTimeout(() => {
+            if (mountedRef.current) {
+              executeQuery(true);
+            }
+          }, retryDelay);
+          return;
+        }
+
         const errorMessage = error.message || 'Erro ao carregar dados';
         setError(errorMessage);
         setData([]);
         
+        // Only show toast for final failure
         toast({
           title: 'Erro ao carregar dados',
-          description: errorMessage,
+          description: `${errorMessage} (após ${retryCount} tentativas)`,
           variant: 'destructive',
         });
       }
     } finally {
-      if (mountedRef.current) {
+      if (mountedRef.current && !isRetry) {
         setLoading(false);
       }
     }
-  }, [user, enabled, queryKey, queryFn, refetchOnMount, staleTime, data.length, lastFetch, toast]);
+  }, [user, enabled, queryKey, queryFn, refetchOnMount, staleTime, data.length, lastFetch, toast, retryCount, retryDelay, retryAttempt]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -101,19 +140,30 @@ export const useSupabaseQuery = <T>(
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
   }, [executeQuery]);
 
   const refetch = useCallback(() => {
     setLastFetch(0); // Force refetch
+    setRetryAttempt(0); // Reset retry count
     executeQuery();
   }, [executeQuery]);
+
+  const mutate = useCallback((newData: T[]) => {
+    setData(newData);
+    setLastFetch(Date.now());
+  }, []);
 
   return {
     data,
     loading,
     error,
     refetch,
-    isEmpty: !loading && data.length === 0,
+    mutate,
+    isEmpty: !loading && !error && data.length === 0,
+    isStale: (Date.now() - lastFetch) > staleTime,
   };
 };

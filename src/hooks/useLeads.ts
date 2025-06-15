@@ -14,11 +14,20 @@ export const useLeads = () => {
   const { toast } = useToast();
 
   const fetchLeadsQuery = useCallback(async () => {
-    console.log('🔍 Buscando leads...');
-    return await supabase
+    console.log('🔍 [useLeads] Buscando leads...');
+    
+    const { data, error } = await supabase
       .from('leads')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('❌ [useLeads] Erro ao buscar leads:', error);
+    } else {
+      console.log(`✅ [useLeads] ${data?.length || 0} leads encontrados`);
+    }
+
+    return { data, error };
   }, []);
 
   const {
@@ -26,10 +35,14 @@ export const useLeads = () => {
     loading,
     error,
     refetch: fetchLeads,
-    isEmpty
+    mutate: setLeads,
+    isEmpty,
+    isStale
   } = useSupabaseQuery<Lead>('leads', fetchLeadsQuery, {
     enabled: !!user,
-    staleTime: 10000
+    staleTime: 10000, // 10 seconds
+    retryCount: 3,
+    retryDelay: 1500
   });
 
   const createLead = useCallback(async (data: CreateLeadData): Promise<boolean> => {
@@ -43,68 +56,80 @@ export const useLeads = () => {
     }
 
     try {
-      console.log('🔄 Criando novo lead...');
-      const { error } = await supabase
+      console.log('🔄 [useLeads] Criando novo lead...');
+      const { data: newLead, error } = await supabase
         .from('leads')
-        .insert([data]);
+        .insert([data])
+        .select()
+        .single();
 
       if (error) throw error;
 
-      console.log('✅ Lead criado com sucesso');
+      console.log('✅ [useLeads] Lead criado com sucesso:', newLead.id);
+      
+      // Optimistic update
+      setLeads(prev => [newLead, ...prev]);
+      
       toast({
         title: 'Sucesso',
         description: 'Lead criado com sucesso!',
       });
 
-      await fetchLeads();
       return true;
     } catch (error: any) {
-      console.error('❌ Erro ao criar lead:', error);
+      console.error('❌ [useLeads] Erro ao criar lead:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível criar o lead.',
+        description: error.message || 'Não foi possível criar o lead.',
         variant: 'destructive',
       });
       return false;
     }
-  }, [user, toast, fetchLeads]);
+  }, [user, toast, setLeads]);
 
-  const updateLead = useCallback(async (id: string, data: Partial<Lead>): Promise<boolean> => {
+  const updateLead = useCallback(async (id: string, updateData: Partial<Lead>): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      console.log(`🔄 Atualizando lead ${id}...`);
-      const { error } = await supabase
+      console.log(`🔄 [useLeads] Atualizando lead ${id}...`);
+      const { data: updatedLead, error } = await supabase
         .from('leads')
-        .update({ ...data, updated_at: new Date().toISOString() })
-        .eq('id', id);
+        .update({ ...updateData, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) throw error;
 
-      console.log('✅ Lead atualizado com sucesso');
+      console.log('✅ [useLeads] Lead atualizado com sucesso');
+      
+      // Optimistic update
+      setLeads(prev => prev.map(lead => 
+        lead.id === id ? { ...lead, ...updatedLead } : lead
+      ));
+
       toast({
         title: 'Sucesso',
         description: 'Lead atualizado com sucesso!',
       });
 
-      await fetchLeads();
       return true;
     } catch (error: any) {
-      console.error('❌ Erro ao atualizar lead:', error);
+      console.error('❌ [useLeads] Erro ao atualizar lead:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível atualizar o lead.',
+        description: error.message || 'Não foi possível atualizar o lead.',
         variant: 'destructive',
       });
       return false;
     }
-  }, [user, toast, fetchLeads]);
+  }, [user, toast, setLeads]);
 
   const deleteLead = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      console.log(`🔄 Removendo lead ${id}...`);
+      console.log(`🔄 [useLeads] Removendo lead ${id}...`);
       const { error } = await supabase
         .from('leads')
         .delete()
@@ -112,24 +137,27 @@ export const useLeads = () => {
 
       if (error) throw error;
 
-      console.log('✅ Lead removido com sucesso');
+      console.log('✅ [useLeads] Lead removido com sucesso');
+      
+      // Optimistic update
+      setLeads(prev => prev.filter(lead => lead.id !== id));
+
       toast({
         title: 'Sucesso',
         description: 'Lead removido com sucesso!',
       });
 
-      await fetchLeads();
       return true;
     } catch (error: any) {
-      console.error('❌ Erro ao remover lead:', error);
+      console.error('❌ [useLeads] Erro ao remover lead:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível remover o lead.',
+        description: error.message || 'Não foi possível remover o lead.',
         variant: 'destructive',
       });
       return false;
     }
-  }, [user, toast, fetchLeads]);
+  }, [user, toast, setLeads]);
 
   const getLeadsByStatus = useCallback((status: string) => {
     return leads.filter(lead => lead.status === status);
@@ -144,6 +172,7 @@ export const useLeads = () => {
     loading,
     error,
     isEmpty,
+    isStale,
     fetchLeads,
     createLead,
     updateLead,

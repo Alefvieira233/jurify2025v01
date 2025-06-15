@@ -37,7 +37,7 @@ const TesteRealAgenteIA = () => {
   const [userInput, setUserInput] = useState('Como elaborar um contrato de prestação de serviços advocatícios?');
   const { toast } = useToast();
   const { logAgenteExecution, logError } = useLogActivity();
-  const { agentes } = useAgentesIA();
+  const { agentes, loading: agentesLoading } = useAgentesIA();
 
   const addLog = (level: ExecutionLog['level'], message: string) => {
     const newLog: ExecutionLog = {
@@ -71,7 +71,7 @@ const TesteRealAgenteIA = () => {
     const selectedAgent = agentes.find(a => a.id === selectedAgentId);
     
     addLog('info', '🤖 Iniciando execução REAL do Agente IA via N8N...');
-    addLog('info', `🎯 Agente selecionado: ${selectedAgent?.nome || 'Agente não encontrado'}`);
+    addLog('info', `🎯 Agente: ${selectedAgent?.nome || 'Desconhecido'}`);
     addLog('info', `📝 Input: "${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : ''}"`);
     addLog('info', '🔗 Chamando edge function n8n-webhook-forwarder...');
 
@@ -86,7 +86,7 @@ const TesteRealAgenteIA = () => {
       }
     };
 
-    addLog('info', `📦 Payload preparado: ${JSON.stringify(payload)}`);
+    addLog('info', `📦 Payload preparado com ${Object.keys(payload).length} propriedades`);
 
     try {
       addLog('info', '🚀 Enviando via Supabase Edge Function...');
@@ -98,7 +98,7 @@ const TesteRealAgenteIA = () => {
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      addLog('info', `⏱️ Tempo total de execução: ${duration}ms`);
+      addLog('info', `⏱️ Tempo total: ${duration}ms`);
 
       if (error) {
         throw new Error(`Edge Function Error: ${error.message}`);
@@ -108,7 +108,7 @@ const TesteRealAgenteIA = () => {
         throw new Error('Resposta vazia da edge function');
       }
 
-      addLog('info', `📥 Resposta da edge function recebida`);
+      addLog('info', `📥 Resposta recebida`);
       addLog('info', `✅ Status: ${data.success ? 'Sucesso' : 'Erro'}`);
       
       if (data.status) {
@@ -122,7 +122,6 @@ const TesteRealAgenteIA = () => {
       if (data.success && data.response) {
         addLog('success', '🎉 Resposta do agente IA recebida com sucesso!');
         
-        // Verificar se temos uma resposta de IA válida
         let aiResponse = '';
         if (typeof data.response === 'string') {
           aiResponse = data.response;
@@ -155,7 +154,6 @@ const TesteRealAgenteIA = () => {
         });
 
       } else {
-        // Erro na execução
         const errorMessage = data.error || 'Erro desconhecido na execução';
         addLog('error', `❌ Erro: ${errorMessage}`);
         
@@ -231,6 +229,22 @@ const TesteRealAgenteIA = () => {
     }
   };
 
+  if (agentesLoading) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-purple-200 bg-purple-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <Clock className="h-12 w-12 text-purple-400 mx-auto mb-4 animate-spin" />
+              <h3 className="text-lg font-medium text-purple-900 mb-2">Carregando Agentes IA</h3>
+              <p className="text-purple-700">Aguarde, carregando lista de agentes...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -259,7 +273,7 @@ const TesteRealAgenteIA = () => {
               </Button>
               <Button
                 onClick={executeRealTest}
-                disabled={isExecuting || !selectedAgentId || !userInput.trim()}
+                disabled={isExecuting || !selectedAgentId || !userInput.trim() || agentes.length === 0}
                 className="bg-purple-600 hover:bg-purple-700"
               >
                 {isExecuting ? (
@@ -284,7 +298,7 @@ const TesteRealAgenteIA = () => {
               <label className="block text-sm font-medium mb-2">Agente IA:</label>
               <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione um agente..." />
+                  <SelectValue placeholder={agentes.length === 0 ? "Nenhum agente disponível" : "Selecione um agente..."} />
                 </SelectTrigger>
                 <SelectContent>
                   {agentes.map((agente) => (
@@ -312,7 +326,9 @@ const TesteRealAgenteIA = () => {
                       <div className="text-gray-600">{agente.area_juridica}</div>
                       <div className="text-xs text-gray-500 mt-1">{agente.descricao_funcao}</div>
                     </div>
-                  ) : null;
+                  ) : (
+                    <div className="text-sm text-gray-500">Agente não encontrado</div>
+                  );
                 })()}
               </div>
             )}
@@ -330,12 +346,16 @@ const TesteRealAgenteIA = () => {
             />
           </div>
 
-          {/* Informação do Endpoint */}
+          {/* Informação do Sistema */}
           <div className="mt-4 p-3 bg-blue-50 rounded border">
             <div className="text-sm">
-              <div className="font-medium text-blue-900">🎯 Endpoint N8N de Produção:</div>
-              <div className="font-mono text-xs text-blue-700 break-all">
-                https://primary-production-adcb.up.railway.app/webhook/Agente%20Jurify
+              <div className="font-medium text-blue-900">🎯 Sistema de Produção:</div>
+              <div className="text-blue-700">Edge Function → N8N Webhook → OpenAI API → Resposta</div>
+              <div className="text-xs text-blue-600 mt-1">
+                {agentes.length === 0 
+                  ? "⚠️ Nenhum agente cadastrado. Crie um agente primeiro." 
+                  : `✅ ${agentes.length} agente(s) disponível(is)`
+                }
               </div>
             </div>
           </div>

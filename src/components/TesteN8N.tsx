@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { TestTube, Send, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { TestTube, Send, CheckCircle, XCircle, Loader2, AlertCircle, Info } from 'lucide-react';
 
 const TesteN8N = () => {
   const [isTestingN8N, setIsTestingN8N] = useState(false);
@@ -40,6 +40,9 @@ const TesteN8N = () => {
         body: testPayload
       });
 
+      console.log('📥 Resposta da função N8N:', data);
+      console.log('❌ Erro da função N8N:', error);
+
       if (error) throw error;
 
       setTestResult(data);
@@ -47,14 +50,18 @@ const TesteN8N = () => {
       toast({
         title: data.success ? 'Teste bem-sucedido!' : 'Teste falhou',
         description: data.success 
-          ? 'A comunicação com o N8N está funcionando corretamente' 
+          ? `A comunicação com o N8N está funcionando corretamente via ${data.webhook_url}` 
           : `Erro: ${data.error}`,
         variant: data.success ? 'default' : 'destructive',
       });
 
     } catch (error) {
       console.error('❌ Erro no teste N8N:', error);
-      const errorResult = { success: false, error: error.message };
+      const errorResult = { 
+        success: false, 
+        error: error.message,
+        details: error 
+      };
       setTestResult(errorResult);
       
       toast({
@@ -94,6 +101,9 @@ const TesteN8N = () => {
         }
       });
 
+      console.log('📥 Resposta da execução do agente:', data);
+      console.log('❌ Erro da execução do agente:', error);
+
       if (error) throw error;
 
       setAgentTestResult(data);
@@ -108,7 +118,11 @@ const TesteN8N = () => {
 
     } catch (error) {
       console.error('❌ Erro no teste do agente:', error);
-      const errorResult = { success: false, error: error.message };
+      const errorResult = { 
+        success: false, 
+        error: error.message,
+        details: error 
+      };
       setAgentTestResult(errorResult);
       
       toast({
@@ -129,6 +143,26 @@ const TesteN8N = () => {
           Teste a conectividade e funcionamento da integração com o webhook N8N
         </p>
       </div>
+
+      {/* Informações importantes */}
+      <Card className="border-blue-200 bg-blue-50">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-blue-900">
+            <Info className="h-5 w-5" />
+            URL do Webhook N8N Configurada
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            <p className="text-sm text-blue-800 font-mono break-all">
+              https://primary-production-adcb.up.railway.app/webhook/Agente Jurify
+            </p>
+            <p className="text-xs text-blue-700">
+              Este é o endpoint de produção que será usado para todos os testes e execuções de agentes IA.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Teste de Conectividade N8N */}
       <Card>
@@ -171,11 +205,32 @@ const TesteN8N = () => {
                 <Badge variant={testResult.success ? 'default' : 'destructive'}>
                   {testResult.success ? 'Sucesso' : 'Falha'}
                 </Badge>
+                {testResult.webhook_url && (
+                  <Badge variant="outline" className="text-xs">
+                    {testResult.webhook_url}
+                  </Badge>
+                )}
               </div>
               
+              {testResult.success && testResult.response && (
+                <div className="bg-green-50 p-3 rounded text-sm mb-3">
+                  <strong>Resposta do N8N:</strong>
+                  <pre className="mt-2 whitespace-pre-wrap text-xs">
+                    {JSON.stringify(testResult.response, null, 2)}
+                  </pre>
+                </div>
+              )}
+
+              {!testResult.success && (
+                <div className="bg-red-50 p-3 rounded text-sm mb-3">
+                  <strong>Erro:</strong>
+                  <p className="mt-1 text-red-800">{testResult.error}</p>
+                </div>
+              )}
+              
               <div className="bg-gray-50 p-3 rounded text-sm">
-                <strong>Resposta:</strong>
-                <pre className="mt-2 whitespace-pre-wrap">
+                <strong>Dados técnicos:</strong>
+                <pre className="mt-2 whitespace-pre-wrap text-xs">
                   {JSON.stringify(testResult, null, 2)}
                 </pre>
               </div>
@@ -249,6 +304,13 @@ const TesteN8N = () => {
                   <p className="mt-2">{agentTestResult.response}</p>
                 </div>
               )}
+
+              {!agentTestResult.success && (
+                <div className="bg-red-50 p-3 rounded text-sm mb-3">
+                  <strong>Erro:</strong>
+                  <p className="mt-1 text-red-800">{agentTestResult.error}</p>
+                </div>
+              )}
               
               <div className="bg-gray-50 p-3 rounded text-sm">
                 <strong>Dados técnicos:</strong>
@@ -268,6 +330,7 @@ const TesteN8N = () => {
           <li>• O segundo teste executa um agente IA completo via N8N</li>
           <li>• Se o N8N falhar, o sistema usa OpenAI como fallback automaticamente</li>
           <li>• Todos os testes são registrados nos logs de execução</li>
+          <li>• A URL de produção atual é: https://primary-production-adcb.up.railway.app/webhook/Agente Jurify</li>
         </ul>
       </div>
     </div>

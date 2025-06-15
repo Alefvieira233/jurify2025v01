@@ -71,7 +71,7 @@ serve(async (req) => {
     }
 
     const workflow = workflows[0];
-    console.log('🔧 Workflow encontrado:', workflow.nome);
+    console.log('🔧 Workflow encontrado:', workflow.nome, 'URL:', workflow.webhook_url);
 
     // Criar log de execução
     const { data: logData, error: logError } = await supabaseClient
@@ -105,11 +105,12 @@ serve(async (req) => {
     };
 
     console.log('🚀 Enviando para N8N:', workflow.webhook_url);
-    console.log('📄 Payload N8N:', n8nPayload);
+    console.log('📄 Payload N8N:', JSON.stringify(n8nPayload, null, 2));
 
     // Enviar para N8N
     const n8nHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
+      'User-Agent': 'Jurify-N8N-Integration/1.0',
     };
 
     // Adicionar API Key se configurada
@@ -129,12 +130,17 @@ serve(async (req) => {
 
       const responseText = await response.text();
       
+      console.log('📥 N8N Response Status:', response.status);
+      console.log('📥 N8N Response Headers:', Object.fromEntries(response.headers.entries()));
+      console.log('📥 N8N Response Body:', responseText);
+      
       if (response.ok) {
         console.log('✅ N8N Response OK:', response.status);
         try {
           n8nResponse = JSON.parse(responseText);
-        } catch {
-          n8nResponse = { message: responseText };
+        } catch (parseError) {
+          console.log('⚠️ Resposta não é JSON válido, tratando como texto');
+          n8nResponse = { message: responseText, raw_response: responseText };
         }
       } else {
         console.error('❌ N8N Response Error:', response.status, responseText);
@@ -170,7 +176,8 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false,
         error: n8nError,
-        log_id: logId
+        log_id: logId,
+        webhook_url: workflow.webhook_url
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -181,7 +188,8 @@ serve(async (req) => {
       success: true,
       response: n8nResponse,
       log_id: logId,
-      workflow_used: workflow.nome
+      workflow_used: workflow.nome,
+      webhook_url: workflow.webhook_url
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

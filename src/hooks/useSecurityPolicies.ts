@@ -66,7 +66,7 @@ export const useSecurityPolicies = () => {
       }
 
       // 2. Verificar RLS nas tabelas críticas
-      const criticalTables = ['profiles', 'agentes_ia', 'api_keys', 'logs_atividades'];
+      const criticalTables: ('profiles' | 'agentes_ia' | 'api_keys' | 'logs_atividades')[] = ['profiles', 'agentes_ia', 'api_keys', 'logs_atividades'];
       for (const table of criticalTables) {
         try {
           const { data, error } = await supabase

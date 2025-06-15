@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-interface LogAtividade {
+export interface LogAtividade {
   id: string;
   usuario_id: string;
   nome_usuario: string;
@@ -16,7 +16,7 @@ interface LogAtividade {
   detalhes_adicionais?: any;
 }
 
-interface FiltrosLog {
+export interface FiltrosLog {
   usuario_id?: string;
   tipo_acao?: string;
   modulo?: string;
@@ -44,7 +44,7 @@ export const useActivityLogs = () => {
         _limite: limite,
         _offset: offset,
         _usuario_id: filtros.usuario_id || null,
-        _tipo_acao: filtros.tipo_acao || null,
+        _tipo_acao: filtros.tipo_acao as 'criacao' | 'edicao' | 'exclusao' | 'login' | 'logout' | 'erro' | 'outro' || null,
         _modulo: filtros.modulo || null,
         _data_inicio: filtros.data_inicio ? new Date(filtros.data_inicio).toISOString() : null,
         _data_fim: filtros.data_fim ? new Date(filtros.data_fim).toISOString() : null
@@ -86,7 +86,7 @@ export const useActivityLogs = () => {
         _tipo_acao: tipo_acao,
         _modulo: modulo,
         _descricao: descricao,
-        _ip_usuario: 'client-side', // IP seria obtido do servidor
+        _ip_usuario: 'client-side',
         _detalhes_adicionais: detalhes_adicionais
       });
 
@@ -134,10 +134,10 @@ export const useActivityLogs = () => {
 
     try {
       const { data, error } = await supabase.rpc('buscar_logs_atividades', {
-        _limite: 10000, // Limite alto para exportação
+        _limite: 10000,
         _offset: 0,
         _usuario_id: filtros.usuario_id || null,
-        _tipo_acao: filtros.tipo_acao || null,
+        _tipo_acao: filtros.tipo_acao as 'criacao' | 'edicao' | 'exclusao' | 'login' | 'logout' | 'erro' | 'outro' || null,
         _modulo: filtros.modulo || null,
         _data_inicio: filtros.data_inicio ? new Date(filtros.data_inicio).toISOString() : null,
         _data_fim: filtros.data_fim ? new Date(filtros.data_fim).toISOString() : null
@@ -145,7 +145,6 @@ export const useActivityLogs = () => {
 
       if (error) throw error;
 
-      // Converter para CSV
       const headers = ['Data/Hora', 'Usuário', 'Tipo Ação', 'Módulo', 'Descrição', 'IP'];
       const csvContent = [
         headers.join(','),
@@ -159,7 +158,6 @@ export const useActivityLogs = () => {
         ].join(','))
       ].join('\n');
 
-      // Download do arquivo
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Server, Database, Shield, Activity, Lock, TestTube } from 'lucide-react';
+import { Server, Database, Shield, Activity, Lock, TestTube, Brain } from 'lucide-react';
 import BackupRestore from '../BackupRestore';
 import SystemStatus from '../SystemStatus';
 import PerformanceDashboard from '../PerformanceDashboard';
@@ -11,16 +11,17 @@ import AdminUserSection from './AdminUserSection';
 import SystemHealthCheck from '../SystemHealthCheck';
 import SecurityDashboard from '../SecurityDashboard';
 import TesteN8NProducao from '../TesteN8NProducao';
+import TesteRealAgenteIA from '../TesteRealAgenteIA';
 
 const SistemaSection = () => {
   return (
     <div className="space-y-6">
-      {/* System Health Check - Nova seção */}
+      {/* System Health Check */}
       <SystemHealthCheck />
 
-      {/* Existing tabs */}
+      {/* Main tabs */}
       <Tabs defaultValue="status" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="status" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Status
@@ -28,6 +29,10 @@ const SistemaSection = () => {
           <TabsTrigger value="security" className="flex items-center gap-2">
             <Lock className="h-4 w-4" />
             Segurança
+          </TabsTrigger>
+          <TabsTrigger value="teste-agente" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            Teste Agente
           </TabsTrigger>
           <TabsTrigger value="teste-n8n" className="flex items-center gap-2">
             <TestTube className="h-4 w-4" />
@@ -57,6 +62,10 @@ const SistemaSection = () => {
 
         <TabsContent value="security">
           <SecurityDashboard />
+        </TabsContent>
+
+        <TabsContent value="teste-agente">
+          <TesteRealAgenteIA />
         </TabsContent>
 
         <TabsContent value="teste-n8n">

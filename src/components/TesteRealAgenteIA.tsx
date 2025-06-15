@@ -72,7 +72,7 @@ const TesteRealAgenteIA = () => {
     
     addLog('info', '🤖 Iniciando execução REAL do Agente IA via N8N...');
     addLog('info', `🎯 Agente selecionado: ${selectedAgent?.nome || 'Agente não encontrado'}`);
-    addLog('info', `📝 Input: "${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : '}"`);
+    addLog('info', `📝 Input: "${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : ''}"`);
     addLog('info', '🔗 Chamando edge function n8n-webhook-forwarder...');
 
     const payload = {

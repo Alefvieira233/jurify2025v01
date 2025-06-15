@@ -30,7 +30,7 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
   const { signOut, profile, user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // MENU LIBERADO: Todos os itens disponíveis para qualquer usuário autenticado
+  // 🔓 ACESSO TOTAL: Todos os itens disponíveis para qualquer usuário autenticado
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'leads', label: 'Leads', icon: Users },
@@ -125,12 +125,12 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
         <div className="flex items-center space-x-3 mb-3">
           <div className="w-8 h-8 bg-amber-500 rounded-full flex items-center justify-center">
             <span className="text-sm font-semibold text-white">
-              {profile?.nome_completo?.charAt(0) || 'U'}
+              {profile?.nome_completo?.charAt(0) || user?.email?.charAt(0) || 'U'}
             </span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-white truncate">
-              {profile?.nome_completo || 'Usuário'}
+              {profile?.nome_completo || user?.email || 'Usuário'}
             </p>
             <p className="text-xs text-slate-400 truncate">
               Acesso Total

@@ -9,7 +9,7 @@ import NotificacoesSection from './configuracoes/NotificacoesSection';
 import SistemaSection from './configuracoes/SistemaSection';
 
 const ConfiguracoesGerais = () => {
-  // ACESSO LIBERADO: Qualquer usuário pode acessar configurações
+  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode acessar configurações
   return (
     <div className="space-y-6">
       <div>

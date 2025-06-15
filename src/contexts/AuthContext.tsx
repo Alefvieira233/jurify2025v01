@@ -111,7 +111,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setProfile(profileData);
       }
 
-      // Buscar roles
+      // Buscar roles (opcional, não bloqueia acesso)
       console.log('🔍 Buscando roles do usuário...');
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
@@ -121,26 +121,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (rolesError) {
         console.error('❌ Erro ao buscar roles:', rolesError);
-        
-        // Se não encontrar roles, atribuir role padrão
-        console.log('📝 Roles não encontradas, criando role padrão...');
-        const { data: newRole, error: insertRoleError } = await supabase
-          .from('user_roles')
-          .insert({
-            user_id: userId,
-            role: 'administrador', // Todos são administradores agora
-            ativo: true
-          })
-          .select()
-          .single();
-        
-        if (!insertRoleError && newRole) {
-          console.log('✅ Role padrão criada:', newRole);
-          setUserRoles([newRole]);
-        } else {
-          console.error('❌ Erro ao criar role padrão:', insertRoleError);
-          throw new Error('Falha ao configurar permissões do usuário');
-        }
+        setUserRoles([]);
       } else {
         console.log('✅ Roles encontradas:', rolesData);
         setUserRoles(rolesData || []);
@@ -157,12 +138,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // PERMISSÕES LIBERADAS: Qualquer usuário autenticado tem acesso total
+  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado tem todas as permissões
   const hasPermission = (module: string, permission: string): boolean => {
     return !!user; // Apenas verificar se está autenticado
   };
 
-  // ROLES LIBERADAS: Qualquer usuário autenticado é considerado admin
+  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado tem qualquer role
   const hasRole = (role: string): boolean => {
     return !!user; // Qualquer usuário autenticado tem qualquer role
   };

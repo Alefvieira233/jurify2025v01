@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreHorizontal, Edit, Trash, UserPlus, Shield } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Edit, Trash, UserPlus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import NovoUsuarioForm from './NovoUsuarioForm';
@@ -32,7 +32,7 @@ interface Usuario {
 }
 
 const UsuariosManager = () => {
-  const { user } = useAuth(); // Removido hasRole
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -41,7 +41,7 @@ const UsuariosManager = () => {
   const [isEditarUsuarioOpen, setIsEditarUsuarioOpen] = useState(false);
   const [isPermissoesOpen, setIsPermissoesOpen] = useState(false);
 
-  // ACESSO LIBERADO: Qualquer usuário autenticado pode gerenciar usuários
+  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode gerenciar usuários
   const canManageUsers = !!user;
 
   const { data: usuarios = [], isLoading } = useQuery({
@@ -51,7 +51,7 @@ const UsuariosManager = () => {
         .from('profiles')
         .select(`
           *,
-          user_roles!inner(
+          user_roles(
             role,
             ativo
           )
@@ -116,22 +116,6 @@ const UsuariosManager = () => {
     };
     return labels[role as keyof typeof labels] || role;
   };
-
-  if (!canManageUsers) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar o gerenciamento de usuários.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 space-y-6">

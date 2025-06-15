@@ -113,7 +113,7 @@ const Index = () => {
   };
 
   const renderContent = () => {
-    // PERMISSÕES LIBERADAS: Qualquer usuário autenticado pode acessar qualquer seção
+    // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode acessar qualquer seção
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;

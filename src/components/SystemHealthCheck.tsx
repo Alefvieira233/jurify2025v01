@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -46,11 +45,12 @@ const SystemHealthCheck = () => {
         });
       }
 
-      // 2. Verificar RLS (Row Level Security)
+      // 2. Verificar RLS (Row Level Security) - usando função válida
       try {
-        const { data: rlsCheck } = await supabase
-          .rpc('pg_get_userbyid', { user_id: 1 })
-          .single();
+        const { data: rlsCheck } = await supabase.rpc('has_role', { 
+          _user_id: '00000000-0000-0000-0000-000000000000',
+          _role: 'admin' 
+        });
         
         checks.push({
           component: 'Row Level Security',

@@ -112,7 +112,7 @@ export const useSecurityPolicies = () => {
   };
 
   const logSecurityEvent = async (
-    eventType: 'access_granted' | 'access_denied' | 'suspicious_activity',
+    eventType: 'outro',
     description: string,
     metadata?: any
   ) => {
@@ -122,7 +122,7 @@ export const useSecurityPolicies = () => {
       await supabase.rpc('registrar_log_atividade', {
         _usuario_id: user.id,
         _nome_usuario: user.email || 'Usuário',
-        _tipo_acao: 'security',
+        _tipo_acao: eventType,
         _modulo: 'Security',
         _descricao: `${eventType}: ${description}`,
         _detalhes_adicionais: metadata ? JSON.stringify(metadata) : null,

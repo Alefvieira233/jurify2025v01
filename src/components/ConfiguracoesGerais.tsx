@@ -2,35 +2,14 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Plug, Users, Bell, Server, Shield } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { Settings, Plug, Users, Bell, Server } from 'lucide-react';
 import IntegracoesSection from './configuracoes/IntegracoesSection';
 import UsuariosPermissoesSection from './configuracoes/UsuariosPermissoesSection';
 import NotificacoesSection from './configuracoes/NotificacoesSection';
 import SistemaSection from './configuracoes/SistemaSection';
 
 const ConfiguracoesGerais = () => {
-  const { hasRole } = useAuth();
-  const isAdmin = hasRole('administrador');
-
-  if (!isAdmin) {
-    return (
-      <div className="p-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="text-center">
-              <Shield className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">
-                Apenas administradores podem acessar as configurações gerais do sistema.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // ACESSO LIBERADO: Qualquer usuário pode acessar configurações
   return (
     <div className="space-y-6">
       <div>

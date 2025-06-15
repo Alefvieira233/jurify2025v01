@@ -27,9 +27,10 @@ interface SidebarProps {
 }
 
 const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
-  const { signOut, profile, hasRole, user } = useAuth();
+  const { signOut, profile, user } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // MENU LIBERADO: Todos os itens disponíveis para qualquer usuário autenticado
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'leads', label: 'Leads', icon: Users },
@@ -40,11 +41,9 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'agentes', label: 'Agentes IA', icon: Bot },
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3 },
     { id: 'notificacoes', label: 'Notificações', icon: Bell },
-    ...(hasRole('administrador') ? [
-      { id: 'logs', label: 'Logs de Atividades', icon: Activity },
-      { id: 'usuarios', label: 'Usuários', icon: UserCog },
-      { id: 'integracoes', label: 'Integrações', icon: Zap }
-    ] : []),
+    { id: 'logs', label: 'Logs de Atividades', icon: Activity },
+    { id: 'usuarios', label: 'Usuários', icon: UserCog },
+    { id: 'integracoes', label: 'Integrações', icon: Zap },
     { id: 'configuracoes', label: 'Configurações', icon: Settings },
   ];
 
@@ -134,7 +133,7 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
               {profile?.nome_completo || 'Usuário'}
             </p>
             <p className="text-xs text-slate-400 truncate">
-              {profile?.cargo || 'Cargo não definido'}
+              Acesso Total
             </p>
           </div>
         </div>

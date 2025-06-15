@@ -14,7 +14,7 @@ const BackupRestore = () => {
   const [loading, setLoading] = useState(false);
   const [backupData, setBackupData] = useState('');
   const { toast } = useToast();
-  const { hasRole } = useAuth();
+  const { user } = useAuth(); // Removido hasRole
 
   // Lista de tabelas para backup (apenas as necessárias)
   const BACKUP_TABLES = [
@@ -27,10 +27,11 @@ const BackupRestore = () => {
   ];
 
   const exportConfigurations = async () => {
-    if (!hasRole('administrador')) {
+    // ACESSO LIBERADO: Qualquer usuário autenticado pode fazer backup
+    if (!user) {
       toast({
         title: "Acesso negado",
-        description: "Apenas administradores podem exportar configurações.",
+        description: "Você precisa estar logado para exportar configurações.",
         variant: "destructive"
       });
       return;
@@ -97,10 +98,11 @@ const BackupRestore = () => {
   };
 
   const importConfigurations = async () => {
-    if (!hasRole('administrador')) {
+    // ACESSO LIBERADO: Qualquer usuário autenticado pode fazer restore
+    if (!user) {
       toast({
         title: "Acesso negado", 
-        description: "Apenas administradores podem importar configurações.",
+        description: "Você precisa estar logado para importar configurações.",
         variant: "destructive"
       });
       return;
@@ -173,22 +175,7 @@ const BackupRestore = () => {
     }
   };
 
-  if (!hasRole('administrador')) {
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="text-center">
-            <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Acesso Restrito</h3>
-            <p className="text-gray-600">
-              Apenas administradores podem acessar o sistema de backup e restore.
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
+  // ACESSO LIBERADO: Qualquer usuário pode acessar backup/restore
   return (
     <div className="space-y-6">
       <Card>
@@ -232,22 +219,24 @@ const BackupRestore = () => {
           </div>
           
           <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-600" />
-              <span className="font-medium text-yellow-800">Atenção</span>
+            <div className="flex items-start">
+              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3" />
+              <div>
+                <h4 className="text-sm font-medium text-yellow-800">Atenção</h4>
+                <p className="text-sm text-yellow-700 mt-1">
+                  A importação irá sobrescrever as configurações atuais. Certifique-se de ter um backup antes de prosseguir.
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-yellow-700 mt-1">
-              Esta ação irá sobrescrever as configurações atuais. Faça um backup antes de prosseguir.
-            </p>
           </div>
-          
+
           <Button 
             onClick={importConfigurations} 
             disabled={loading || !backupData.trim()}
-            variant="destructive"
             className="w-full"
+            variant="destructive"
           >
-            {loading ? 'Importando...' : 'Restaurar Backup'}
+            {loading ? 'Importando...' : 'Restaurar Configurações'}
           </Button>
         </CardContent>
       </Card>

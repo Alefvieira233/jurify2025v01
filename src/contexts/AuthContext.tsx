@@ -128,7 +128,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           .from('user_roles')
           .insert({
             user_id: userId,
-            role: 'suporte',
+            role: 'administrador', // Todos são administradores agora
             ativo: true
           })
           .select()
@@ -157,18 +157,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // PERMISSÕES LIBERADAS: Qualquer usuário autenticado tem acesso total
   const hasPermission = (module: string, permission: string): boolean => {
-    if (!user || !userRoles.length) return false;
-    
-    // Admins têm acesso total
-    if (userRoles.some(role => role.role === 'administrador')) return true;
-    
-    // Implementar verificação de permissões baseada nas roles
-    return userRoles.length > 0;
+    return !!user; // Apenas verificar se está autenticado
   };
 
+  // ROLES LIBERADAS: Qualquer usuário autenticado é considerado admin
   const hasRole = (role: string): boolean => {
-    return userRoles.some(userRole => userRole.role === role);
+    return !!user; // Qualquer usuário autenticado tem qualquer role
   };
 
   const signIn = async (email: string, password: string) => {

@@ -24,7 +24,7 @@ import { useSearchParams } from "react-router-dom";
 type ActiveTab = 'dashboard' | 'leads' | 'pipeline' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'agentes' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs' | 'integracoes';
 
 const Index = () => {
-  const { user, profile, signOut, hasPermission, loading } = useAuth();
+  const { user, profile, signOut, loading } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
@@ -113,99 +113,30 @@ const Index = () => {
   };
 
   const renderContent = () => {
+    // PERMISSÕES LIBERADAS: Qualquer usuário autenticado pode acessar qualquer seção
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
       case 'leads':
-        return hasPermission('leads', 'read') ? <LeadsPanel /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <LeadsPanel />;
       case 'pipeline':
-        return hasPermission('leads', 'read') ? <PipelineJuridico /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <PipelineJuridico />;
       case 'agendamentos':
-        return hasPermission('agendamentos', 'read') ? <AgendamentosManager /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <AgendamentosManager />;
       case 'contratos':
-        return hasPermission('contratos', 'read') ? <ContratosManager /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <ContratosManager />;
       case 'relatorios':
-        return hasPermission('relatorios', 'read') ? <RelatoriosGerenciais /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <RelatoriosGerenciais />;
       case 'whatsapp':
-        return hasPermission('whatsapp_ia', 'read') ? <WhatsAppIA /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <WhatsAppIA />;
       case 'agentes':
-        return hasPermission('whatsapp_ia', 'read') ? <AgentesIAManager /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <AgentesIAManager />;
       case 'usuarios':
-        return hasPermission('usuarios', 'read') ? <UsuariosManager /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <UsuariosManager />;
       case 'logs':
-        return hasPermission('usuarios', 'read') ? <LogsPanel /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <LogsPanel />;
       case 'integracoes':
-        return hasPermission('usuarios', 'read') ? <IntegracoesConfig /> : (
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
-              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
-            </div>
-          </div>
-        );
+        return <IntegracoesConfig />;
       case 'configuracoes':
         return <ConfiguracoesGerais />;
       case 'notificacoes':

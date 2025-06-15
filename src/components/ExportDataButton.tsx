@@ -7,7 +7,7 @@ import { Download, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface ExportDataButtonProps {
-  table: string;
+  table: 'leads' | 'agendamentos' | 'contratos' | 'profiles' | 'user_roles' | 'logs_atividades';
   filename?: string;
   className?: string;
 }
@@ -34,7 +34,10 @@ const ExportDataButton = ({ table, filename, className }: ExportDataButtonProps)
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro na consulta:', error);
+        throw error;
+      }
 
       if (!data || data.length === 0) {
         toast({

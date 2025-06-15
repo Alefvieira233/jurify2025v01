@@ -66,22 +66,74 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data: profileData } = await supabase
+      console.log('Buscando perfil para usuário:', userId);
+      
+      // Buscar perfil sem RLS problemático
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      const { data: rolesData } = await supabase
+      if (profileError) {
+        console.error('Erro ao buscar perfil:', profileError);
+        // Se não encontrar perfil, criar um básico
+        if (profileError.code === 'PGRST116') {
+          const { data: userData } = await supabase.auth.getUser();
+          if (userData.user) {
+            const { data: newProfile, error: createError } = await supabase
+              .from('profiles')
+              .insert({
+                id: userId,
+                nome_completo: userData.user.email || 'Usuário',
+                email: userData.user.email || '',
+                ativo: true
+              })
+              .select()
+              .single();
+            
+            if (!createError && newProfile) {
+              setProfile(newProfile);
+            }
+          }
+        }
+      } else {
+        setProfile(profileData);
+      }
+
+      // Buscar roles de forma simplificada para evitar recursão
+      const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
         .eq('user_id', userId)
         .eq('ativo', true);
 
-      setProfile(profileData);
-      setUserRoles(rolesData || []);
+      if (rolesError) {
+        console.error('Erro ao buscar roles:', rolesError);
+        // Se não encontrar roles, atribuir role padrão
+        const { error: insertRoleError } = await supabase
+          .from('user_roles')
+          .insert({
+            user_id: userId,
+            role: 'suporte',
+            ativo: true
+          });
+        
+        if (!insertRoleError) {
+          setUserRoles([{ 
+            id: '', 
+            user_id: userId, 
+            role: 'suporte', 
+            ativo: true, 
+            created_at: new Date().toISOString(), 
+            updated_at: new Date().toISOString() 
+          }]);
+        }
+      } else {
+        setUserRoles(rolesData || []);
+      }
     } catch (error) {
-      console.error('Erro ao buscar perfil:', error);
+      console.error('Erro geral ao buscar perfil:', error);
     }
   };
 
@@ -116,15 +168,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (error) throw error;
 
-      if (data.user) {
-        setUser(data.user);
-        await fetchProfile(data.user.id);
-        // Registrar log de login após sucesso - usar setTimeout para evitar problemas de estado
-        setTimeout(() => {
-          logActivity('login', `Usuário ${data.user.email} fez login`);
-        }, 1000);
-      }
-
+      // Não precisa fazer mais nada aqui, o onAuthStateChange vai lidar com o resto
       return { user: data.user, error: null };
     } catch (error: any) {
       console.error('Erro no login:', error);
@@ -162,6 +206,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       setUser(null);
       setProfile(null);
+      setUserRoles([]);
     } catch (error) {
       console.error('Erro no logout:', error);
       throw error;
@@ -169,37 +214,60 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state changed:', event, session?.user?.email);
+        
+        if (!mounted) return;
+
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Usar setTimeout para evitar bloqueio do callback
           setTimeout(() => {
-            fetchProfile(session.user.id);
+            if (mounted) {
+              fetchProfile(session.user.id).finally(() => {
+                if (mounted) {
+                  setLoading(false);
+                }
+              });
+            }
           }, 0);
         } else {
           setProfile(null);
           setUserRoles([]);
+          setLoading(false);
         }
-        
-        setLoading(false);
       }
     );
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
+      console.log('Session inicial:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id).finally(() => {
+          if (mounted) {
+            setLoading(false);
+          }
+        });
+      } else {
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value: AuthContextType = {

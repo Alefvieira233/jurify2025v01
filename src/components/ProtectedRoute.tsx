@@ -11,14 +11,23 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
+  console.log('ProtectedRoute - State:', { 
+    hasUser: !!user, 
+    userEmail: user?.email,
+    loading 
+  });
+
   if (loading) {
+    console.log('ProtectedRoute - Loading, showing spinner');
     return <LoadingSpinner fullScreen text="Verificando autenticação..." />;
   }
 
   if (!user) {
+    console.log('ProtectedRoute - No user, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
+  console.log('ProtectedRoute - User authenticated, rendering children');
   return <>{children}</>;
 };
 

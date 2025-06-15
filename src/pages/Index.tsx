@@ -23,10 +23,19 @@ import { useSearchParams } from "react-router-dom";
 type ActiveTab = 'dashboard' | 'leads' | 'pipeline' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'agentes' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs' | 'integracoes';
 
 const Index = () => {
-  const { user, profile, signOut, hasPermission } = useAuth();
+  const { user, profile, signOut, hasPermission, loading } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+
+  // Debug logs
+  console.log('Index - Auth state:', { 
+    user: user?.email, 
+    profile: profile?.nome_completo, 
+    loading,
+    hasUser: !!user,
+    hasProfile: !!profile 
+  });
 
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
@@ -37,12 +46,17 @@ const Index = () => {
 
   useEffect(() => {
     if (user && profile) {
+      console.log('Atualizando último acesso para:', user.email);
       supabase
         .from('profiles')
         .update({ data_ultimo_acesso: new Date().toISOString() })
         .eq('id', user.id)
-        .then(() => {
-          console.log('Last access updated');
+        .then(({ error }) => {
+          if (error) {
+            console.error('Erro ao atualizar último acesso:', error);
+          } else {
+            console.log('Último acesso atualizado com sucesso');
+          }
         });
     }
   }, [user, profile]);
@@ -171,10 +185,25 @@ const Index = () => {
     }
   };
 
-  if (!user || !profile) {
+  // Se ainda estiver carregando, mostrar spinner
+  if (loading) {
+    console.log('Index - Showing loading spinner');
     return <LoadingSpinner fullScreen text="Carregando sistema..." />;
   }
 
+  // Se não tiver usuário, não deveria chegar aqui (ProtectedRoute deveria interceptar)
+  if (!user) {
+    console.log('Index - No user found, this should not happen');
+    return <LoadingSpinner fullScreen text="Redirecionando..." />;
+  }
+
+  // Se tiver usuário mas não tiver perfil, mostrar carregando
+  if (!profile) {
+    console.log('Index - User found but no profile yet');
+    return <LoadingSpinner fullScreen text="Carregando perfil do usuário..." />;
+  }
+
+  console.log('Index - Rendering main interface');
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <Sidebar 

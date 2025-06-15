@@ -2,11 +2,12 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Plug, Users, Bell, Server } from 'lucide-react';
+import { Settings, Plug, Users, Bell, Server, TestTube } from 'lucide-react';
 import IntegracoesSection from './configuracoes/IntegracoesSection';
 import UsuariosPermissoesSection from './configuracoes/UsuariosPermissoesSection';
 import NotificacoesSection from './configuracoes/NotificacoesSection';
 import SistemaSection from './configuracoes/SistemaSection';
+import TesteN8N from './TesteN8N';
 
 const ConfiguracoesGerais = () => {
   // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode acessar configurações
@@ -20,7 +21,7 @@ const ConfiguracoesGerais = () => {
       </div>
 
       <Tabs defaultValue="integracoes" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="integracoes" className="flex items-center gap-2">
             <Plug className="h-4 w-4" />
             Integrações
@@ -36,6 +37,10 @@ const ConfiguracoesGerais = () => {
           <TabsTrigger value="sistema" className="flex items-center gap-2">
             <Server className="h-4 w-4" />
             Sistema
+          </TabsTrigger>
+          <TabsTrigger value="teste-n8n" className="flex items-center gap-2">
+            <TestTube className="h-4 w-4" />
+            Teste N8N
           </TabsTrigger>
         </TabsList>
 
@@ -53,6 +58,10 @@ const ConfiguracoesGerais = () => {
 
         <TabsContent value="sistema">
           <SistemaSection />
+        </TabsContent>
+
+        <TabsContent value="teste-n8n">
+          <TesteN8N />
         </TabsContent>
       </Tabs>
     </div>

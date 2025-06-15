@@ -527,6 +527,10 @@ export type Database = {
           erro_detalhes: string | null
           id: string
           input_recebido: string
+          n8n_error: string | null
+          n8n_response: Json | null
+          n8n_status: string | null
+          n8n_webhook_url: string | null
           resposta_ia: string | null
           status: string
           tempo_execucao: number | null
@@ -538,6 +542,10 @@ export type Database = {
           erro_detalhes?: string | null
           id?: string
           input_recebido: string
+          n8n_error?: string | null
+          n8n_response?: Json | null
+          n8n_status?: string | null
+          n8n_webhook_url?: string | null
           resposta_ia?: string | null
           status?: string
           tempo_execucao?: number | null
@@ -549,6 +557,10 @@ export type Database = {
           erro_detalhes?: string | null
           id?: string
           input_recebido?: string
+          n8n_error?: string | null
+          n8n_response?: Json | null
+          n8n_status?: string | null
+          n8n_webhook_url?: string | null
           resposta_ia?: string | null
           status?: string
           tempo_execucao?: number | null
@@ -569,6 +581,48 @@ export type Database = {
             referencedColumns: ["agente_id"]
           },
         ]
+      }
+      n8n_workflows: {
+        Row: {
+          api_key: string | null
+          ativo: boolean | null
+          created_at: string
+          created_by: string | null
+          descricao: string | null
+          id: string
+          nome: string
+          parametros_config: Json | null
+          tipo_workflow: string | null
+          updated_at: string
+          webhook_url: string
+        }
+        Insert: {
+          api_key?: string | null
+          ativo?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome: string
+          parametros_config?: Json | null
+          tipo_workflow?: string | null
+          updated_at?: string
+          webhook_url: string
+        }
+        Update: {
+          api_key?: string | null
+          ativo?: boolean | null
+          created_at?: string
+          created_by?: string | null
+          descricao?: string | null
+          id?: string
+          nome?: string
+          parametros_config?: Json | null
+          tipo_workflow?: string | null
+          updated_at?: string
+          webhook_url?: string
+        }
+        Relationships: []
       }
       notificacoes: {
         Row: {

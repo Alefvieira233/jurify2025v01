@@ -5,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
-import { Eye, EyeOff, Plug, Calendar, FileSignature, MessageSquare, Bot } from 'lucide-react';
+import { Eye, EyeOff, Plug, Calendar, FileSignature, MessageSquare, Bot, Zap } from 'lucide-react';
 import { useSystemSettings } from '@/hooks/useSystemSettings';
+import N8NSection from './N8NSection';
 
 const IntegracoesSection = () => {
   const { getSettingsByCategory, updateSetting, isUpdating, getSettingValue } = useSystemSettings();
@@ -71,6 +72,22 @@ const IntegracoesSection = () => {
 
   return (
     <div className="space-y-6">
+      {/* N8N Integration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Zap className="h-5 w-5 text-purple-600" />
+            N8N Workflows
+          </CardTitle>
+          <CardDescription>
+            Configure integrações N8N para automação avançada de agentes IA
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <N8NSection />
+        </CardContent>
+      </Card>
+
       {/* Google Calendar */}
       <Card>
         <CardHeader>

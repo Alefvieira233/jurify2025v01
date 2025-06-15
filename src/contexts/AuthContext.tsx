@@ -4,13 +4,23 @@ import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
+interface Profile {
+  id: string;
+  nome_completo: string;
+  email: string;
+  role?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  profile: Profile | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, userData?: any) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   loading: boolean;
+  hasRole: (role: string) => boolean;
+  hasPermission: (module: string, permission: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -26,6 +36,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -106,6 +117,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     return { isStrong, requirements, score };
   };
 
+  // Helper functions for permissions
+  const hasRole = (role: string) => {
+    return profile?.role === role || false;
+  };
+
+  const hasPermission = (module: string, permission: string) => {
+    // Para simplificar, vamos permitir acesso total para usuários autenticados
+    return !!user;
+  };
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Erro ao buscar perfil:', error);
+        return;
+      }
+
+      setProfile(data);
+    } catch (error) {
+      console.error('Erro ao buscar perfil:', error);
+    }
+  };
+
   useEffect(() => {
     const getSession = async () => {
       setLoading(true);
@@ -113,6 +153,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        }
       } catch (error) {
         console.error('Erro ao obter sessão:', error);
       } finally {
@@ -127,6 +171,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setSession(session);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
 
         if (event === 'SIGNED_IN') {
           await logSecurityEvent('login', 'Usuário fez login no sistema');
@@ -199,10 +249,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const value = {
     user,
     session,
+    profile,
     signIn,
     signUp,
     signOut,
     loading,
+    hasRole,
+    hasPermission,
   };
 
   return (

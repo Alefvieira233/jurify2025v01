@@ -1,70 +1,58 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useLogActivity } from '@/hooks/useLogActivity';
+import { useSupabaseQuery } from './useSupabaseQuery';
 import type { Database } from '@/integrations/supabase/types';
 
 export type AgenteIA = Database['public']['Tables']['agentes_ia']['Row'];
 export type CreateAgenteData = Database['public']['Tables']['agentes_ia']['Insert'];
 
 export const useAgentesIA = () => {
-  const [agentes, setAgentes] = useState<AgenteIA[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
   const { logAgenteCreated, logAgenteUpdated, logAgenteExecution, logError } = useLogActivity();
 
-  const fetchAgentes = useCallback(async () => {
+  const fetchAgentesQuery = useCallback(async () => {
+    console.log('🔍 Buscando agentes IA...');
+    return await supabase
+      .from('agentes_ia')
+      .select('*')
+      .order('created_at', { ascending: false });
+  }, []);
+
+  const {
+    data: agentes,
+    loading,
+    error,
+    refetch: fetchAgentes,
+    isEmpty
+  } = useSupabaseQuery<AgenteIA>('agentes_ia', fetchAgentesQuery, {
+    enabled: !!user,
+    staleTime: 15000
+  });
+
+  const createAgente = useCallback(async (data: CreateAgenteData): Promise<boolean> => {
     if (!user) {
-      setAgentes([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: supabaseError } = await supabase
-        .from('agentes_ia')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-      
-      setAgentes(data || []);
-      
-    } catch (error: any) {
-      console.error('Erro ao carregar agentes IA:', error);
-      setError(error.message || 'Erro ao carregar agentes IA');
-      setAgentes([]);
-      
-      logError('Agentes IA', 'Falha ao buscar agentes', { error: error.message });
       toast({
-        title: 'Erro ao carregar agentes IA',
-        description: error.message || 'Erro desconhecido',
+        title: 'Erro de autenticação',
+        description: 'Usuário não autenticado',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
+      return false;
     }
-  }, [user, toast, logError]);
-
-  const createAgente = async (data: CreateAgenteData) => {
-    if (!user) return false;
 
     try {
+      console.log('🔄 Criando novo agente IA...');
       const { error } = await supabase
         .from('agentes_ia')
         .insert([data]);
 
       if (error) throw error;
 
+      console.log('✅ Agente IA criado com sucesso');
       logAgenteCreated(data.nome);
       toast({
         title: 'Sucesso',
@@ -74,7 +62,7 @@ export const useAgentesIA = () => {
       await fetchAgentes();
       return true;
     } catch (error: any) {
-      console.error('Erro ao criar agente IA:', error);
+      console.error('❌ Erro ao criar agente IA:', error);
       logError('Agentes IA', 'Falha ao criar agente', { 
         error: error.message, 
         agenteName: data.nome 
@@ -86,12 +74,13 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  };
+  }, [user, toast, logAgenteCreated, logError, fetchAgentes]);
 
-  const updateAgente = async (id: string, data: Partial<AgenteIA>) => {
+  const updateAgente = useCallback(async (id: string, data: Partial<AgenteIA>): Promise<boolean> => {
     if (!user) return false;
 
     try {
+      console.log(`🔄 Atualizando agente IA ${id}...`);
       const { error } = await supabase
         .from('agentes_ia')
         .update({ ...data, updated_at: new Date().toISOString() })
@@ -104,6 +93,7 @@ export const useAgentesIA = () => {
         logAgenteUpdated(agente.nome);
       }
 
+      console.log('✅ Agente IA atualizado com sucesso');
       toast({
         title: 'Sucesso',
         description: 'Agente IA atualizado com sucesso!',
@@ -112,7 +102,7 @@ export const useAgentesIA = () => {
       await fetchAgentes();
       return true;
     } catch (error: any) {
-      console.error('Erro ao atualizar agente IA:', error);
+      console.error('❌ Erro ao atualizar agente IA:', error);
       logError('Agentes IA', 'Falha ao atualizar agente', { 
         error: error.message, 
         agenteId: id 
@@ -124,14 +114,15 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  };
+  }, [user, toast, agentes, logAgenteUpdated, logError, fetchAgentes]);
 
-  const deleteAgente = async (id: string) => {
+  const deleteAgente = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
       const agente = agentes.find(a => a.id === id);
       
+      console.log(`🔄 Removendo agente IA ${id}...`);
       const { error } = await supabase
         .from('agentes_ia')
         .delete()
@@ -143,6 +134,7 @@ export const useAgentesIA = () => {
         logAgenteUpdated(`${agente.nome} (removido)`);
       }
 
+      console.log('✅ Agente IA removido com sucesso');
       toast({
         title: 'Sucesso',
         description: 'Agente IA removido com sucesso!',
@@ -151,7 +143,7 @@ export const useAgentesIA = () => {
       await fetchAgentes();
       return true;
     } catch (error: any) {
-      console.error('Erro ao remover agente IA:', error);
+      console.error('❌ Erro ao remover agente IA:', error);
       logError('Agentes IA', 'Falha ao remover agente', { 
         error: error.message, 
         agenteId: id 
@@ -163,15 +155,16 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  };
+  }, [user, toast, agentes, logAgenteUpdated, logError, fetchAgentes]);
 
-  const executeAgente = async (agenteId: string, input: string) => {
+  const executeAgente = useCallback(async (agenteId: string, input: string) => {
     if (!user) return null;
 
     const startTime = Date.now();
     const agente = agentes.find(a => a.id === agenteId);
 
     try {
+      console.log(`🔄 Executando agente IA ${agenteId}...`);
       const { data, error } = await supabase.functions.invoke('agentes-ia-api', {
         body: {
           agente_id: agenteId,
@@ -188,10 +181,11 @@ export const useAgentesIA = () => {
         logAgenteExecution(agente.nome, 'sucesso', executionTime);
       }
 
+      console.log(`✅ Agente IA executado com sucesso em ${executionTime}ms`);
       return data;
     } catch (error: any) {
       const executionTime = Date.now() - startTime;
-      console.error('Erro ao executar agente IA:', error);
+      console.error('❌ Erro ao executar agente IA:', error);
       
       if (agente) {
         logAgenteExecution(agente.nome, 'erro', executionTime);
@@ -211,25 +205,28 @@ export const useAgentesIA = () => {
       });
       return null;
     }
-  };
+  }, [user, agentes, logAgenteExecution, logError, toast]);
 
-  const testAgenteConnection = async (agenteId: string) => {
+  const testAgenteConnection = useCallback(async (agenteId: string): Promise<boolean> => {
     if (!user) return false;
 
     const agente = agentes.find(a => a.id === agenteId);
     if (!agente) return false;
 
     try {
+      console.log(`🔄 Testando conexão do agente ${agente.nome}...`);
       const testInput = "Teste de conectividade do agente IA";
       const result = await executeAgente(agenteId, testInput);
       
       if (result?.success) {
+        console.log(`✅ Teste de conexão bem-sucedido para ${agente.nome}`);
         toast({
           title: 'Sucesso',
           description: `Agente ${agente.nome} está funcionando corretamente!`,
         });
         return true;
       } else {
+        console.log(`⚠️ Teste de conexão com problemas para ${agente.nome}`);
         toast({
           title: 'Aviso',
           description: `Agente ${agente.nome} respondeu mas pode haver problemas.`,
@@ -238,7 +235,7 @@ export const useAgentesIA = () => {
         return false;
       }
     } catch (error: any) {
-      console.error('Erro no teste de conexão:', error);
+      console.error(`❌ Erro no teste de conexão para ${agente.nome}:`, error);
       toast({
         title: 'Erro',
         description: `Falha ao testar o agente ${agente.nome}.`,
@@ -246,16 +243,13 @@ export const useAgentesIA = () => {
       });
       return false;
     }
-  };
-
-  useEffect(() => {
-    fetchAgentes();
-  }, [fetchAgentes]);
+  }, [user, agentes, executeAgente, toast]);
 
   return {
     agentes,
     loading,
     error,
+    isEmpty,
     fetchAgentes,
     createAgente,
     updateAgente,

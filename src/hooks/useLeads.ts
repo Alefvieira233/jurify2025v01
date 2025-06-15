@@ -1,68 +1,56 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useSupabaseQuery } from './useSupabaseQuery';
 import type { Database } from '@/integrations/supabase/types';
 
 export type Lead = Database['public']['Tables']['leads']['Row'];
 export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
 
 export const useLeads = () => {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchLeads = useCallback(async () => {
+  const fetchLeadsQuery = useCallback(async () => {
+    console.log('🔍 Buscando leads...');
+    return await supabase
+      .from('leads')
+      .select('*')
+      .order('created_at', { ascending: false });
+  }, []);
+
+  const {
+    data: leads,
+    loading,
+    error,
+    refetch: fetchLeads,
+    isEmpty
+  } = useSupabaseQuery<Lead>('leads', fetchLeadsQuery, {
+    enabled: !!user,
+    staleTime: 10000
+  });
+
+  const createLead = useCallback(async (data: CreateLeadData): Promise<boolean> => {
     if (!user) {
-      setLeads([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const { data, error: supabaseError } = await supabase
-        .from('leads')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (supabaseError) {
-        throw supabaseError;
-      }
-      
-      setLeads(data || []);
-      
-    } catch (error: any) {
-      console.error('Erro ao carregar leads:', error);
-      setError(error.message || 'Erro ao carregar leads');
-      setLeads([]);
-      
       toast({
-        title: 'Erro ao carregar leads',
-        description: error.message || 'Erro desconhecido',
+        title: 'Erro de autenticação',
+        description: 'Usuário não autenticado',
         variant: 'destructive',
       });
-    } finally {
-      setLoading(false);
+      return false;
     }
-  }, [user, toast]);
-
-  const createLead = async (data: CreateLeadData) => {
-    if (!user) return false;
 
     try {
+      console.log('🔄 Criando novo lead...');
       const { error } = await supabase
         .from('leads')
         .insert([data]);
 
       if (error) throw error;
 
+      console.log('✅ Lead criado com sucesso');
       toast({
         title: 'Sucesso',
         description: 'Lead criado com sucesso!',
@@ -71,7 +59,7 @@ export const useLeads = () => {
       await fetchLeads();
       return true;
     } catch (error: any) {
-      console.error('Erro ao criar lead:', error);
+      console.error('❌ Erro ao criar lead:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível criar o lead.',
@@ -79,12 +67,13 @@ export const useLeads = () => {
       });
       return false;
     }
-  };
+  }, [user, toast, fetchLeads]);
 
-  const updateLead = async (id: string, data: Partial<Lead>) => {
+  const updateLead = useCallback(async (id: string, data: Partial<Lead>): Promise<boolean> => {
     if (!user) return false;
 
     try {
+      console.log(`🔄 Atualizando lead ${id}...`);
       const { error } = await supabase
         .from('leads')
         .update({ ...data, updated_at: new Date().toISOString() })
@@ -92,6 +81,7 @@ export const useLeads = () => {
 
       if (error) throw error;
 
+      console.log('✅ Lead atualizado com sucesso');
       toast({
         title: 'Sucesso',
         description: 'Lead atualizado com sucesso!',
@@ -100,7 +90,7 @@ export const useLeads = () => {
       await fetchLeads();
       return true;
     } catch (error: any) {
-      console.error('Erro ao atualizar lead:', error);
+      console.error('❌ Erro ao atualizar lead:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível atualizar o lead.',
@@ -108,12 +98,13 @@ export const useLeads = () => {
       });
       return false;
     }
-  };
+  }, [user, toast, fetchLeads]);
 
-  const deleteLead = async (id: string) => {
+  const deleteLead = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
 
     try {
+      console.log(`🔄 Removendo lead ${id}...`);
       const { error } = await supabase
         .from('leads')
         .delete()
@@ -121,6 +112,7 @@ export const useLeads = () => {
 
       if (error) throw error;
 
+      console.log('✅ Lead removido com sucesso');
       toast({
         title: 'Sucesso',
         description: 'Lead removido com sucesso!',
@@ -129,7 +121,7 @@ export const useLeads = () => {
       await fetchLeads();
       return true;
     } catch (error: any) {
-      console.error('Erro ao remover lead:', error);
+      console.error('❌ Erro ao remover lead:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível remover o lead.',
@@ -137,7 +129,7 @@ export const useLeads = () => {
       });
       return false;
     }
-  };
+  }, [user, toast, fetchLeads]);
 
   const getLeadsByStatus = useCallback((status: string) => {
     return leads.filter(lead => lead.status === status);
@@ -147,14 +139,11 @@ export const useLeads = () => {
     return leads.filter(lead => lead.area_juridica === area);
   }, [leads]);
 
-  useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
-
   return {
     leads,
     loading,
     error,
+    isEmpty,
     fetchLeads,
     createLead,
     updateLead,

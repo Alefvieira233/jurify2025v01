@@ -19,7 +19,8 @@ import {
   Activity,
   AlertCircle,
   CheckCircle,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -47,6 +48,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAgentesIA } from '@/hooks/useAgentesIA';
 import NovoAgenteForm from './NovoAgenteForm';
 import DetalhesAgente from './DetalhesAgente';
@@ -81,7 +83,7 @@ const AgentesIAManager = () => {
   const [showDetalhes, setShowDetalhes] = useState(false);
   const { toast } = useToast();
   
-  const { agentes, loading, error, updateAgente } = useAgentesIA();
+  const { agentes, loading, error, isEmpty, updateAgente, fetchAgentes } = useAgentesIA();
 
   const areas = [
     'Direito Trabalhista',
@@ -119,6 +121,8 @@ const AgentesIAManager = () => {
 
   const toggleStatus = async (agente: AgenteIA) => {
     const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
+    console.log(`🔄 Alterando status do agente ${agente.nome} para ${novoStatus}`);
+    
     const success = await updateAgente(agente.id, { status: novoStatus });
     
     if (success) {
@@ -149,19 +153,26 @@ const AgentesIAManager = () => {
     setSelectedAgente(null);
   };
 
+  const handleRetry = () => {
+    console.log('🔄 Tentando recarregar agentes IA...');
+    fetchAgentes();
+  };
+
+  // Loading State
   if (loading) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
-            <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
-          </div>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Agente
-          </Button>
-        </div>
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Agentes IA Jurídicos</CardTitle>
+                <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
+              </div>
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </CardHeader>
+        </Card>
 
         <Tabs defaultValue="agentes" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -173,29 +184,32 @@ const AgentesIAManager = () => {
           <TabsContent value="agentes" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-24" />
-                      <Skeleton className="h-8 w-12" />
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-2">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-8 w-12" />
+                      </div>
+                      <Skeleton className="h-8 w-8 rounded-full" />
                     </div>
-                    <Skeleton className="h-8 w-8 rounded-full" />
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-              </div>
-            </div>
+            <Card>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map(i => (
+                    <Skeleton key={i} className="h-10" />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="p-4">
+            <Card>
+              <CardContent className="p-4">
                 <div className="space-y-4">
                   {[1, 2, 3, 4, 5].map(i => (
                     <div key={i} className="flex items-center space-x-4">
@@ -214,79 +228,100 @@ const AgentesIAManager = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>
     );
   }
 
+  // Error State
   if (error) {
     return (
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
-            <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
-          </div>
-          <Button className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Agente
-          </Button>
-        </div>
-
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-red-500 mb-4">
-              <AlertCircle className="h-12 w-12 mx-auto" />
+      <div className="p-6 space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Agentes IA Jurídicos</CardTitle>
+                <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
+              </div>
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Agente
+              </Button>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar agentes IA</h3>
-            <p className="text-gray-600 mb-4">{error}</p>
-            <Button 
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Tentar novamente
-            </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-red-900 mb-2">Erro ao carregar agentes IA</h3>
+              <p className="text-red-700 mb-4">{error}</p>
+              <div className="flex gap-2 justify-center">
+                <Button 
+                  onClick={handleRetry}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+                <Button 
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                  className="border-red-300 text-red-700 hover:bg-red-100"
+                >
+                  Recarregar página
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (!agentes || agentes.length === 0) {
+  // Empty State
+  if (isEmpty) {
     return (
       <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
-            <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
-          </div>
-          <Button
-            onClick={() => setShowNovoAgente(true)}
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Novo Agente
-          </Button>
-        </div>
-
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="text-gray-400 mb-4">
-              <Bot className="h-12 w-12 mx-auto" />
+        <Card>
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-2xl">Agentes IA Jurídicos</CardTitle>
+                <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
+              </div>
+              <Button
+                onClick={() => setShowNovoAgente(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Agente
+              </Button>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum agente IA cadastrado ainda</h3>
-            <p className="text-gray-600 mb-4">Comece criando seu primeiro agente IA especializado.</p>
-            <Button
-              onClick={() => setShowNovoAgente(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              Criar primeiro agente
-            </Button>
-          </div>
-        </div>
+          </CardHeader>
+        </Card>
+
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-8">
+            <div className="text-center">
+              <Bot className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum agente IA cadastrado</h3>
+              <p className="text-blue-700 mb-6">Comece criando seu primeiro agente IA especializado em área jurídica.</p>
+              <Button
+                onClick={() => setShowNovoAgente(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Bot className="h-4 w-4 mr-2" />
+                Criar primeiro agente
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {showNovoAgente && (
           <NovoAgenteForm
@@ -298,22 +333,39 @@ const AgentesIAManager = () => {
     );
   }
 
+  // Main Content
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
-          <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
-        </div>
-        <Button
-          onClick={() => setShowNovoAgente(true)}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Agente
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <div>
+              <CardTitle className="text-2xl">Agentes IA Jurídicos</CardTitle>
+              <p className="text-gray-600">
+                Configure e monitore agentes IA especializados • {agentes.length} agentes cadastrados
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRetry}
+                variant="outline"
+                size="sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+              <Button
+                onClick={() => setShowNovoAgente(true)}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Agente
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
 
       {/* Tabs Navigation */}
       <Tabs defaultValue="agentes" className="w-full">
@@ -335,103 +387,113 @@ const AgentesIAManager = () => {
         <TabsContent value="agentes" className="space-y-6">
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Total de Agentes</p>
-                  <p className="text-2xl font-bold text-gray-900">{agentes.length}</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total de Agentes</p>
+                    <p className="text-2xl font-bold text-gray-900">{agentes.length}</p>
+                  </div>
+                  <Bot className="h-8 w-8 text-blue-500" />
                 </div>
-                <Bot className="h-8 w-8 text-blue-500" />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
             
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Agentes Ativos</p>
-                  <p className="text-2xl font-bold text-green-600">{agentesAtivos}</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Agentes Ativos</p>
+                    <p className="text-2xl font-bold text-green-600">{agentesAtivos}</p>
+                  </div>
+                  <CheckCircle className="h-8 w-8 text-green-500" />
                 </div>
-                <CheckCircle className="h-8 w-8 text-green-500" />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Leads Capturados</p>
-                  <p className="text-2xl font-bold text-blue-600">0</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Execuções Hoje</p>
+                    <p className="text-2xl font-bold text-blue-600">0</p>
+                  </div>
+                  <Users className="h-8 w-8 text-blue-500" />
                 </div>
-                <Users className="h-8 w-8 text-blue-500" />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">Última Execução</p>
-                  <p className="text-sm font-bold text-gray-900">Há poucos minutos</p>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Última Execução</p>
+                    <p className="text-sm font-bold text-gray-900">Há poucos minutos</p>
+                  </div>
+                  <Clock className="h-8 w-8 text-orange-500" />
                 </div>
-                <Clock className="h-8 w-8 text-orange-500" />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Filtros */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                <Input
-                  placeholder="Buscar agentes..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Buscar agentes..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Status</SelectItem>
+                    <SelectItem value="ativo">Ativo</SelectItem>
+                    <SelectItem value="inativo">Inativo</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos os Tipos</SelectItem>
+                    {tiposAgente.map(tipo => (
+                      <SelectItem key={tipo.value} value={tipo.value}>
+                        {tipo.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={areaFilter} onValueChange={setAreaFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Área Jurídica" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todas">Todas as Áreas</SelectItem>
+                    {areas.map(area => (
+                      <SelectItem key={area} value={area}>
+                        {area}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Status</SelectItem>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={tipoFilter} onValueChange={setTipoFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos os Tipos</SelectItem>
-                  {tiposAgente.map(tipo => (
-                    <SelectItem key={tipo.value} value={tipo.value}>
-                      {tipo.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={areaFilter} onValueChange={setAreaFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Área Jurídica" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todas">Todas as Áreas</SelectItem>
-                  {areas.map(area => (
-                    <SelectItem key={area} value={area}>
-                      {area}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
           {/* Tabela de Agentes */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <Card>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -439,7 +501,7 @@ const AgentesIAManager = () => {
                   <TableHead>Tipo</TableHead>
                   <TableHead>Área Jurídica</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Leads (mês)</TableHead>
+                  <TableHead>Execuções (mês)</TableHead>
                   <TableHead>Última Atualização</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
@@ -530,7 +592,7 @@ const AgentesIAManager = () => {
                 })}
               </TableBody>
             </Table>
-          </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="api-keys">

@@ -16,18 +16,23 @@ export const useLeads = () => {
   const fetchLeadsQuery = useCallback(async () => {
     console.log('🔍 [useLeads] Buscando leads...');
     
-    const { data, error } = await supabase
-      .from('leads')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ [useLeads] Erro ao buscar leads:', error);
-    } else {
+      if (error) {
+        console.error('❌ [useLeads] Erro ao buscar leads:', error);
+        throw error;
+      }
+
       console.log(`✅ [useLeads] ${data?.length || 0} leads encontrados`);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ [useLeads] Erro na consulta:', error);
+      return { data: null, error };
     }
-
-    return { data, error };
   }, []);
 
   const {

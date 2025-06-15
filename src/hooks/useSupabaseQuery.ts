@@ -21,7 +21,7 @@ export const useSupabaseQuery = <T>(
   const { toast } = useToast();
   
   const [data, setData] = useState<T[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start with true
   const [error, setError] = useState<string | null>(null);
   const [lastFetch, setLastFetch] = useState<number>(0);
   
@@ -30,8 +30,9 @@ export const useSupabaseQuery = <T>(
   const hasExecutedRef = useRef(false);
 
   const executeQuery = useCallback(async (force = false) => {
-    // Prevent multiple executions
-    if (!user || !enabled || (!force && hasExecutedRef.current && !refetchOnMount)) {
+    // Only proceed if enabled and user exists
+    if (!enabled || !user) {
+      setLoading(false);
       return;
     }
 
@@ -40,6 +41,7 @@ export const useSupabaseQuery = <T>(
       const now = Date.now();
       if ((now - lastFetch) < staleTime) {
         console.log(`📋 [${queryKey}] Cache válido, usando dados em cache`);
+        setLoading(false);
         return;
       }
     }
@@ -67,12 +69,16 @@ export const useSupabaseQuery = <T>(
       console.log(`✅ [${queryKey}] Query concluída em ${duration}ms`);
 
       if (result.error) {
+        console.error(`❌ [${queryKey}] Erro na query:`, result.error);
         throw result.error;
       }
 
-      setData(result.data || []);
+      const resultData = result.data || [];
+      setData(resultData);
       setLastFetch(Date.now());
       setError(null);
+      
+      console.log(`📊 [${queryKey}] ${resultData.length} registros carregados`);
       
     } catch (error: any) {
       if (!mountedRef.current) return;
@@ -89,13 +95,16 @@ export const useSupabaseQuery = <T>(
         setLoading(false);
       }
     }
-  }, [user, enabled, queryKey, queryFn, refetchOnMount, staleTime, data.length, lastFetch]);
+  }, [user, enabled, queryKey, queryFn, staleTime, data.length, lastFetch]);
 
   useEffect(() => {
     mountedRef.current = true;
     
-    if (user && enabled && !hasExecutedRef.current) {
+    // Always execute when user changes or on mount
+    if (user && enabled) {
       executeQuery();
+    } else {
+      setLoading(false);
     }
 
     return () => {
@@ -104,7 +113,7 @@ export const useSupabaseQuery = <T>(
         abortControllerRef.current.abort();
       }
     };
-  }, [user, enabled]); // Simplified dependencies
+  }, [user, enabled, queryKey]); // Add queryKey to dependencies
 
   const refetch = useCallback(() => {
     hasExecutedRef.current = false;

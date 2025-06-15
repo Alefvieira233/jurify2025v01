@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,18 +15,23 @@ export const useAgentesIA = () => {
   const fetchAgentesQuery = useCallback(async () => {
     console.log('🔍 [useAgentesIA] Buscando agentes IA...');
     
-    const { data, error } = await supabase
-      .from('agentes_ia')
-      .select('*')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await supabase
+        .from('agentes_ia')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('❌ [useAgentesIA] Erro ao buscar agentes:', error);
-    } else {
+      if (error) {
+        console.error('❌ [useAgentesIA] Erro ao buscar agentes:', error);
+        throw error;
+      }
+
       console.log(`✅ [useAgentesIA] ${data?.length || 0} agentes encontrados`);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ [useAgentesIA] Erro na consulta:', error);
+      return { data: null, error };
     }
-
-    return { data, error };
   }, []);
 
   const {

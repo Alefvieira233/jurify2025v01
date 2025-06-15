@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,18 +15,23 @@ export const useAgendamentos = () => {
   const fetchAgendamentosQuery = useCallback(async () => {
     console.log('🔍 [useAgendamentos] Buscando agendamentos...');
     
-    const { data, error } = await supabase
-      .from('agendamentos')
-      .select('*')
-      .order('data_hora', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('*')
+        .order('data_hora', { ascending: true });
 
-    if (error) {
-      console.error('❌ [useAgendamentos] Erro ao buscar agendamentos:', error);
-    } else {
+      if (error) {
+        console.error('❌ [useAgendamentos] Erro ao buscar agendamentos:', error);
+        throw error;
+      }
+
       console.log(`✅ [useAgendamentos] ${data?.length || 0} agendamentos encontrados`);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ [useAgendamentos] Erro na consulta:', error);
+      return { data: null, error };
     }
-
-    return { data, error };
   }, []);
 
   const {

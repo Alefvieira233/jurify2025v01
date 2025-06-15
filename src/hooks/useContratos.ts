@@ -36,13 +36,10 @@ export const useContratos = () => {
     error,
     refetch: fetchContratos,
     mutate: setContratos,
-    isEmpty,
-    isStale
+    isEmpty
   } = useSupabaseQuery<Contrato>('contratos', fetchContratosQuery, {
     enabled: !!user,
-    staleTime: 15000,
-    retryCount: 2,
-    retryDelay: 1000
+    staleTime: 15000
   });
 
   const createContrato = useCallback(async (data: CreateContratoData): Promise<boolean> => {
@@ -128,7 +125,6 @@ export const useContratos = () => {
     loading,
     error,
     isEmpty,
-    isStale,
     fetchContratos,
     createContrato,
     updateContrato,

@@ -23,15 +23,14 @@ import { useSearchParams } from "react-router-dom";
 type ActiveTab = 'dashboard' | 'leads' | 'pipeline' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'agentes' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs' | 'integracoes';
 
 const Index = () => {
-  const { user, profile, signOut, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
-  const [systemReady, setSystemReady] = useState(false);
 
   const validTabs = ['dashboard', 'leads', 'pipeline', 'agendamentos', 'contratos', 'relatorios', 'whatsapp', 'agentes', 'usuarios', 'configuracoes', 'notificacoes', 'logs', 'integracoes'];
 
-  // Simplified tab management
+  // Tab management from URL
   useEffect(() => {
     const tab = searchParams.get('tab') as ActiveTab;
     if (tab && validTabs.includes(tab)) {
@@ -39,14 +38,6 @@ const Index = () => {
       setActiveTab(tab);
     }
   }, [searchParams]);
-
-  // Simplified system initialization
-  useEffect(() => {
-    if (!loading && user) {
-      console.log('🚀 Sistema inicializado para usuário:', user.email);
-      setSystemReady(true);
-    }
-  }, [loading, user]);
 
   const handleTabChange = useCallback((tab: string) => {
     console.log(`🔄 Mudando para aba: ${tab}`);
@@ -107,8 +98,8 @@ const Index = () => {
     }
   }, [activeTab]);
 
-  // Show loading
-  if (loading || !systemReady) {
+  // Show loading only if auth is loading
+  if (loading) {
     return <LoadingSpinner fullScreen text="Carregando aplicação..." />;
   }
 

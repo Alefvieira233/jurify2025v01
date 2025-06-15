@@ -320,23 +320,24 @@ const PipelineJuridico = () => {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`bg-white rounded-lg p-4 shadow-sm border border-gray-200 cursor-move hover:shadow-md transition-shadow ${
-                              snapshot.isDragging ? 'rotate-3 shadow-lg' : ''
+                            className={`bg-white p-3 rounded-lg border shadow-sm cursor-move hover:shadow-md transition-shadow ${
+                              snapshot.isDragging ? 'rotate-2 shadow-lg' : ''
                             }`}
                           >
                             <div className="space-y-2">
-                              <h4 className="font-medium text-gray-900 text-sm">{lead.nome_completo}</h4>
+                              <h4 className="font-medium text-gray-900 text-sm">
+                                {lead.nome_completo}
+                              </h4>
                               <div className="text-xs text-gray-600 space-y-1">
-                                <p><span className="font-medium">Área:</span> {lead.area_juridica}</p>
-                                <p><span className="font-medium">Origem:</span> {lead.origem}</p>
-                                <p><span className="font-medium">Valor:</span> R$ {lead.valor_causa?.toLocaleString('pt-BR')}</p>
-                                <p><span className="font-medium">Responsável:</span> {lead.responsavel}</p>
+                                <div>📞 {lead.telefone || 'N/A'}</div>
+                                <div>⚖️ {lead.area_juridica}</div>
+                                <div>👤 {lead.responsavel}</div>
+                                {lead.valor_causa && (
+                                  <div>💰 R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}</div>
+                                )}
                               </div>
-                              <div className="flex justify-between items-center pt-2 border-t border-gray-100">
-                                <span className="text-xs text-gray-500">
-                                  {new Date(lead.created_at).toLocaleDateString('pt-BR')}
-                                </span>
-                                <div className="w-2 h-2 bg-amber-400 rounded-full"></div>
+                              <div className="text-xs text-gray-500">
+                                {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                               </div>
                             </div>
                           </div>

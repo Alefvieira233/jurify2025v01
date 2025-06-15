@@ -40,9 +40,7 @@ export const useAgentesIA = () => {
     isStale
   } = useSupabaseQuery<AgenteIA>('agentes_ia', fetchAgentesQuery, {
     enabled: !!user,
-    staleTime: 15000,
-    retryCount: 1,
-    retryDelay: 2000
+    staleTime: 15000
   });
 
   const createAgente = useCallback(async (data: CreateAgenteData): Promise<boolean> => {
@@ -160,7 +158,6 @@ export const useAgentesIA = () => {
     if (!user) return null;
 
     const startTime = Date.now();
-    const agente = agentes.find(a => a.id === agenteId);
 
     try {
       console.log(`🔄 [useAgentesIA] Executando agente IA ${agenteId}...`);
@@ -189,7 +186,7 @@ export const useAgentesIA = () => {
       });
       return null;
     }
-  }, [user, agentes, toast]);
+  }, [user, toast]);
 
   return {
     agentes,

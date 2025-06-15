@@ -18,10 +18,7 @@ export const useAgendamentos = () => {
     
     const { data, error } = await supabase
       .from('agendamentos')
-      .select(`
-        *,
-        lead:leads(*)
-      `)
+      .select('*')
       .order('data_hora', { ascending: true });
 
     if (error) {
@@ -39,13 +36,10 @@ export const useAgendamentos = () => {
     error,
     refetch: fetchAgendamentos,
     mutate: setAgendamentos,
-    isEmpty,
-    isStale
+    isEmpty
   } = useSupabaseQuery<Agendamento>('agendamentos', fetchAgendamentosQuery, {
     enabled: !!user,
-    staleTime: 10000,
-    retryCount: 2,
-    retryDelay: 1000
+    staleTime: 15000
   });
 
   const createAgendamento = useCallback(async (data: CreateAgendamentoData): Promise<boolean> => {
@@ -70,7 +64,9 @@ export const useAgendamentos = () => {
 
       console.log('✅ [useAgendamentos] Agendamento criado com sucesso:', newAgendamento.id);
       
-      setAgendamentos([newAgendamento, ...agendamentos]);
+      setAgendamentos([...agendamentos, newAgendamento].sort((a, b) => 
+        new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
+      ));
       
       toast({
         title: 'Sucesso',
@@ -107,6 +103,8 @@ export const useAgendamentos = () => {
       
       setAgendamentos(agendamentos.map(agendamento => 
         agendamento.id === id ? { ...agendamento, ...updatedAgendamento } : agendamento
+      ).sort((a, b) => 
+        new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
       ));
 
       toast({
@@ -131,7 +129,6 @@ export const useAgendamentos = () => {
     loading,
     error,
     isEmpty,
-    isStale,
     fetchAgendamentos,
     createAgendamento,
     updateAgendamento,

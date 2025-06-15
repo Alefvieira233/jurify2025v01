@@ -36,13 +36,10 @@ export const useLeads = () => {
     error,
     refetch: fetchLeads,
     mutate: setLeads,
-    isEmpty,
-    isStale
+    isEmpty
   } = useSupabaseQuery<Lead>('leads', fetchLeadsQuery, {
     enabled: !!user,
-    staleTime: 10000,
-    retryCount: 2,
-    retryDelay: 1000
+    staleTime: 15000
   });
 
   const createLead = useCallback(async (data: CreateLeadData): Promise<boolean> => {
@@ -123,48 +120,13 @@ export const useLeads = () => {
     }
   }, [user, toast, leads, setLeads]);
 
-  const deleteLead = useCallback(async (id: string): Promise<boolean> => {
-    if (!user) return false;
-
-    try {
-      console.log(`🔄 [useLeads] Removendo lead ${id}...`);
-      const { error } = await supabase
-        .from('leads')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      console.log('✅ [useLeads] Lead removido com sucesso');
-      
-      setLeads(leads.filter(lead => lead.id !== id));
-
-      toast({
-        title: 'Sucesso',
-        description: 'Lead removido com sucesso!',
-      });
-
-      return true;
-    } catch (error: any) {
-      console.error('❌ [useLeads] Erro ao remover lead:', error);
-      toast({
-        title: 'Erro',
-        description: error.message || 'Não foi possível remover o lead.',
-        variant: 'destructive',
-      });
-      return false;
-    }
-  }, [user, toast, leads, setLeads]);
-
   return {
     leads,
     loading,
     error,
     isEmpty,
-    isStale,
     fetchLeads,
     createLead,
     updateLead,
-    deleteLead,
   };
 };

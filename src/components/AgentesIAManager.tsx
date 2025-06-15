@@ -5,7 +5,7 @@ import {
   Edit, 
   Power, 
   PowerOff, 
-  Eye, 
+  Eye,
   Users,
   MessageSquare,
   Settings,
@@ -43,6 +43,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import NovoAgenteForm from './NovoAgenteForm';
 import DetalhesAgente from './DetalhesAgente';
 import ApiKeysManager from './ApiKeysManager';
@@ -63,7 +64,7 @@ interface AgenteIA {
   descricao_funcao: string;
   prompt_base: string;
   tipo_agente: string;
-  parametros_avancados: any; // Changed from specific type to any for Supabase Json compatibility
+  parametros_avancados: any;
 }
 
 interface StatsAgente {
@@ -73,9 +74,6 @@ interface StatsAgente {
 }
 
 const AgentesIAManager = () => {
-  const [agentes, setAgentes] = useState<AgenteIA[]>([]);
-  const [statsAgentes, setStatsAgentes] = useState<StatsAgente[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('todos');
   const [tipoFilter, setTipoFilter] = useState<string>('todos');
@@ -84,6 +82,10 @@ const AgentesIAManager = () => {
   const [selectedAgente, setSelectedAgente] = useState<AgenteIA | null>(null);
   const [showDetalhes, setShowDetalhes] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Debug: Log quando o componente é montado
+  console.log('🤖 AgentesIAManager - Componente montado');
 
   const areas = [
     'Direito Trabalhista',
@@ -100,83 +102,123 @@ const AgentesIAManager = () => {
     { value: 'api_externa', label: 'API Externa', icon: Zap }
   ];
 
-  useEffect(() => {
-    fetchAgentes();
-    fetchStatsAgentes();
-  }, []);
-
-  const fetchAgentes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('agentes_ia')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
+  // Buscar agentes com tratamento de erro melhorado
+  const { data: agentes, isLoading: agentesLoading, error: agentesError, isError: agentesIsError } = useQuery({
+    queryKey: ['agentes_ia'],
+    queryFn: async () => {
+      console.log('📡 AgentesIAManager - Iniciando busca de agentes...');
       
-      const transformedData = (data || []).map(agente => ({
-        ...agente,
-        parametros_avancados: agente.parametros_avancados || {
-          temperatura: 0.7,
-          top_p: 0.9,
-          frequency_penalty: 0,
-          presence_penalty: 0
+      try {
+        const { data, error } = await supabase
+          .from('agentes_ia')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('❌ AgentesIAManager - Erro na consulta de agentes:', error);
+          throw error;
         }
-      }));
+        
+        const transformedData = (data || []).map(agente => ({
+          ...agente,
+          parametros_avancados: agente.parametros_avancados || {
+            temperatura: 0.7,
+            top_p: 0.9,
+            frequency_penalty: 0,
+            presence_penalty: 0
+          }
+        }));
+        
+        console.log('✅ AgentesIAManager - Agentes carregados:', transformedData.length);
+        return transformedData as AgenteIA[];
+      } catch (err) {
+        console.error('❌ AgentesIAManager - Erro no fetch de agentes:', err);
+        throw err;
+      }
+    },
+    retry: 3,
+    retryDelay: 1000,
+  });
+
+  // Buscar estatísticas com tratamento de erro
+  const { data: statsAgentes } = useQuery({
+    queryKey: ['stats_agentes_leads'],
+    queryFn: async () => {
+      console.log('📊 AgentesIAManager - Buscando estatísticas...');
       
-      setAgentes(transformedData);
-    } catch (error) {
-      console.error('Erro ao buscar agentes:', error);
+      try {
+        const { data, error } = await supabase
+          .from('stats_agentes_leads')
+          .select('*');
+
+        if (error) {
+          console.error('⚠️ AgentesIAManager - Erro nas estatísticas (não crítico):', error);
+          return [];
+        }
+        
+        console.log('✅ AgentesIAManager - Estatísticas carregadas:', data?.length || 0);
+        return data as StatsAgente[] || [];
+      } catch (err) {
+        console.error('⚠️ AgentesIAManager - Erro no fetch de estatísticas:', err);
+        return [];
+      }
+    },
+    retry: 1,
+    retryDelay: 1000,
+  });
+
+  // Exibir erro no toast se houver
+  useEffect(() => {
+    if (agentesIsError && agentesError) {
+      console.error('❌ AgentesIAManager - Erro detectado:', agentesError);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os agentes IA",
+        title: "Erro ao carregar agentes IA",
+        description: "Não foi possível carregar os dados dos agentes. Tente novamente.",
         variant: "destructive",
       });
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [agentesIsError, agentesError, toast]);
 
-  const fetchStatsAgentes = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('stats_agentes_leads')
-        .select('*');
-
-      if (error) throw error;
-      setStatsAgentes(data || []);
-    } catch (error) {
-      console.error('Erro ao buscar estatísticas:', error);
-    }
-  };
-
-  const toggleStatus = async (agente: AgenteIA) => {
-    try {
-      const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
+  // Mutação para alternar status
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, novoStatus }: { id: string; novoStatus: string }) => {
+      console.log('🔄 AgentesIAManager - Alterando status do agente:', id, 'para:', novoStatus);
       
       const { error } = await supabase
         .from('agentes_ia')
         .update({ status: novoStatus })
-        .eq('id', agente.id);
+        .eq('id', id);
 
-      if (error) throw error;
-
-      await fetchAgentes();
+      if (error) {
+        console.error('❌ AgentesIAManager - Erro ao alterar status:', error);
+        throw error;
+      }
+      
+      console.log('✅ AgentesIAManager - Status alterado com sucesso');
+    },
+    onSuccess: (_, { novoStatus }) => {
+      queryClient.invalidateQueries({ queryKey: ['agentes_ia'] });
       toast({
         title: "Status Atualizado",
         description: `Agente ${novoStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso`,
       });
-    } catch (error) {
-      console.error('Erro ao alterar status:', error);
+    },
+    onError: (error) => {
+      console.error('❌ AgentesIAManager - Erro na mutação de status:', error);
       toast({
         title: "Erro",
         description: "Não foi possível alterar o status do agente",
         variant: "destructive",
       });
     }
+  });
+
+  const toggleStatus = (agente: AgenteIA) => {
+    const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
+    toggleStatusMutation.mutate({ id: agente.id, novoStatus });
   };
 
-  const filteredAgentes = agentes.filter(agente => {
+  const filteredAgentes = agentes?.filter(agente => {
     const matchesSearch = agente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agente.area_juridica.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          agente.descricao_funcao?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -185,10 +227,10 @@ const AgentesIAManager = () => {
     const matchesArea = areaFilter === 'todas' || agente.area_juridica === areaFilter;
     
     return matchesSearch && matchesStatus && matchesTipo && matchesArea;
-  });
+  }) || [];
 
   const getLeadsCount = (agenteId: string) => {
-    const stats = statsAgentes.find(s => s.agente_id === agenteId);
+    const stats = statsAgentes?.find(s => s.agente_id === agenteId);
     return stats?.total_leads_mes || 0;
   };
 
@@ -210,22 +252,97 @@ const AgentesIAManager = () => {
     setShowNovoAgente(false);
     setShowDetalhes(false);
     setSelectedAgente(null);
-    fetchAgentes();
-    fetchStatsAgentes();
+    queryClient.invalidateQueries({ queryKey: ['agentes_ia'] });
   };
 
-  if (loading) {
+  // Estado de loading
+  if (agentesLoading) {
+    console.log('🔄 AgentesIAManager - Exibindo loading...');
     return (
       <div className="p-6">
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
-            <Bot className="h-8 w-8 animate-spin mx-auto mb-2" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-600">Carregando agentes IA...</p>
           </div>
         </div>
       </div>
     );
   }
+
+  // Estado de erro
+  if (agentesIsError) {
+    console.log('❌ AgentesIAManager - Exibindo erro...');
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-red-500 mb-4">
+              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar agentes IA</h3>
+            <p className="text-gray-600 mb-4">Não foi possível carregar os dados dos agentes.</p>
+            <button 
+              onClick={() => queryClient.invalidateQueries({ queryKey: ['agentes_ia'] })}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg"
+            >
+              Tentar novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Estado sem dados
+  if (!agentes || agentes.length === 0) {
+    console.log('🤖 AgentesIAManager - Nenhum agente encontrado');
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
+            <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
+          </div>
+          <Button
+            onClick={() => setShowNovoAgente(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Agente
+          </Button>
+        </div>
+
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-gray-400 mb-4">
+              <Bot className="h-12 w-12 mx-auto" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum agente IA cadastrado ainda</h3>
+            <p className="text-gray-600 mb-4">Comece criando seu primeiro agente IA especializado.</p>
+            <Button
+              onClick={() => setShowNovoAgente(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              Criar primeiro agente
+            </Button>
+          </div>
+        </div>
+
+        {/* Modal de novo agente */}
+        {showNovoAgente && (
+          <NovoAgenteForm
+            agente={selectedAgente}
+            onClose={handleCloseModal}
+          />
+        )}
+      </div>
+    );
+  }
+
+  console.log('✅ AgentesIAManager - Renderizando interface principal com', agentes.length, 'agentes');
 
   return (
     <div className="p-6 space-y-6">

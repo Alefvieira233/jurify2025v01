@@ -79,7 +79,7 @@ const Dashboard = () => {
     );
   }
 
-  if (isEmpty || !metrics) {
+  if (isEmpty) {
     return (
       <div className="p-6">
         <Card className="border-blue-200 bg-blue-50">
@@ -205,76 +205,48 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle>Áreas Jurídicas</CardTitle>
-            <CardDescription>Distribuição de leads por especialidade</CardDescription>
+            <CardDescription>Leads por especialização</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {metrics.leadsPorArea.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex justify-between items-center">
-                  <span className="text-sm font-medium">{item.area}</span>
-                  <Badge variant="secondary">{item.total}</Badge>
-                </div>
-              ))}
-              {metrics.leadsPorArea.length === 0 && (
-                <p className="text-sm text-gray-500 text-center py-4">
-                  Nenhuma área cadastrada ainda
-                </p>
-              )}
-            </div>
+          <CardContent className="space-y-3">
+            {metrics.leadsPorArea.slice(0, 5).map((area, index) => (
+              <div key={index} className="flex justify-between items-center">
+                <span className="text-sm font-medium">{area.area}</span>
+                <Badge variant="secondary">{area.total}</Badge>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
 
-      {/* Execuções de Agentes IA */}
+      {/* Performance dos Agentes */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bot className="h-5 w-5" />
-            Atividade dos Agentes IA
-          </CardTitle>
-          <CardDescription>Performance recente dos agentes inteligentes</CardDescription>
+          <CardTitle>Performance dos Agentes IA</CardTitle>
+          <CardDescription>Execuções recentes e taxa de sucesso</CardDescription>
         </CardHeader>
         <CardContent>
-          {metrics.execucoesRecentesAgentes.length > 0 ? (
-            <div className="space-y-4">
-              {metrics.execucoesRecentesAgentes.map((agente, index) => (
-                <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Bot className="h-4 w-4 text-purple-600" />
-                    </div>
-                    <div>
-                      <div className="font-medium text-sm">{agente.agente_nome}</div>
-                      <div className="text-xs text-gray-500">
-                        {agente.total_execucoes} execuções
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {agente.sucesso > 0 && (
-                      <Badge className="bg-green-100 text-green-800">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        {agente.sucesso}
-                      </Badge>
-                    )}
-                    {agente.erro > 0 && (
-                      <Badge variant="destructive">
-                        <AlertTriangle className="h-3 w-3 mr-1" />
-                        {agente.erro}
-                      </Badge>
-                    )}
-                  </div>
+          <div className="space-y-4">
+            {metrics.execucoesRecentesAgentes.map((agente, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium">{agente.agente_nome}</p>
+                  <p className="text-sm text-gray-600">
+                    {agente.total_execucoes} execuções
+                  </p>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-sm text-gray-500">
-                Nenhuma execução de agente IA registrada ainda
-              </p>
-            </div>
-          )}
+                <div className="flex gap-2">
+                  <Badge variant="default" className="bg-green-100 text-green-800">
+                    {agente.sucesso} ✓
+                  </Badge>
+                  {agente.erro > 0 && (
+                    <Badge variant="destructive">
+                      {agente.erro} ✗
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

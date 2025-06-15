@@ -13,10 +13,53 @@ interface AgenteRequest {
   use_n8n?: boolean;
 }
 
+// Cache para agentes (evitar consultas repetidas)
+const agentCache = new Map<string, any>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+// Rate limiting por IP
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 100; // 100 requests por minuto
+const RATE_WINDOW = 60 * 1000; // 1 minuto
+
+function checkRateLimit(clientIP: string): boolean {
+  const now = Date.now();
+  const clientData = requestCounts.get(clientIP);
+  
+  if (!clientData || now > clientData.resetTime) {
+    requestCounts.set(clientIP, { count: 1, resetTime: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (clientData.count >= RATE_LIMIT) {
+    return false;
+  }
+  
+  clientData.count++;
+  return true;
+}
+
 serve(async (req) => {
+  const startTime = Date.now();
+  const clientIP = req.headers.get('x-forwarded-for') || 'unknown';
+  
+  console.log(`🤖 [Agentes API] Request iniciado - IP: ${clientIP}`);
+
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Rate limiting
+  if (!checkRateLimit(clientIP)) {
+    console.log(`⚠️ [Agentes API] Rate limit excedido para IP: ${clientIP}`);
+    return new Response(JSON.stringify({ 
+      error: 'Rate limit exceeded',
+      message: 'Muitas requisições. Tente novamente em 1 minuto.'
+    }), {
+      status: 429,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
@@ -24,8 +67,6 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
-
-    console.log('🤖 Agentes IA API - Iniciado');
 
     if (req.method !== 'POST') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -35,8 +76,7 @@ serve(async (req) => {
     }
 
     const { agente_id, input_usuario, use_n8n = true }: AgenteRequest = await req.json();
-    console.log('📦 Request recebido:', { agente_id, input_usuario, use_n8n });
-
+    
     if (!agente_id || !input_usuario) {
       return new Response(JSON.stringify({ 
         error: 'agente_id e input_usuario são obrigatórios' 
@@ -46,32 +86,39 @@ serve(async (req) => {
       });
     }
 
-    // Buscar dados do agente
-    const { data: agente, error: agenteError } = await supabaseClient
-      .from('agentes_ia')
-      .select('*')
-      .eq('id', agente_id)
-      .eq('status', 'ativo')
-      .single();
+    // Buscar agente (com cache)
+    let agente = agentCache.get(agente_id);
+    if (!agente || (Date.now() - agente.cached_at) > CACHE_TTL) {
+      console.log(`🔍 [Agentes API] Buscando agente ${agente_id} no database...`);
+      const { data: agenteData, error: agenteError } = await supabaseClient
+        .from('agentes_ia')
+        .select('*')
+        .eq('id', agente_id)
+        .eq('status', 'ativo')
+        .single();
 
-    if (agenteError || !agente) {
-      console.error('❌ Agente não encontrado:', agenteError);
-      return new Response(JSON.stringify({ 
-        error: 'Agente não encontrado ou inativo' 
-      }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      if (agenteError || !agenteData) {
+        console.error('❌ [Agentes API] Agente não encontrado:', agenteError);
+        return new Response(JSON.stringify({ 
+          error: 'Agente não encontrado ou inativo' 
+        }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      agente = { ...agenteData, cached_at: Date.now() };
+      agentCache.set(agente_id, agente);
     }
 
-    console.log('✅ Agente encontrado:', agente.nome);
+    console.log(`✅ [Agentes API] Agente encontrado: ${agente.nome}`);
 
     // Preparar prompt completo
     const promptCompleto = `${agente.prompt_base}\n\nInput do usuário: ${input_usuario}`;
 
-    // Se use_n8n for true, tentar enviar para N8N primeiro
+    // Tentar N8N primeiro (se habilitado)
     if (use_n8n) {
-      console.log('🔗 Tentando enviar para N8N...');
+      console.log('🔗 [Agentes API] Tentando execução via N8N...');
       
       try {
         const n8nPayload = {
@@ -85,32 +132,40 @@ serve(async (req) => {
           }
         };
 
-        const n8nResponse = await supabaseClient.functions.invoke('n8n-webhook-forwarder', {
+        // Usar timeout para N8N (3 segundos max)
+        const n8nTimeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('N8N timeout')), 3000)
+        );
+        
+        const n8nPromise = supabaseClient.functions.invoke('n8n-webhook-forwarder', {
           body: n8nPayload
         });
 
+        const n8nResponse = await Promise.race([n8nPromise, n8nTimeout]);
+
         if (n8nResponse.data?.success) {
-          console.log('✅ N8N processou com sucesso');
+          const executionTime = Date.now() - startTime;
+          console.log(`✅ [Agentes API] N8N processou com sucesso em ${executionTime}ms`);
+          
           return new Response(JSON.stringify({
             success: true,
             source: 'n8n',
             response: n8nResponse.data.response,
             agente_nome: agente.nome,
-            log_id: n8nResponse.data.log_id
+            log_id: n8nResponse.data.log_id,
+            execution_time: executionTime
           }), {
             status: 200,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
-        } else {
-          console.log('⚠️ N8N falhou, executando localmente como fallback');
         }
       } catch (n8nError) {
-        console.error('❌ Erro N8N, executando localmente:', n8nError);
+        console.log(`⚠️ [Agentes API] N8N falhou, usando fallback local: ${n8nError.message}`);
       }
     }
 
     // Fallback: Processamento local com OpenAI
-    console.log('🔄 Processando localmente com OpenAI...');
+    console.log('🔄 [Agentes API] Executando localmente com OpenAI...');
 
     const openaiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openaiKey) {
@@ -122,8 +177,8 @@ serve(async (req) => {
       });
     }
 
-    // Criar log de execução local
-    const { data: logData, error: logError } = await supabaseClient
+    // Criar log de execução (async - não bloquear resposta)
+    const logPromise = supabaseClient
       .from('logs_execucao_agentes')
       .insert([{
         agente_id: agente.id,
@@ -134,9 +189,7 @@ serve(async (req) => {
       .select()
       .single();
 
-    const logId = logData?.id;
-
-    // Preparar prompt para OpenAI
+    // Preparar payload OpenAI
     const systemPrompt = `${agente.prompt_base}
 
 Área Jurídica: ${agente.area_juridica}
@@ -152,7 +205,7 @@ ${agente.keywords_acao?.length ?
 }`;
 
     const openaiPayload = {
-      model: agente.parametros_avancados?.modelo || 'gpt-3.5-turbo',
+      model: agente.parametros_avancados?.modelo || 'gpt-4o-mini',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: input_usuario }
@@ -164,27 +217,32 @@ ${agente.keywords_acao?.length ?
       max_tokens: agente.parametros_avancados?.max_tokens || 1000
     };
 
-    const startTime = Date.now();
+    // Executar OpenAI com timeout
+    const openaiTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('OpenAI timeout')), 10000)
+    );
+    
+    const openaiPromise = fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(openaiPayload),
+    });
 
-    try {
-      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${openaiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(openaiPayload),
-      });
+    const openaiResponse = await Promise.race([openaiPromise, openaiTimeout]);
+    const responseData = await openaiResponse.json();
+    const executionTime = Date.now() - startTime;
 
-      const responseData = await openaiResponse.json();
-      const executionTime = Date.now() - startTime;
-
-      if (openaiResponse.ok) {
-        const aiResponse = responseData.choices[0]?.message?.content || 'Resposta não disponível';
-        
-        // Atualizar log com sucesso
-        if (logId) {
-          await supabaseClient
+    if (openaiResponse.ok) {
+      const aiResponse = responseData.choices[0]?.message?.content || 'Resposta não disponível';
+      
+      // Atualizar log (async)
+      try {
+        const { data: logData } = await logPromise;
+        if (logData?.id) {
+          supabaseClient
             .from('logs_execucao_agentes')
             .update({
               resposta_ia: aiResponse,
@@ -192,58 +250,39 @@ ${agente.keywords_acao?.length ?
               tempo_execucao: executionTime,
               api_key_usado: 'openai'
             })
-            .eq('id', logId);
+            .eq('id', logData.id)
+            .then(() => console.log(`📝 [Agentes API] Log atualizado: ${logData.id}`));
         }
-
-        console.log('✅ Processamento local concluído');
-
-        return new Response(JSON.stringify({
-          success: true,
-          source: 'local_openai',
-          response: aiResponse,
-          agente_nome: agente.nome,
-          execution_time: executionTime,
-          log_id: logId
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-
-      } else {
-        throw new Error(`OpenAI Error: ${responseData.error?.message || 'Erro desconhecido'}`);
+      } catch (logError) {
+        console.error('⚠️ [Agentes API] Erro ao salvar log:', logError);
       }
 
-    } catch (error) {
-      console.error('❌ Erro no processamento local:', error);
-      
-      // Atualizar log com erro
-      if (logId) {
-        await supabaseClient
-          .from('logs_execucao_agentes')
-          .update({
-            status: 'error',
-            erro_detalhes: error.message,
-            tempo_execucao: Date.now() - startTime
-          })
-          .eq('id', logId);
-      }
+      console.log(`✅ [Agentes API] Processamento local concluído em ${executionTime}ms`);
 
       return new Response(JSON.stringify({
-        success: false,
-        error: 'Erro no processamento do agente IA',
-        details: error.message,
-        log_id: logId
+        success: true,
+        source: 'local_openai',
+        response: aiResponse,
+        agente_nome: agente.nome,
+        execution_time: executionTime
       }), {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+
+    } else {
+      throw new Error(`OpenAI Error: ${responseData.error?.message || 'Erro desconhecido'}`);
     }
 
   } catch (error) {
-    console.error('❌ Erro geral:', error);
-    return new Response(JSON.stringify({ 
-      error: 'Erro interno do servidor',
-      details: error.message 
+    const executionTime = Date.now() - startTime;
+    console.error(`❌ [Agentes API] Erro geral em ${executionTime}ms:`, error);
+    
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Erro no processamento do agente IA',
+      details: error.message,
+      execution_time: executionTime
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

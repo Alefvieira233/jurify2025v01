@@ -107,12 +107,36 @@ export const useDashboardMetrics = () => {
         ]),
       ]);
 
-      // Processar resultados com fallbacks
-      const leads = leadsResult.status === 'fulfilled' && leadsResult.value?.data ? leadsResult.value.data : [];
-      const contratos = contratosResult.status === 'fulfilled' && contratosResult.value?.data ? contratosResult.value.data : [];
-      const agendamentos = agendamentosResult.status === 'fulfilled' && agendamentosResult.value?.data ? agendamentosResult.value.data : [];
-      const agentes = agentesResult.status === 'fulfilled' && agentesResult.value?.data ? agentesResult.value.data : [];
-      const execucoes = execucoesResult.status === 'fulfilled' && execucoesResult.value?.data ? execucoesResult.value.data : [];
+      // Processar resultados com type safety
+      const leads = leadsResult.status === 'fulfilled' && 
+                   leadsResult.value && 
+                   typeof leadsResult.value === 'object' && 
+                   'data' in leadsResult.value && 
+                   Array.isArray(leadsResult.value.data) ? leadsResult.value.data : [];
+
+      const contratos = contratosResult.status === 'fulfilled' && 
+                       contratosResult.value && 
+                       typeof contratosResult.value === 'object' && 
+                       'data' in contratosResult.value && 
+                       Array.isArray(contratosResult.value.data) ? contratosResult.value.data : [];
+
+      const agendamentos = agendamentosResult.status === 'fulfilled' && 
+                          agendamentosResult.value && 
+                          typeof agendamentosResult.value === 'object' && 
+                          'data' in agendamentosResult.value && 
+                          Array.isArray(agendamentosResult.value.data) ? agendamentosResult.value.data : [];
+
+      const agentes = agentesResult.status === 'fulfilled' && 
+                     agentesResult.value && 
+                     typeof agentesResult.value === 'object' && 
+                     'data' in agentesResult.value && 
+                     Array.isArray(agentesResult.value.data) ? agentesResult.value.data : [];
+
+      const execucoes = execucoesResult.status === 'fulfilled' && 
+                       execucoesResult.value && 
+                       typeof execucoesResult.value === 'object' && 
+                       'data' in execucoesResult.value && 
+                       Array.isArray(execucoesResult.value.data) ? execucoesResult.value.data : [];
 
       // Calcular métricas de leads
       const leadsNovoMes = leads.filter(lead => 
@@ -138,7 +162,7 @@ export const useDashboardMetrics = () => {
       const leadsPorArea = Array.from(areasMap.entries()).map(([area, total]) => ({
         area,
         total
-      })).slice(0, 10); // Limitar a 10 áreas
+      })).slice(0, 10);
 
       // Calcular métricas de contratos
       const contratosAssinados = contratos.filter(contrato => 
@@ -161,13 +185,18 @@ export const useDashboardMetrics = () => {
       }).length;
 
       // Calcular execuções recentes por agente
-      const execucoesPorAgente = new Map<string, { nome: string; total: number; sucesso: number; erro: number }>();
+      const execucoesPorAgente = new Map<string, { agente_nome: string; total_execucoes: number; sucesso: number; erro: number }>();
       
       execucoes.forEach(execucao => {
         const nomeAgente = execucao.agentes_ia?.nome || 'Agente Desconhecido';
-        const current = execucoesPorAgente.get(nomeAgente) || { nome: nomeAgente, total: 0, sucesso: 0, erro: 0 };
+        const current = execucoesPorAgente.get(nomeAgente) || { 
+          agente_nome: nomeAgente, 
+          total_execucoes: 0, 
+          sucesso: 0, 
+          erro: 0 
+        };
         
-        current.total++;
+        current.total_execucoes++;
         if (execucao.status === 'success') current.sucesso++;
         if (execucao.status === 'error') current.erro++;
         
@@ -175,7 +204,7 @@ export const useDashboardMetrics = () => {
       });
 
       const execucoesRecentesAgentes = Array.from(execucoesPorAgente.values())
-        .sort((a, b) => b.total - a.total)
+        .sort((a, b) => b.total_execucoes - a.total_execucoes)
         .slice(0, 5);
 
       const finalMetrics: DashboardMetrics = {
@@ -228,6 +257,7 @@ export const useDashboardMetrics = () => {
     loading,
     error,
     refetch,
-    isStale: false, // Para futura implementação de cache
+    isEmpty: !loading && !error && metrics.totalLeads === 0,
+    isStale: false,
   };
 };

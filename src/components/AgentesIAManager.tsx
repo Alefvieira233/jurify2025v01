@@ -13,7 +13,9 @@ import {
   Search,
   Code,
   BarChart,
-  Zap
+  Zap,
+  Key,
+  Activity
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -35,8 +37,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import NovoAgenteForm from './NovoAgenteForm';
 import DetalhesAgente from './DetalhesAgente';
+import ApiKeysManager from './ApiKeysManager';
+import LogsMonitoramento from './LogsMonitoramento';
 
 interface AgenteIA {
   id: string;
@@ -104,7 +114,6 @@ const AgentesIAManager = () => {
 
       if (error) throw error;
       
-      // Transform data to ensure parametros_avancados has the right structure
       const transformedData = (data || []).map(agente => ({
         ...agente,
         parametros_avancados: agente.parametros_avancados || {
@@ -224,7 +233,7 @@ const AgentesIAManager = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Agentes IA Jurídicos</h1>
-          <p className="text-gray-600">Configure agentes IA especializados por área jurídica</p>
+          <p className="text-gray-600">Configure e monitore agentes IA especializados por área jurídica</p>
         </div>
         <Button
           onClick={() => setShowNovoAgente(true)}
@@ -235,228 +244,256 @@ const AgentesIAManager = () => {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total de Agentes</p>
-              <p className="text-2xl font-bold text-gray-900">{agentes.length}</p>
+      {/* Tabs Navigation */}
+      <Tabs defaultValue="agentes" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="agentes" className="flex items-center gap-2">
+            <Bot className="h-4 w-4" />
+            Agentes IA
+          </TabsTrigger>
+          <TabsTrigger value="api-keys" className="flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            API Keys
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="flex items-center gap-2">
+            <Activity className="h-4 w-4" />
+            Monitoramento
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="agentes" className="space-y-6">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Total de Agentes</p>
+                  <p className="text-2xl font-bold text-gray-900">{agentes.length}</p>
+                </div>
+                <Bot className="h-8 w-8 text-blue-500" />
+              </div>
             </div>
-            <Bot className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
-        
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Ativos</p>
-              <p className="text-2xl font-bold text-green-600">
-                {agentes.filter(a => a.status === 'ativo').length}
-              </p>
+            
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Ativos</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    {agentes.filter(a => a.status === 'ativo').length}
+                  </p>
+                </div>
+                <Power className="h-8 w-8 text-green-500" />
+              </div>
             </div>
-            <Power className="h-8 w-8 text-green-500" />
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Chat Interno</p>
-              <p className="text-2xl font-bold text-blue-600">
-                {agentes.filter(a => a.tipo_agente === 'chat_interno').length}
-              </p>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Chat Interno</p>
+                  <p className="text-2xl font-bold text-blue-600">
+                    {agentes.filter(a => a.tipo_agente === 'chat_interno').length}
+                  </p>
+                </div>
+                <MessageSquare className="h-8 w-8 text-blue-500" />
+              </div>
             </div>
-            <MessageSquare className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Análise</p>
-              <p className="text-2xl font-bold text-purple-600">
-                {agentes.filter(a => a.tipo_agente === 'analise_dados').length}
-              </p>
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">Análise</p>
+                  <p className="text-2xl font-bold text-purple-600">
+                    {agentes.filter(a => a.tipo_agente === 'analise_dados').length}
+                  </p>
+                </div>
+                <BarChart className="h-8 w-8 text-purple-500" />
+              </div>
             </div>
-            <BarChart className="h-8 w-8 text-purple-500" />
-          </div>
-        </div>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">API Externa</p>
-              <p className="text-2xl font-bold text-amber-600">
-                {agentes.filter(a => a.tipo_agente === 'api_externa').length}
-              </p>
-            </div>
-            <Zap className="h-8 w-8 text-amber-500" />
-          </div>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-        <div className="flex flex-col md:flex-row gap-4">
-          <div className="flex-1">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Buscar por nome, área ou descrição..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-600">API Externa</p>
+                  <p className="text-2xl font-bold text-amber-600">
+                    {agentes.filter(a => a.tipo_agente === 'api_externa').length}
+                  </p>
+                </div>
+                <Zap className="h-8 w-8 text-amber-500" />
+              </div>
             </div>
           </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Status</SelectItem>
-              <SelectItem value="ativo">Ativo</SelectItem>
-              <SelectItem value="inativo">Inativo</SelectItem>
-            </SelectContent>
-          </Select>
 
-          <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="Tipo" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Tipos</SelectItem>
-              {tiposAgente.map(tipo => (
-                <SelectItem key={tipo.value} value={tipo.value}>{tipo.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={areaFilter} onValueChange={setAreaFilter}>
-            <SelectTrigger className="w-full md:w-48">
-              <SelectValue placeholder="Área Jurídica" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas as Áreas</SelectItem>
-              {areas.map(area => (
-                <SelectItem key={area} value={area}>{area}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {/* Agents Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Agente</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead>Área Jurídica</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Leads/Mês</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAgentes.map((agente) => {
-              const tipoInfo = getTipoAgenteInfo(agente.tipo_agente);
-              const TipoIcon = tipoInfo.icon;
+          {/* Filters */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    placeholder="Buscar por nome, área ou descrição..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+              </div>
               
-              return (
-                <TableRow key={agente.id}>
-                  <TableCell>
-                    <div className="flex items-center space-x-3">
-                      <div className={`p-2 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                        <Bot className={`h-4 w-4 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">{agente.nome}</p>
-                        <p className="text-sm text-gray-500">
-                          Delay: {agente.delay_resposta}s
-                        </p>
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                      <TipoIcon className="h-3 w-3 mr-1" />
-                      {tipoInfo.label}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                      {agente.area_juridica}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm text-gray-600 max-w-xs truncate">
-                      {agente.descricao_funcao || agente.objetivo}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span className="font-medium">{getLeadsCount(agente.id)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={agente.status === 'ativo' ? 'default' : 'secondary'}
-                      className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
-                    >
-                      {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetails(agente)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEdit(agente)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleStatus(agente)}
-                        className={agente.status === 'ativo' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
-                      >
-                        {agente.status === 'ativo' ? (
-                          <PowerOff className="h-4 w-4" />
-                        ) : (
-                          <Power className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-        
-        {filteredAgentes.length === 0 && (
-          <div className="text-center py-8">
-            <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhum agente encontrado</p>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Status</SelectItem>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="inativo">Inativo</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos os Tipos</SelectItem>
+                  {tiposAgente.map(tipo => (
+                    <SelectItem key={tipo.value} value={tipo.value}>{tipo.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={areaFilter} onValueChange={setAreaFilter}>
+                <SelectTrigger className="w-full md:w-48">
+                  <SelectValue placeholder="Área Jurídica" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as Áreas</SelectItem>
+                  {areas.map(area => (
+                    <SelectItem key={area} value={area}>{area}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
-      </div>
+
+          {/* Agents Table */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agente</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Área Jurídica</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Leads/Mês</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAgentes.map((agente) => {
+                  const tipoInfo = getTipoAgenteInfo(agente.tipo_agente);
+                  const TipoIcon = tipoInfo.icon;
+                  
+                  return (
+                    <TableRow key={agente.id}>
+                      <TableCell>
+                        <div className="flex items-center space-x-3">
+                          <div className={`p-2 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                            <Bot className={`h-4 w-4 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">{agente.nome}</p>
+                            <p className="text-sm text-gray-500">
+                              Delay: {agente.delay_resposta}s
+                            </p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                          <TipoIcon className="h-3 w-3 mr-1" />
+                          {tipoInfo.label}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {agente.area_juridica}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm text-gray-600 max-w-xs truncate">
+                          {agente.descricao_funcao || agente.objetivo}
+                        </p>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Users className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{getLeadsCount(agente.id)}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={agente.status === 'ativo' ? 'default' : 'secondary'}
+                          className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                        >
+                          {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(agente)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEdit(agente)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleStatus(agente)}
+                            className={agente.status === 'ativo' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+                          >
+                            {agente.status === 'ativo' ? (
+                              <PowerOff className="h-4 w-4" />
+                            ) : (
+                              <Power className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+            
+            {filteredAgentes.length === 0 && (
+              <div className="text-center py-8">
+                <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">Nenhum agente encontrado</p>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="api-keys">
+          <ApiKeysManager />
+        </TabsContent>
+
+        <TabsContent value="logs">
+          <LogsMonitoramento />
+        </TabsContent>
+      </Tabs>
 
       {/* Modals */}
       {showNovoAgente && (

@@ -1,7 +1,32 @@
 import React from 'react';
-import { X, Bot, Edit, Clock, MessageSquare, Tags, Target, Code, BarChart, Zap, Settings } from 'lucide-react';
+import { 
+  X, 
+  Edit, 
+  Bot, 
+  Clock, 
+  Tag, 
+  FileText, 
+  Settings, 
+  MessageSquare,
+  Eye,
+  Play
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import TesteAgenteIA from './TesteAgenteIA';
 
 interface AgenteIA {
   id: string;
@@ -22,7 +47,7 @@ interface AgenteIA {
 }
 
 interface DetalhesAgenteProps {
-  agente: AgenteIA;
+  agente: any;
   onClose: () => void;
   onEdit: () => void;
 }
@@ -38,212 +63,222 @@ const DetalhesAgente: React.FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit
     });
   };
 
+  const tiposAgente = [
+    { value: 'chat_interno', label: 'Chat Interno', icon: Bot },
+    { value: 'analise_dados', label: 'Análise de Dados', icon: Eye },
+    { value: 'api_externa', label: 'API Externa', icon: Settings }
+  ];
+
   const getTipoAgenteInfo = (tipo: string) => {
-    const tipos = {
-      chat_interno: { label: 'Chat Interno', icon: Bot, color: 'blue' },
-      analise_dados: { label: 'Análise de Dados', icon: BarChart, color: 'purple' },
-      api_externa: { label: 'API Externa', icon: Zap, color: 'amber' }
-    };
-    return tipos[tipo as keyof typeof tipos] || tipos.chat_interno;
+    return tiposAgente.find(t => t.value === tipo) || tiposAgente[0];
   };
 
   const tipoInfo = getTipoAgenteInfo(agente.tipo_agente);
   const TipoIcon = tipoInfo.icon;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className={`p-3 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
-              <Bot className={`h-6 w-6 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">{agente.nome}</h2>
-              <p className="text-sm text-gray-500">{agente.area_juridica}</p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Button variant="outline" onClick={onEdit}>
-              <Edit className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Status e Informações Básicas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <Target className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-600">Status</span>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={`p-2 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <Bot className={`h-5 w-5 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
               </div>
+              <div>
+                <DialogTitle className="text-xl">{agente.nome}</DialogTitle>
+                <DialogDescription className="flex items-center space-x-2">
+                  <TipoIcon className="h-4 w-4" />
+                  <span>{tipoInfo.label}</span>
+                  <span>•</span>
+                  <span>{agente.area_juridica}</span>
+                </DialogDescription>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
               <Badge 
                 variant={agente.status === 'ativo' ? 'default' : 'secondary'}
                 className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
               >
                 {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
               </Badge>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <TipoIcon className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-600">Tipo de Agente</span>
-              </div>
-              <Badge variant="outline" className={`bg-${tipoInfo.color}-50 text-${tipoInfo.color}-700 border-${tipoInfo.color}-200`}>
-                <TipoIcon className="h-3 w-3 mr-1" />
-                {tipoInfo.label}
-              </Badge>
-            </div>
-
-            <div className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-center space-x-2 mb-2">
-                <Clock className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-600">Delay de Resposta</span>
-              </div>
-              <p className="text-lg font-semibold">{agente.delay_resposta} segundos</p>
+              <Button variant="outline" size="sm" onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                Editar
+              </Button>
             </div>
           </div>
+        </DialogHeader>
 
-          {/* Descrição/Função */}
-          <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
-            <h3 className="text-lg font-semibold text-amber-800 mb-2">Descrição/Função do Agente</h3>
-            <p className="text-amber-700">{agente.descricao_funcao}</p>
-          </div>
+        <Tabs defaultValue="geral" className="w-full">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="geral">Informações Gerais</TabsTrigger>
+            <TabsTrigger value="prompts">Prompts & IA</TabsTrigger>
+            <TabsTrigger value="parametros">Parâmetros</TabsTrigger>
+            <TabsTrigger value="teste">Teste</TabsTrigger>
+          </TabsList>
 
-          {/* Prompt Base */}
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
-              <Code className="h-5 w-5" />
-              <span>Prompt Base (Instruções)</span>
-            </h3>
-            <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-              <pre className="text-gray-700 whitespace-pre-wrap font-mono text-sm">{agente.prompt_base}</pre>
-            </div>
-          </div>
-
-          {/* Parâmetros Avançados */}
-          {agente.parametros_avancados && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
-                <Settings className="h-5 w-5" />
-                <span>Parâmetros Avançados</span>
-              </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                  <div className="text-xs font-medium text-purple-600 mb-1">Temperatura</div>
-                  <div className="text-lg font-semibold text-purple-800">
-                    {agente.parametros_avancados.temperatura || 0.7}
-                  </div>
+          <TabsContent value="geral" className="space-y-6">
+            {/* General Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                    <FileText className="h-4 w-4 mr-2" />
+                    Descrição da Função
+                  </h4>
+                  <p className="text-gray-600 bg-gray-50 p-3 rounded border">
+                    {agente.descricao_funcao || 'Não informado'}
+                  </p>
                 </div>
-                <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                  <div className="text-xs font-medium text-blue-600 mb-1">Top P</div>
-                  <div className="text-lg font-semibold text-blue-800">
-                    {agente.parametros_avancados.top_p || 0.9}
-                  </div>
-                </div>
-                <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                  <div className="text-xs font-medium text-green-600 mb-1">Frequency Penalty</div>
-                  <div className="text-lg font-semibold text-green-800">
-                    {agente.parametros_avancados.frequency_penalty || 0}
-                  </div>
-                </div>
-                <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
-                  <div className="text-xs font-medium text-amber-600 mb-1">Presence Penalty</div>
-                  <div className="text-lg font-semibold text-amber-800">
-                    {agente.parametros_avancados.presence_penalty || 0}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
-          {/* Objetivo (compatibilidade) */}
-          {agente.objetivo && (
-            <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-              <h3 className="text-lg font-semibold text-blue-800 mb-2">Objetivo Resumido</h3>
-              <p className="text-blue-700">{agente.objetivo}</p>
-            </div>
-          )}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                    <Tag className="h-4 w-4 mr-2" />
+                    Área Jurídica
+                  </h4>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    {agente.area_juridica}
+                  </Badge>
+                </div>
 
-          {/* Script de Saudação */}
-          {agente.script_saudacao && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Script de Saudação</h3>
-              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <p className="text-gray-700 whitespace-pre-wrap">{agente.script_saudacao}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Perguntas de Qualificação */}
-          {agente.perguntas_qualificacao && agente.perguntas_qualificacao.length > 0 && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-3">Perguntas de Qualificação</h3>
-              <div className="space-y-2">
-                {agente.perguntas_qualificacao.map((pergunta, index) => (
-                  <div key={index} className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-                    <div className="flex items-start space-x-2">
-                      <span className="bg-blue-600 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium mt-0.5">
-                        {index + 1}
-                      </span>
-                      <p className="text-blue-800">{pergunta}</p>
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+                    <Clock className="h-4 w-4 mr-2" />
+                    Configurações
+                  </h4>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Delay de Resposta:</span>
+                      <span className="font-medium">{agente.delay_resposta}s</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Tipo:</span>
+                      <span className="font-medium">{tipoInfo.label}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Status:</span>
+                      <Badge 
+                        variant={agente.status === 'ativo' ? 'default' : 'secondary'}
+                        className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                      >
+                        {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                      </Badge>
                     </div>
                   </div>
-                ))}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Objetivo</h4>
+                  <div className="text-gray-600 bg-gray-50 p-3 rounded border text-sm">
+                    {agente.objetivo || 'Não configurado'}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Script de Saudação</h4>
+                  <div className="text-gray-600 bg-gray-50 p-3 rounded border text-sm">
+                    {agente.script_saudacao || 'Não configurado'}
+                  </div>
+                </div>
               </div>
             </div>
-          )}
+          </TabsContent>
 
-          {/* Keywords de Ação */}
-          {agente.keywords_acao && agente.keywords_acao.length > 0 && (
-            <div>
-              <div className="flex items-center space-x-2 mb-3">
-                <Tags className="h-5 w-5 text-gray-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Keywords de Ação</h3>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {agente.keywords_acao.map((keyword, index) => (
-                  <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                    {keyword}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Informações de Sistema */}
-          <div className="border-t border-gray-200 pt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-3">Informações do Sistema</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600">
+          <TabsContent value="prompts" className="space-y-6">
+            {/* Prompts & IA */}
+            <div className="space-y-4">
               <div>
-                <span className="font-medium">Criado em:</span> {formatDate(agente.created_at)}
+                <h4 className="font-semibold text-gray-900 mb-2">Prompt Base</h4>
+                <div className="text-gray-600 bg-gray-50 p-4 rounded border text-sm font-mono whitespace-pre-wrap max-h-64 overflow-y-auto">
+                  {agente.prompt_base || 'Não configurado'}
+                </div>
               </div>
-              <div>
-                <span className="font-medium">Última atualização:</span> {formatDate(agente.updated_at)}
+
+              {agente.perguntas_qualificacao && agente.perguntas_qualificacao.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Perguntas de Qualificação</h4>
+                  <div className="space-y-2">
+                    {agente.perguntas_qualificacao.map((pergunta: string, index: number) => (
+                      <div key={index} className="flex items-start space-x-2">
+                        <span className="text-blue-600 font-semibold">{index + 1}.</span>
+                        <span className="text-gray-600">{pergunta}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {agente.keywords_acao && agente.keywords_acao.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-2">Keywords de Ação</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {agente.keywords_acao.map((keyword: string, index: number) => (
+                      <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                        {keyword}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="parametros" className="space-y-6">
+            {/* Parameters */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-semibold text-gray-900 mb-4 flex items-center">
+                <Settings className="h-4 w-4 mr-2" />
+                Parâmetros Avançados da IA
+              </h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Temperatura</label>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {agente.parametros_avancados?.temperatura || 0.7}
+                  </div>
+                  <p className="text-xs text-gray-500">Controla a criatividade das respostas</p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Top P</label>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {agente.parametros_avancados?.top_p || 0.9}
+                  </div>
+                  <p className="text-xs text-gray-500">Diversidade do vocabulário</p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Frequency Penalty</label>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {agente.parametros_avancados?.frequency_penalty || 0}
+                  </div>
+                  <p className="text-xs text-gray-500">Penaliza repetições frequentes</p>
+                </div>
+                
+                <div>
+                  <label className="text-sm font-medium text-gray-600">Presence Penalty</label>
+                  <div className="text-lg font-semibold text-gray-900">
+                    {agente.parametros_avancados?.presence_penalty || 0}
+                  </div>
+                  <p className="text-xs text-gray-500">Encoraja novos tópicos</p>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          </TabsContent>
 
-        {/* Footer */}
-        <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
-          <Button variant="outline" onClick={onClose}>
-            Fechar
-          </Button>
-        </div>
-      </div>
-    </div>
+          <TabsContent value="teste" className="space-y-6">
+            <TesteAgenteIA 
+              agenteId={agente.id} 
+              agenteName={agente.nome}
+            />
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 };
 

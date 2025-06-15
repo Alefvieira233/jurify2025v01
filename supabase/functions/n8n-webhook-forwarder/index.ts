@@ -8,13 +8,14 @@ const corsHeaders = {
 };
 
 interface N8NPayload {
-  agente_id: string;
-  nome_agente: string;
-  input_usuario: string;
-  prompt_base: string;
-  parametros_avancados?: any;
-  area_juridica?: string;
-  tipo_agente?: string;
+  agentId: string;
+  prompt: string;
+  parameters: {
+    temperature: number;
+    top_p: number;
+    frequency_penalty: number;
+    presence_penalty: number;
+  };
 }
 
 serve(async (req) => {
@@ -38,13 +39,13 @@ serve(async (req) => {
       });
     }
 
-    const payload: N8NPayload = await req.json();
+    const payload = await req.json();
     console.log('📦 Payload recebido:', payload);
 
     // Validar payload obrigatório
-    if (!payload.agente_id || !payload.input_usuario) {
+    if (!payload.agentId || !payload.prompt) {
       return new Response(JSON.stringify({ 
-        error: 'agente_id e input_usuario são obrigatórios' 
+        error: 'agentId e prompt são obrigatórios' 
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -76,8 +77,8 @@ serve(async (req) => {
     const { data: logData, error: logError } = await supabaseClient
       .from('logs_execucao_agentes')
       .insert([{
-        agente_id: payload.agente_id,
-        input_recebido: payload.input_usuario,
+        agente_id: payload.agentId,
+        input_recebido: payload.prompt,
         status: 'processing',
         n8n_webhook_url: workflow.webhook_url,
         n8n_status: 'sending'
@@ -91,26 +92,20 @@ serve(async (req) => {
 
     const logId = logData?.id;
 
-    // Preparar payload para N8N
-    const n8nPayload = {
-      timestamp: new Date().toISOString(),
-      source: 'jurify_saas',
-      agente: {
-        id: payload.agente_id,
-        nome: payload.nome_agente,
-        area_juridica: payload.area_juridica,
-        tipo: payload.tipo_agente
-      },
-      input: payload.input_usuario,
-      prompt_base: payload.prompt_base,
-      parametros: payload.parametros_avancados || {},
-      metadata: {
-        log_id: logId,
-        workflow_id: workflow.id
+    // Preparar payload para N8N no formato solicitado
+    const n8nPayload: N8NPayload = {
+      agentId: payload.agentId,
+      prompt: payload.prompt,
+      parameters: {
+        temperature: payload.parameters?.temperature || 0.7,
+        top_p: payload.parameters?.top_p || 1,
+        frequency_penalty: payload.parameters?.frequency_penalty || 0,
+        presence_penalty: payload.parameters?.presence_penalty || 0
       }
     };
 
     console.log('🚀 Enviando para N8N:', workflow.webhook_url);
+    console.log('📄 Payload N8N:', n8nPayload);
 
     // Enviar para N8N
     const n8nHeaders: Record<string, string> = {
@@ -175,8 +170,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ 
         success: false,
         error: n8nError,
-        log_id: logId,
-        fallback_message: 'Erro na comunicação com N8N. Processamento local seria executado aqui.'
+        log_id: logId
       }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -185,7 +179,7 @@ serve(async (req) => {
 
     return new Response(JSON.stringify({ 
       success: true,
-      n8n_response: n8nResponse,
+      response: n8nResponse,
       log_id: logId,
       workflow_used: workflow.nome
     }), {

@@ -66,21 +66,27 @@ serve(async (req) => {
 
     console.log('✅ Agente encontrado:', agente.nome);
 
+    // Preparar prompt completo
+    const promptCompleto = `${agente.prompt_base}\n\nInput do usuário: ${input_usuario}`;
+
     // Se use_n8n for true, tentar enviar para N8N primeiro
     if (use_n8n) {
       console.log('🔗 Tentando enviar para N8N...');
       
       try {
-        const n8nResponse = await supabaseClient.functions.invoke('n8n-webhook-forwarder', {
-          body: {
-            agente_id: agente.id,
-            nome_agente: agente.nome,
-            input_usuario,
-            prompt_base: agente.prompt_base,
-            parametros_avancados: agente.parametros_avancados,
-            area_juridica: agente.area_juridica,
-            tipo_agente: agente.tipo_agente
+        const n8nPayload = {
+          agentId: agente.id,
+          prompt: promptCompleto,
+          parameters: {
+            temperature: agente.parametros_avancados?.temperatura || 0.7,
+            top_p: agente.parametros_avancados?.top_p || 1,
+            frequency_penalty: agente.parametros_avancados?.frequency_penalty || 0,
+            presence_penalty: agente.parametros_avancados?.presence_penalty || 0
           }
+        };
+
+        const n8nResponse = await supabaseClient.functions.invoke('n8n-webhook-forwarder', {
+          body: n8nPayload
         });
 
         if (n8nResponse.data?.success) {
@@ -88,7 +94,7 @@ serve(async (req) => {
           return new Response(JSON.stringify({
             success: true,
             source: 'n8n',
-            response: n8nResponse.data.n8n_response,
+            response: n8nResponse.data.response,
             agente_nome: agente.nome,
             log_id: n8nResponse.data.log_id
           }), {

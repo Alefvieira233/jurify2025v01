@@ -8,238 +8,268 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { TestTube, Zap, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { TestTube, Send, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 const TesteN8N = () => {
-  const [testData, setTestData] = useState({
-    agente_id: '',
-    input_usuario: 'Olá, preciso de uma consulta sobre direito trabalhista. Fui demitido sem justa causa e não recebi todas as verbas rescisórias.',
-    use_n8n: true
-  });
-  const [isLoading, setIsLoading] = useState(false);
+  const [isTestingN8N, setIsTestingN8N] = useState(false);
+  const [isTestingAgent, setIsTestingAgent] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
+  const [agentTestResult, setAgentTestResult] = useState<any>(null);
+  const [testInput, setTestInput] = useState('Preciso de ajuda com um contrato de trabalho');
   const { toast } = useToast();
 
-  const handleTest = async () => {
-    if (!testData.agente_id) {
-      toast({
-        title: 'Erro',
-        description: 'Por favor, insira o ID do agente para teste.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsLoading(true);
+  const testN8NConnection = async () => {
+    setIsTestingN8N(true);
     setTestResult(null);
 
     try {
-      console.log('🧪 Iniciando teste N8N:', testData);
+      const testPayload = {
+        agentId: 'test-agent-' + Date.now(),
+        prompt: 'Este é um teste de conectividade com o webhook N8N do Jurify',
+        parameters: {
+          temperature: 0.7,
+          top_p: 1,
+          frequency_penalty: 0,
+          presence_penalty: 0
+        }
+      };
 
-      const { data, error } = await supabase.functions.invoke('agentes-ia-api', {
-        body: testData
+      console.log('🔗 Testando N8N webhook com payload:', testPayload);
+
+      const { data, error } = await supabase.functions.invoke('n8n-webhook-forwarder', {
+        body: testPayload
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       setTestResult(data);
       
       toast({
-        title: 'Teste concluído',
+        title: data.success ? 'Teste bem-sucedido!' : 'Teste falhou',
         description: data.success 
-          ? `Resposta recebida via ${data.source === 'n8n' ? 'N8N' : 'OpenAI local'}` 
-          : 'Falha no teste',
+          ? 'A comunicação com o N8N está funcionando corretamente' 
+          : `Erro: ${data.error}`,
         variant: data.success ? 'default' : 'destructive',
       });
 
     } catch (error) {
-      console.error('❌ Erro no teste:', error);
-      setTestResult({
-        success: false,
-        error: error.message,
-        source: 'error'
-      });
+      console.error('❌ Erro no teste N8N:', error);
+      const errorResult = { success: false, error: error.message };
+      setTestResult(errorResult);
       
       toast({
         title: 'Erro no teste',
-        description: 'Não foi possível executar o teste.',
+        description: 'Não foi possível conectar com o webhook N8N',
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      setIsTestingN8N(false);
     }
   };
 
-  const getStatusIcon = () => {
-    if (isLoading) return <Clock className="h-5 w-5 text-blue-500 animate-spin" />;
-    if (!testResult) return <TestTube className="h-5 w-5 text-gray-400" />;
-    if (testResult.success) return <CheckCircle className="h-5 w-5 text-green-500" />;
-    return <XCircle className="h-5 w-5 text-red-500" />;
-  };
+  const testAgentExecution = async () => {
+    setIsTestingAgent(true);
+    setAgentTestResult(null);
 
-  const getSourceBadge = () => {
-    if (!testResult) return null;
-    
-    const variants: Record<string, any> = {
-      'n8n': { variant: 'default', color: 'bg-purple-100 text-purple-800' },
-      'local_openai': { variant: 'secondary', color: 'bg-blue-100 text-blue-800' },
-      'error': { variant: 'destructive', color: 'bg-red-100 text-red-800' }
-    };
+    try {
+      // Buscar primeiro agente ativo para teste
+      const { data: agentes, error: agentesError } = await supabase
+        .from('agentes_ia')
+        .select('*')
+        .eq('status', 'ativo')
+        .limit(1);
 
-    const config = variants[testResult.source] || variants.error;
+      if (agentesError || !agentes || agentes.length === 0) {
+        throw new Error('Nenhum agente ativo encontrado para teste');
+      }
 
-    return (
-      <Badge className={config.color}>
-        {testResult.source === 'n8n' && '⚡ N8N'}
-        {testResult.source === 'local_openai' && '🤖 OpenAI Local'}
-        {testResult.source === 'error' && '❌ Erro'}
-      </Badge>
-    );
+      const agente = agentes[0];
+      console.log('🤖 Testando execução do agente:', agente.nome);
+
+      const { data, error } = await supabase.functions.invoke('agentes-ia-api', {
+        body: {
+          agente_id: agente.id,
+          input_usuario: testInput,
+          use_n8n: true
+        }
+      });
+
+      if (error) throw error;
+
+      setAgentTestResult(data);
+      
+      toast({
+        title: data.success ? 'Agente executado com sucesso!' : 'Falha na execução',
+        description: data.success 
+          ? `Resposta recebida via ${data.source === 'n8n' ? 'N8N' : 'OpenAI local'}` 
+          : `Erro: ${data.error}`,
+        variant: data.success ? 'default' : 'destructive',
+      });
+
+    } catch (error) {
+      console.error('❌ Erro no teste do agente:', error);
+      const errorResult = { success: false, error: error.message };
+      setAgentTestResult(errorResult);
+      
+      toast({
+        title: 'Erro no teste',
+        description: 'Não foi possível executar o agente IA',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsTestingAgent(false);
+    }
   };
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 mb-2">Teste de Integração N8N</h2>
+        <p className="text-gray-600">
+          Teste a conectividade e funcionamento da integração com o webhook N8N
+        </p>
+      </div>
+
+      {/* Teste de Conectividade N8N */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            {getStatusIcon()}
-            Teste de Integração N8N
+            <TestTube className="h-5 w-5" />
+            Teste de Conectividade N8N
           </CardTitle>
           <CardDescription>
-            Teste a comunicação entre Jurify e N8N enviando um payload de exemplo
+            Testa a comunicação direta com o webhook N8N configurado
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4">
-            <div>
-              <Label htmlFor="agente_id">ID do Agente (UUID)</Label>
-              <Input
-                id="agente_id"
-                value={testData.agente_id}
-                onChange={(e) => setTestData({ ...testData, agente_id: e.target.value })}
-                placeholder="Ex: 123e4567-e89b-12d3-a456-426614174000"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Você pode encontrar o ID na tabela de agentes IA
-              </p>
-            </div>
+          <Button 
+            onClick={testN8NConnection}
+            disabled={isTestingN8N}
+            className="w-full"
+          >
+            {isTestingN8N ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Testando N8N...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Testar Webhook N8N
+              </>
+            )}
+          </Button>
 
-            <div>
-              <Label htmlFor="input_usuario">Input do Usuário (Teste)</Label>
-              <Textarea
-                id="input_usuario"
-                value={testData.input_usuario}
-                onChange={(e) => setTestData({ ...testData, input_usuario: e.target.value })}
-                rows={3}
-                placeholder="Digite uma mensagem de teste para o agente..."
-              />
+          {testResult && (
+            <div className="mt-4 p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                {testResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-500" />
+                )}
+                <Badge variant={testResult.success ? 'default' : 'destructive'}>
+                  {testResult.success ? 'Sucesso' : 'Falha'}
+                </Badge>
+              </div>
+              
+              <div className="bg-gray-50 p-3 rounded text-sm">
+                <strong>Resposta:</strong>
+                <pre className="mt-2 whitespace-pre-wrap">
+                  {JSON.stringify(testResult, null, 2)}
+                </pre>
+              </div>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="use_n8n"
-                checked={testData.use_n8n}
-                onChange={(e) => setTestData({ ...testData, use_n8n: e.target.checked })}
-                className="rounded"
-              />
-              <Label htmlFor="use_n8n">Usar N8N (se desmarcado, irá direto para OpenAI)</Label>
-            </div>
-
-            <Button 
-              onClick={handleTest} 
-              disabled={isLoading}
-              className="w-full"
-            >
-              {isLoading ? (
-                <>
-                  <Clock className="h-4 w-4 mr-2 animate-spin" />
-                  Testando...
-                </>
-              ) : (
-                <>
-                  <TestTube className="h-4 w-4 mr-2" />
-                  Executar Teste
-                </>
-              )}
-            </Button>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {testResult && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Resultado do Teste</span>
-              {getSourceBadge()}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Status</Label>
-                <p className={`text-sm mt-1 ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
-                  {testResult.success ? '✅ Sucesso' : '❌ Falha'}
-                </p>
+      {/* Teste de Execução de Agente */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TestTube className="h-5 w-5" />
+            Teste de Execução de Agente IA
+          </CardTitle>
+          <CardDescription>
+            Testa a execução completa de um agente IA através do N8N
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label htmlFor="test-input">Input para teste</Label>
+            <Textarea
+              id="test-input"
+              value={testInput}
+              onChange={(e) => setTestInput(e.target.value)}
+              placeholder="Digite uma pergunta para testar o agente..."
+              rows={3}
+            />
+          </div>
+
+          <Button 
+            onClick={testAgentExecution}
+            disabled={isTestingAgent || !testInput.trim()}
+            className="w-full"
+          >
+            {isTestingAgent ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Executando Agente...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                Testar Execução de Agente
+              </>
+            )}
+          </Button>
+
+          {agentTestResult && (
+            <div className="mt-4 p-4 border rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                {agentTestResult.success ? (
+                  <CheckCircle className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-red-500" />
+                )}
+                <Badge variant={agentTestResult.success ? 'default' : 'destructive'}>
+                  {agentTestResult.success ? 'Sucesso' : 'Falha'}
+                </Badge>
+                {agentTestResult.source && (
+                  <Badge variant="outline">
+                    {agentTestResult.source === 'n8n' ? 'Via N8N' : 'Via OpenAI Local'}
+                  </Badge>
+                )}
               </div>
-
-              {testResult.agente_nome && (
-                <div>
-                  <Label className="text-sm font-medium">Agente Utilizado</Label>
-                  <p className="text-sm text-gray-900 mt-1">{testResult.agente_nome}</p>
+              
+              {agentTestResult.success && agentTestResult.response && (
+                <div className="bg-blue-50 p-3 rounded text-sm mb-3">
+                  <strong>Resposta da IA:</strong>
+                  <p className="mt-2">{agentTestResult.response}</p>
                 </div>
               )}
-
-              {testResult.response && (
-                <div>
-                  <Label className="text-sm font-medium">Resposta da IA</Label>
-                  <div className="mt-1 p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{testResult.response}</p>
-                  </div>
-                </div>
-              )}
-
-              {testResult.execution_time && (
-                <div>
-                  <Label className="text-sm font-medium">Tempo de Execução</Label>
-                  <p className="text-sm text-gray-900 mt-1">{testResult.execution_time}ms</p>
-                </div>
-              )}
-
-              {testResult.log_id && (
-                <div>
-                  <Label className="text-sm font-medium">Log ID</Label>
-                  <p className="text-sm text-gray-500 mt-1 font-mono">{testResult.log_id}</p>
-                </div>
-              )}
-
-              {testResult.error && (
-                <div>
-                  <Label className="text-sm font-medium">Erro</Label>
-                  <div className="mt-1 p-3 bg-red-50 rounded-lg">
-                    <p className="text-sm text-red-900">{testResult.error}</p>
-                    {testResult.details && (
-                      <p className="text-xs text-red-700 mt-1">{testResult.details}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-xs text-blue-800">
-                  <strong>Fluxo:</strong> {testResult.source === 'n8n' 
-                    ? 'Jurify → N8N → Resposta' 
-                    : 'Jurify → OpenAI Local (Fallback)'
-                  }
-                </p>
+              
+              <div className="bg-gray-50 p-3 rounded text-sm">
+                <strong>Dados técnicos:</strong>
+                <pre className="mt-2 whitespace-pre-wrap text-xs">
+                  {JSON.stringify(agentTestResult, null, 2)}
+                </pre>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="bg-blue-50 p-4 rounded-lg">
+        <h3 className="font-medium text-blue-900 mb-2">Informações do Teste</h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• O primeiro teste verifica a conectividade direta com o webhook N8N</li>
+          <li>• O segundo teste executa um agente IA completo via N8N</li>
+          <li>• Se o N8N falhar, o sistema usa OpenAI como fallback automaticamente</li>
+          <li>• Todos os testes são registrados nos logs de execução</li>
+        </ul>
+      </div>
     </div>
   );
 };

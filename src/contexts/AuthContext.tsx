@@ -42,21 +42,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [authTimeout, setAuthTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [lastActivity, setLastActivity] = useState<number>(Date.now());
 
-  // Log de atividade direto para evitar dependência circular
+  // Configurações de segurança
+  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
+  const ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutos
+
+  // Log de atividade com validação de segurança
   const logActivity = async (
-    tipo_acao: 'login' | 'logout',
+    tipo_acao: 'login' | 'logout' | 'security',
     descricao: string
   ) => {
     if (!user) return;
 
     try {
+      // Sanitizar descrição
+      const sanitizedDescription = descricao
+        .replace(/[<>]/g, '')
+        .replace(/javascript:/gi, '')
+        .trim();
+
       await supabase.rpc('registrar_log_atividade', {
         _usuario_id: user.id,
         _nome_usuario: user.email || 'Usuário',
         _tipo_acao: tipo_acao,
         _modulo: 'Autenticação',
-        _descricao: descricao,
+        _descricao: sanitizedDescription,
         _ip_usuario: null,
         _detalhes_adicionais: null,
       });
@@ -65,11 +76,48 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Monitorar atividade do usuário para timeout de sessão
+  const updateActivity = () => {
+    setLastActivity(Date.now());
+  };
+
+  // Verificar timeout de sessão
+  const checkSessionTimeout = () => {
+    if (user && Date.now() - lastActivity > SESSION_TIMEOUT) {
+      console.log('🕐 Sessão expirada por inatividade');
+      logActivity('logout', 'Sessão expirada por inatividade');
+      signOut();
+    }
+  };
+
+  // Validar força da senha
+  const validatePasswordStrength = (password: string) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumbers = /\d/.test(password);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+    return {
+      isValid: password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers && hasSpecialChar,
+      requirements: {
+        minLength: password.length >= minLength,
+        hasUpperCase,
+        hasLowerCase,
+        hasNumbers,
+        hasSpecialChar
+      }
+    };
+  };
+
   const fetchProfile = async (userId: string) => {
     try {
       console.log('🔍 Buscando perfil para usuário:', userId);
       
-      // Buscar perfil
+      // Log de acesso a dados
+      await logActivity('security', 'Acesso a dados do perfil do usuário');
+      
+      // Buscar perfil com validação de RLS
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -79,7 +127,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (profileError) {
         console.error('❌ Erro ao buscar perfil:', profileError);
         
-        // Se não encontrar perfil, criar um básico
         if (profileError.code === 'PGRST116') {
           console.log('📝 Perfil não encontrado, criando novo...');
           const { data: userData } = await supabase.auth.getUser();
@@ -98,6 +145,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             if (!createError && newProfile) {
               console.log('✅ Novo perfil criado:', newProfile);
               setProfile(newProfile);
+              await logActivity('security', 'Novo perfil de usuário criado');
             } else {
               console.error('❌ Erro ao criar perfil:', createError);
               throw new Error('Falha ao criar perfil do usuário');
@@ -111,7 +159,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setProfile(profileData);
       }
 
-      // Buscar roles (opcional, não bloqueia acesso)
+      // Buscar roles com validação de RLS
       console.log('🔍 Buscando roles do usuário...');
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
@@ -128,6 +176,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     } catch (error) {
       console.error('💥 Erro geral ao buscar perfil:', error);
+      await logActivity('security', `Erro ao buscar perfil: ${error}`);
       throw error;
     }
   };
@@ -138,14 +187,46 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado tem todas as permissões
+  // Sistema robusto de permissões baseado em roles
   const hasPermission = (module: string, permission: string): boolean => {
-    return !!user; // Apenas verificar se está autenticado
+    if (!user || !userRoles.length) return false;
+    
+    // Verificar se o usuário tem uma role que permite a ação
+    const hasValidRole = userRoles.some(userRole => {
+      if (!userRole.ativo) return false;
+      
+      // Administradores têm acesso total
+      if (userRole.role === 'administrador') return true;
+      
+      // Verificações específicas por role e módulo
+      switch (userRole.role) {
+        case 'advogado':
+          return ['leads', 'contratos', 'agendamentos', 'relatorios', 'whatsapp_ia'].includes(module);
+        case 'comercial':
+          return ['leads', 'relatorios'].includes(module) || 
+                 (module === 'contratos' && ['create', 'read'].includes(permission));
+        case 'pos_venda':
+          return ['agendamentos', 'contratos'].includes(module) || 
+                 (module === 'leads' && permission === 'read');
+        case 'suporte':
+          return permission === 'read';
+        default:
+          return false;
+      }
+    });
+
+    // Log de acesso a permissões
+    if (hasValidRole) {
+      logActivity('security', `Permissão concedida: ${module}:${permission}`);
+    } else {
+      logActivity('security', `Permissão negada: ${module}:${permission}`);
+    }
+
+    return hasValidRole;
   };
 
-  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado tem qualquer role
   const hasRole = (role: string): boolean => {
-    return !!user; // Qualquer usuário autenticado tem qualquer role
+    return userRoles.some(userRole => userRole.role === role && userRole.ativo);
   };
 
   const signIn = async (email: string, password: string) => {
@@ -153,17 +234,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(true);
       console.log('🔐 Iniciando login para:', email);
       
+      // Validar formato do email
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        throw new Error('Formato de email inválido');
+      }
+
+      // Sanitizar inputs
+      const sanitizedEmail = email.trim().toLowerCase();
+      
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
+        email: sanitizedEmail,
         password,
       });
 
       if (error) {
         console.error('❌ Erro no login:', error);
+        await logActivity('security', `Tentativa de login falhada para: ${sanitizedEmail}`);
         throw error;
       }
 
       console.log('✅ Login bem-sucedido:', data.user?.email);
+      updateActivity(); // Marcar atividade
       return { user: data.user, error: null };
     } catch (error: any) {
       console.error('💥 Erro no login:', error);
@@ -172,24 +264,42 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const signUp = async (email: string, password: string, nomeCompleto: string) => {
+    // Validar força da senha
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      return { 
+        error: { 
+          message: 'A senha deve ter pelo menos 8 caracteres, incluindo maiúsculas, minúsculas, números e símbolos' 
+        } 
+      };
+    }
+
+    // Sanitizar inputs
+    const sanitizedEmail = email.trim().toLowerCase();
+    const sanitizedName = nomeCompleto.replace(/[<>]/g, '').trim();
+
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
-      email,
+      email: sanitizedEmail,
       password,
       options: {
         emailRedirectTo: redirectUrl,
         data: {
-          nome_completo: nomeCompleto
+          nome_completo: sanitizedName
         }
       }
     });
+
+    if (!error) {
+      await logActivity('security', `Nova conta criada para: ${sanitizedEmail}`);
+    }
+
     return { error };
   };
 
   const signOut = async () => {
     try {
-      // Registrar log de logout antes de fazer logout
       if (user) {
         await logActivity('logout', `Usuário ${user.email} fez logout`);
       }
@@ -202,6 +312,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setSession(null);
       setProfile(null);
       setUserRoles([]);
+      setLastActivity(Date.now());
     } catch (error) {
       console.error('❌ Erro no logout:', error);
       throw error;
@@ -213,7 +324,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     console.log('🚀 Inicializando AuthProvider...');
 
-    // Configurar timeout de 10 segundos para autenticação
+    // Configurar timeout de autenticação
     const timeout = setTimeout(() => {
       if (mounted && loading) {
         console.log('⏰ Timeout de autenticação atingido');
@@ -224,6 +335,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     setAuthTimeout(timeout);
 
+    // Configurar listeners de atividade
+    const activityEvents = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    const handleActivity = () => updateActivity();
+    
+    activityEvents.forEach(event => {
+      document.addEventListener(event, handleActivity, true);
+    });
+
+    // Verificar timeout de sessão periodicamente
+    const sessionInterval = setInterval(checkSessionTimeout, ACTIVITY_CHECK_INTERVAL);
+
     // Configurar listener de estado de autenticação
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -231,7 +353,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         if (!mounted) return;
 
-        // Limpar timeout se o estado mudar
         if (authTimeout) {
           clearTimeout(authTimeout);
         }
@@ -241,12 +362,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         if (session?.user) {
           console.log('👤 Usuário autenticado, buscando perfil...');
+          updateActivity(); // Marcar atividade no login
+          
+          if (event === 'SIGNED_IN') {
+            await logActivity('login', `Usuário ${session.user.email} fez login`);
+          }
+          
           try {
             await fetchProfile(session.user.id);
             console.log('✅ Perfil carregado com sucesso');
           } catch (error) {
             console.error('💥 Erro ao carregar perfil:', error);
-            // Em caso de erro, ainda permite acesso mas com funcionalidade limitada
           } finally {
             setLoading(false);
           }
@@ -275,6 +401,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       if (session?.user) {
         console.log('🔄 Session existente encontrada, buscando perfil...');
+        updateActivity();
         fetchProfile(session.user.id).then(() => {
           if (mounted) {
             console.log('✅ Inicialização completa');
@@ -297,6 +424,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (authTimeout) {
         clearTimeout(authTimeout);
       }
+      clearInterval(sessionInterval);
+      activityEvents.forEach(event => {
+        document.removeEventListener(event, handleActivity, true);
+      });
       subscription.unsubscribe();
     };
   }, []);

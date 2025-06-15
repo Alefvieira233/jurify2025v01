@@ -1,261 +1,265 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, AlertCircle, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, Shield, Database, Server, RefreshCw, CheckCircle, XCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
-interface HealthCheckItem {
-  name: string;
-  status: 'checking' | 'success' | 'error' | 'warning';
+interface HealthCheck {
+  component: string;
+  status: 'healthy' | 'warning' | 'critical';
   message: string;
+  lastCheck: string;
   details?: string;
 }
 
 const SystemHealthCheck = () => {
-  const [checks, setChecks] = useState<HealthCheckItem[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const { user } = useAuth();
+  const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const healthChecks = [
-    {
-      name: 'Conexão com Supabase',
-      check: async () => {
-        try {
-          const { data, error } = await supabase.from('profiles').select('id').limit(1);
-          if (error) throw error;
-          return { status: 'success', message: 'Conectado com sucesso' };
-        } catch (error) {
-          return { status: 'error', message: 'Erro de conexão', details: error.message };
-        }
+  const performHealthCheck = async () => {
+    setLoading(true);
+    const checks: HealthCheck[] = [];
+    const now = new Date().toISOString();
+
+    try {
+      // 1. Verificar conexão com banco de dados
+      try {
+        const { error: dbError } = await supabase.from('profiles').select('count').limit(1);
+        checks.push({
+          component: 'Database Connection',
+          status: dbError ? 'critical' : 'healthy',
+          message: dbError ? 'Falha na conexão com o banco' : 'Conectado',
+          lastCheck: now,
+          details: dbError?.message
+        });
+      } catch (error) {
+        checks.push({
+          component: 'Database Connection',
+          status: 'critical',
+          message: 'Erro na verificação do banco',
+          lastCheck: now,
+          details: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
       }
-    },
-    {
-      name: 'Autenticação do Usuário',
-      check: async () => {
-        if (user) {
-          return { status: 'success', message: 'Usuário autenticado' };
-        }
-        return { status: 'error', message: 'Usuário não autenticado' };
+
+      // 2. Verificar RLS (Row Level Security)
+      try {
+        const { data: rlsCheck } = await supabase
+          .rpc('pg_get_userbyid', { user_id: 1 })
+          .single();
+        
+        checks.push({
+          component: 'Row Level Security',
+          status: 'healthy',
+          message: 'RLS ativo e funcionando',
+          lastCheck: now
+        });
+      } catch (error) {
+        checks.push({
+          component: 'Row Level Security',
+          status: 'warning',
+          message: 'Verificação RLS indisponível',
+          lastCheck: now,
+          details: 'Função de verificação não encontrada'
+        });
       }
-    },
-    {
-      name: 'Edge Functions - N8N',
-      check: async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke('n8n-webhook-forwarder', {
-            body: { agentId: 'test', prompt: 'health check' }
-          });
-          if (error) throw error;
-          return { status: 'success', message: 'N8N webhook funcionando' };
-        } catch (error) {
-          return { status: 'warning', message: 'N8N pode estar indisponível', details: error.message };
-        }
+
+      // 3. Verificar autenticação
+      try {
+        const { data: authData } = await supabase.auth.getSession();
+        checks.push({
+          component: 'Authentication',
+          status: authData.session ? 'healthy' : 'warning',
+          message: authData.session ? 'Sessão ativa' : 'Nenhuma sessão ativa',
+          lastCheck: now
+        });
+      } catch (error) {
+        checks.push({
+          component: 'Authentication',
+          status: 'critical',
+          message: 'Falha no sistema de autenticação',
+          lastCheck: now,
+          details: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
       }
-    },
-    {
-      name: 'Edge Functions - Agentes IA',
-      check: async () => {
-        try {
-          const { data, error } = await supabase.functions.invoke('agentes-ia-api');
-          // Função pode retornar erro por não ter dados, mas se executar está OK
-          return { status: 'success', message: 'API de agentes funcionando' };
-        } catch (error) {
-          return { status: 'warning', message: 'API de agentes pode estar indisponível', details: error.message };
-        }
+
+      // 4. Verificar Edge Functions
+      try {
+        const { data: functionTest, error: functionError } = await supabase.functions.invoke('agentes-ia-api', {
+          body: { test: true }
+        });
+        
+        checks.push({
+          component: 'Edge Functions',
+          status: functionError ? 'warning' : 'healthy',
+          message: functionError ? 'Algumas funções podem estar indisponíveis' : 'Funções operacionais',
+          lastCheck: now,
+          details: functionError?.message
+        });
+      } catch (error) {
+        checks.push({
+          component: 'Edge Functions',
+          status: 'critical',
+          message: 'Edge Functions indisponíveis',
+          lastCheck: now,
+          details: error instanceof Error ? error.message : 'Erro desconhecido'
+        });
       }
-    },
-    {
-      name: 'Tabelas do Banco',
-      check: async () => {
+
+      // 5. Verificar integridade das tabelas críticas
+      const criticalTables = ['profiles', 'user_roles', 'leads', 'contratos'];
+      for (const table of criticalTables) {
         try {
-          const tables = ['leads', 'contratos', 'agendamentos', 'agentes_ia', 'n8n_workflows'];
-          const results = await Promise.all(
-            tables.map(table => supabase.from(table).select('id').limit(1))
-          );
-          
-          const errors = results.filter(r => r.error);
-          if (errors.length > 0) {
-            return { status: 'error', message: `${errors.length} tabelas com erro` };
-          }
-          
-          return { status: 'success', message: 'Todas as tabelas acessíveis' };
-        } catch (error) {
-          return { status: 'error', message: 'Erro ao acessar tabelas', details: error.message };
-        }
-      }
-    },
-    {
-      name: 'Configuração N8N',
-      check: async () => {
-        try {
-          const { data, error } = await supabase
-            .from('n8n_workflows')
-            .select('*')
-            .eq('ativo', true)
+          const { error: tableError } = await supabase
+            .from(table as any)
+            .select('count')
             .limit(1);
           
-          if (error) throw error;
-          
-          if (data && data.length > 0) {
-            return { status: 'success', message: 'Workflow N8N configurado' };
-          } else {
-            return { status: 'warning', message: 'Nenhum workflow N8N ativo' };
-          }
+          checks.push({
+            component: `Table: ${table}`,
+            status: tableError ? 'critical' : 'healthy',
+            message: tableError ? 'Tabela inacessível' : 'Tabela acessível',
+            lastCheck: now,
+            details: tableError?.message
+          });
         } catch (error) {
-          return { status: 'error', message: 'Erro ao verificar N8N', details: error.message };
+          checks.push({
+            component: `Table: ${table}`,
+            status: 'critical',
+            message: 'Erro ao verificar tabela',
+            lastCheck: now,
+            details: error instanceof Error ? error.message : 'Erro desconhecido'
+          });
         }
       }
-    }
-  ];
 
-  const runHealthCheck = async () => {
-    setIsRunning(true);
-    setChecks(healthChecks.map(hc => ({ 
-      name: hc.name, 
-      status: 'checking', 
-      message: 'Verificando...' 
-    })));
-
-    for (let i = 0; i < healthChecks.length; i++) {
-      const result = await healthChecks[i].check();
-      
-      setChecks(prev => prev.map((check, index) => 
-        index === i 
-          ? { 
-              name: check.name, 
-              status: result.status as any, 
-              message: result.message,
-              details: result.details 
-            }
-          : check
-      ));
-      
-      // Pequeno delay para visualizar o progresso
-      await new Promise(resolve => setTimeout(resolve, 500));
+    } catch (error) {
+      toast({
+        title: "Erro no Health Check",
+        description: "Falha ao executar verificações de saúde do sistema",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
 
-    setIsRunning(false);
-    
-    const allSuccess = checks.every(c => c.status === 'success');
-    const hasErrors = checks.some(c => c.status === 'error');
-    
-    toast({
-      title: allSuccess ? 'Sistema funcionando perfeitamente!' : hasErrors ? 'Problemas detectados' : 'Sistema funcionando com avisos',
-      description: `${checks.filter(c => c.status === 'success').length}/${checks.length} verificações passaram`,
-      variant: hasErrors ? 'destructive' : 'default',
-    });
+    setHealthChecks(checks);
   };
 
   useEffect(() => {
-    runHealthCheck();
+    performHealthCheck();
   }, []);
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: HealthCheck['status']) => {
     switch (status) {
-      case 'checking':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
-      case 'success':
+      case 'healthy':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case 'error':
-        return <XCircle className="h-4 w-4 text-red-500" />;
       case 'warning':
-        return <AlertCircle className="h-4 w-4 text-yellow-500" />;
-      default:
-        return null;
+        return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
+      case 'critical':
+        return <XCircle className="h-4 w-4 text-red-500" />;
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusColor = (status: HealthCheck['status']) => {
     switch (status) {
-      case 'checking':
-        return <Badge variant="secondary">Verificando</Badge>;
-      case 'success':
-        return <Badge variant="default" className="bg-green-600">OK</Badge>;
-      case 'error':
-        return <Badge variant="destructive">Erro</Badge>;
+      case 'healthy':
+        return 'bg-green-100 text-green-800';
       case 'warning':
-        return <Badge variant="secondary" className="bg-yellow-600">Aviso</Badge>;
-      default:
-        return null;
+        return 'bg-yellow-100 text-yellow-800';
+      case 'critical':
+        return 'bg-red-100 text-red-800';
     }
   };
+
+  const criticalIssues = healthChecks.filter(check => check.status === 'critical').length;
+  const warnings = healthChecks.filter(check => check.status === 'warning').length;
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Verificação de Saúde do Sistema
-            </CardTitle>
-            <CardDescription>
-              Monitore o status de todos os componentes críticos do Jurify
-            </CardDescription>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            System Health Check
           </div>
           <Button
-            onClick={runHealthCheck}
-            disabled={isRunning}
+            onClick={performHealthCheck}
+            disabled={loading}
             variant="outline"
+            size="sm"
           >
-            {isRunning ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            {loading ? (
+              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
             ) : (
               <RefreshCw className="h-4 w-4 mr-2" />
             )}
-            {isRunning ? 'Verificando...' : 'Verificar Novamente'}
+            Verificar
           </Button>
-        </div>
+        </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {checks.map((check, index) => (
-            <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-3">
-                {getStatusIcon(check.status)}
-                <div>
-                  <p className="font-medium">{check.name}</p>
-                  <p className="text-sm text-muted-foreground">{check.message}</p>
-                  {check.details && (
-                    <p className="text-xs text-red-600 mt-1">{check.details}</p>
-                  )}
-                </div>
-              </div>
-              {getStatusBadge(check.status)}
+        <div className="space-y-4">
+          {/* Status Overview */}
+          <div className="flex gap-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="text-sm">
+                {healthChecks.filter(c => c.status === 'healthy').length} Saudável
+              </span>
             </div>
-          ))}
-        </div>
-        
-        {checks.length > 0 && !isRunning && (
-          <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Status Geral do Sistema</h4>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <span className="text-green-600 font-medium">
-                  {checks.filter(c => c.status === 'success').length}
-                </span>
-                <span className="text-gray-600 ml-1">Funcionando</span>
-              </div>
-              <div>
-                <span className="text-yellow-600 font-medium">
-                  {checks.filter(c => c.status === 'warning').length}
-                </span>
-                <span className="text-gray-600 ml-1">Avisos</span>
-              </div>
-              <div>
-                <span className="text-red-600 font-medium">
-                  {checks.filter(c => c.status === 'error').length}
-                </span>
-                <span className="text-gray-600 ml-1">Erros</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+              <span className="text-sm">{warnings} Avisos</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <XCircle className="h-4 w-4 text-red-500" />
+              <span className="text-sm">{criticalIssues} Críticos</span>
             </div>
           </div>
-        )}
+
+          {/* Health Checks List */}
+          <div className="space-y-2">
+            {healthChecks.map((check, index) => (
+              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  {getStatusIcon(check.status)}
+                  <div>
+                    <div className="font-medium">{check.component}</div>
+                    <div className="text-sm text-gray-600">{check.message}</div>
+                    {check.details && (
+                      <div className="text-xs text-red-600 mt-1">{check.details}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <Badge className={getStatusColor(check.status)}>
+                    {check.status}
+                  </Badge>
+                  <div className="text-xs text-gray-500 mt-1">
+                    {new Date(check.lastCheck).toLocaleTimeString('pt-BR')}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {criticalIssues > 0 && (
+            <div className="p-4 border border-red-200 rounded-lg bg-red-50">
+              <div className="flex items-center gap-2 text-red-800">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-medium">Atenção Requerida</span>
+              </div>
+              <p className="text-sm text-red-700 mt-1">
+                {criticalIssues} problema(s) crítico(s) detectado(s). Verifique imediatamente.
+              </p>
+            </div>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

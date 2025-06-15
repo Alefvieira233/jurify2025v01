@@ -1,13 +1,15 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Server, Database, Shield, Activity } from 'lucide-react';
+import { Server, Database, Shield, Activity, Lock } from 'lucide-react';
 import BackupRestore from '../BackupRestore';
 import SystemStatus from '../SystemStatus';
 import PerformanceDashboard from '../PerformanceDashboard';
 import LogsMonitoramento from '../LogsMonitoramento';
 import AdminUserSection from './AdminUserSection';
 import SystemHealthCheck from '../SystemHealthCheck';
+import SecurityDashboard from '../SecurityDashboard';
 
 const SistemaSection = () => {
   return (
@@ -17,10 +19,14 @@ const SistemaSection = () => {
 
       {/* Existing tabs */}
       <Tabs defaultValue="status" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="status" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Status
+          </TabsTrigger>
+          <TabsTrigger value="security" className="flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            Segurança
           </TabsTrigger>
           <TabsTrigger value="backup" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -42,6 +48,10 @@ const SistemaSection = () => {
 
         <TabsContent value="status">
           <SystemStatus />
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecurityDashboard />
         </TabsContent>
 
         <TabsContent value="backup">

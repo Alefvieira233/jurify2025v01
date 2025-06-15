@@ -7,11 +7,18 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { UserPlus, CheckCircle, AlertCircle } from 'lucide-react';
 
+interface AdminData {
+  email: string;
+  password: string;
+  name: string;
+  userId?: string;
+}
+
 const CreateAdminUser = () => {
   const { toast } = useToast();
   const [isCreating, setIsCreating] = useState(false);
   const [adminCreated, setAdminCreated] = useState(false);
-  const [adminData, setAdminData] = useState({
+  const [adminData, setAdminData] = useState<AdminData>({
     email: 'admin@jurify.com',
     password: 'Jurify@Admin123',
     name: 'Administrador do Sistema'
@@ -101,10 +108,32 @@ const CreateAdminUser = () => {
       setAdminCreated(true);
       setAdminData(prev => ({ ...prev, userId: authData.user!.id }));
       
-      toast({
-        title: "Usuário Administrador Criado!",
-        description: `Admin criado com sucesso. ID: ${authData.user!.id}`,
+      // 6. Fazer login automaticamente com o usuário criado
+      console.log('🔐 Fazendo login automático...');
+      const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+        email: adminData.email,
+        password: adminData.password,
       });
+
+      if (loginError) {
+        console.error('❌ Erro no login automático:', loginError);
+        toast({
+          title: "Usuário criado, mas erro no login",
+          description: "Use as credenciais manualmente para fazer login.",
+          variant: "destructive",
+        });
+      } else {
+        console.log('✅ Login automático bem-sucedido!');
+        toast({
+          title: "Usuário Administrador Criado e Logado!",
+          description: `Login automático realizado. Redirecionando para o dashboard...`,
+        });
+        
+        // Redirecionar para o dashboard após 2 segundos
+        setTimeout(() => {
+          window.location.href = '/?tab=dashboard';
+        }, 2000);
+      }
 
     } catch (error: any) {
       console.error('❌ Erro completo:', error);
@@ -127,7 +156,7 @@ const CreateAdminUser = () => {
             Usuário Administrador Criado com Sucesso!
           </CardTitle>
           <CardDescription>
-            O usuário administrador foi criado e configurado no sistema.
+            O usuário administrador foi criado, configurado e login realizado automaticamente.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -152,13 +181,16 @@ const CreateAdminUser = () => {
               <li>• Role definida como 'administrador'</li>
               <li>• Permissões de acesso total configuradas</li>
               <li>• Email confirmado automaticamente</li>
+              <li>• Login automático realizado</li>
+              <li>• Redirecionamento para dashboard em andamento</li>
             </ul>
           </div>
 
           <div className="bg-amber-50 p-4 rounded-lg">
             <h4 className="font-semibold text-amber-800 mb-2">📝 Observações:</h4>
             <ul className="text-sm text-amber-700 space-y-1">
-              <li>• Este usuário tem acesso total ao sistema</li>
+              <li>• Login automático foi realizado</li>
+              <li>• Você será redirecionado para o dashboard</li>
               <li>• A senha pode ser alterada após o primeiro login</li>
               <li>• O usuário é permanente até remoção manual</li>
               <li>• Todos os demais usuários foram preservados</li>
@@ -177,7 +209,7 @@ const CreateAdminUser = () => {
           Criar Usuário Administrador
         </CardTitle>
         <CardDescription>
-          Criação do usuário admin@jurify.com com acesso total ao sistema
+          Criação do usuário admin@jurify.com com acesso total ao sistema e login automático
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -221,6 +253,8 @@ const CreateAdminUser = () => {
             <li>• Criar perfil na tabela profiles</li>
             <li>• Definir role como 'administrador'</li>
             <li>• Configurar permissões de acesso total</li>
+            <li>• Realizar login automático</li>
+            <li>• Redirecionar para o dashboard</li>
           </ul>
         </div>
 
@@ -232,12 +266,12 @@ const CreateAdminUser = () => {
           {isCreating ? (
             <>
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Criando Administrador...
+              Criando e Fazendo Login...
             </>
           ) : (
             <>
               <UserPlus className="h-4 w-4 mr-2" />
-              Criar Usuário Administrador
+              Criar e Logar como Administrador
             </>
           )}
         </Button>
@@ -246,7 +280,7 @@ const CreateAdminUser = () => {
           <div className="bg-yellow-50 p-4 rounded-lg">
             <div className="flex items-center gap-2 text-yellow-800">
               <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">Aguarde... Criando usuário e configurando permissões.</span>
+              <span className="text-sm">Aguarde... Criando usuário, configurando permissões e fazendo login automático.</span>
             </div>
           </div>
         )}

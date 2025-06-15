@@ -84,6 +84,14 @@ const LogsMonitoramento = () => {
     return text.substring(0, maxLength) + '...';
   };
 
+  const handleRefetch = () => {
+    refetch();
+  };
+
+  const handleLimparLogs = () => {
+    limparLogs();
+  };
+
   if (loading) {
     return (
       <div className="p-6">
@@ -107,11 +115,11 @@ const LogsMonitoramento = () => {
         </div>
         
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={refetch}>
+          <Button variant="outline" onClick={handleRefetch}>
             <Activity className="h-4 w-4 mr-2" />
             Atualizar
           </Button>
-          <Button variant="destructive" onClick={limparLogs}>
+          <Button variant="destructive" onClick={handleLimparLogs}>
             <Trash2 className="h-4 w-4 mr-2" />
             Limpar Logs
           </Button>

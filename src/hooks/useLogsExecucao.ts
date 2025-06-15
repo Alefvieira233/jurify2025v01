@@ -45,13 +45,20 @@ export const useLogsExecucao = () => {
         .limit(limite);
 
       if (error) throw error;
-      setLogs(data || []);
+      
+      // Transform the data to match our interface
+      const transformedData: LogExecucao[] = (data || []).map(log => ({
+        ...log,
+        status: log.status as 'success' | 'error' | 'processing'
+      }));
+      
+      setLogs(transformedData);
 
       // Calcular estatísticas
-      const total = data?.length || 0;
-      const sucessos = data?.filter(log => log.status === 'success').length || 0;
-      const erros = data?.filter(log => log.status === 'error').length || 0;
-      const temposValidos = data?.filter(log => log.tempo_execucao).map(log => log.tempo_execucao) || [];
+      const total = transformedData.length;
+      const sucessos = transformedData.filter(log => log.status === 'success').length;
+      const erros = transformedData.filter(log => log.status === 'error').length;
+      const temposValidos = transformedData.filter(log => log.tempo_execucao).map(log => log.tempo_execucao!) || [];
       const tempoMedio = temposValidos.length > 0 
         ? temposValidos.reduce((acc, tempo) => acc + tempo, 0) / temposValidos.length 
         : 0;
@@ -85,7 +92,13 @@ export const useLogsExecucao = () => {
         .limit(20);
 
       if (error) throw error;
-      return data || [];
+      
+      const transformedData: LogExecucao[] = (data || []).map(log => ({
+        ...log,
+        status: log.status as 'success' | 'error' | 'processing'
+      }));
+      
+      return transformedData;
     } catch (error) {
       console.error('Erro ao buscar logs por agente:', error);
       toast({

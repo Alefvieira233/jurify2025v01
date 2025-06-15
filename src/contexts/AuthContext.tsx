@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       console.log('Buscando perfil para usuário:', userId);
       
-      // Buscar perfil sem RLS problemático
+      // Buscar perfil
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -77,8 +77,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (profileError) {
         console.error('Erro ao buscar perfil:', profileError);
+        
         // Se não encontrar perfil, criar um básico
         if (profileError.code === 'PGRST116') {
+          console.log('Perfil não encontrado, criando novo...');
           const { data: userData } = await supabase.auth.getUser();
           if (userData.user) {
             const { data: newProfile, error: createError } = await supabase
@@ -93,15 +95,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               .single();
             
             if (!createError && newProfile) {
+              console.log('Novo perfil criado:', newProfile);
               setProfile(newProfile);
+            } else {
+              console.error('Erro ao criar perfil:', createError);
             }
           }
         }
-      } else {
+      } else if (profileData) {
+        console.log('Perfil encontrado:', profileData);
         setProfile(profileData);
       }
 
-      // Buscar roles de forma simplificada para evitar recursão
+      // Buscar roles
+      console.log('Buscando roles do usuário...');
       const { data: rolesData, error: rolesError } = await supabase
         .from('user_roles')
         .select('*')
@@ -110,26 +117,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       if (rolesError) {
         console.error('Erro ao buscar roles:', rolesError);
+        
         // Se não encontrar roles, atribuir role padrão
-        const { error: insertRoleError } = await supabase
+        console.log('Roles não encontradas, criando role padrão...');
+        const { data: newRole, error: insertRoleError } = await supabase
           .from('user_roles')
           .insert({
             user_id: userId,
             role: 'suporte',
             ativo: true
-          });
+          })
+          .select()
+          .single();
         
-        if (!insertRoleError) {
-          setUserRoles([{ 
-            id: '', 
-            user_id: userId, 
-            role: 'suporte', 
-            ativo: true, 
-            created_at: new Date().toISOString(), 
-            updated_at: new Date().toISOString() 
-          }]);
+        if (!insertRoleError && newRole) {
+          console.log('Role padrão criada:', newRole);
+          setUserRoles([newRole]);
+        } else {
+          console.error('Erro ao criar role padrão:', insertRoleError);
+          setUserRoles([]);
         }
       } else {
+        console.log('Roles encontradas:', rolesData);
         setUserRoles(rolesData || []);
       }
     } catch (error) {
@@ -161,20 +170,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
+      console.log('Iniciando login para:', email);
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro no login:', error);
+        throw error;
+      }
 
-      // Não precisa fazer mais nada aqui, o onAuthStateChange vai lidar com o resto
+      console.log('Login bem-sucedido:', data.user?.email);
       return { user: data.user, error: null };
     } catch (error: any) {
       console.error('Erro no login:', error);
       return { user: null, error };
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -204,7 +216,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
+      // Limpar estado
       setUser(null);
+      setSession(null);
       setProfile(null);
       setUserRoles([]);
     } catch (error) {
@@ -227,39 +241,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Usar setTimeout para evitar bloqueio do callback
-          setTimeout(() => {
-            if (mounted) {
-              fetchProfile(session.user.id).finally(() => {
-                if (mounted) {
-                  setLoading(false);
-                }
-              });
-            }
-          }, 0);
+          // Fetch profile data for authenticated user
+          console.log('Usuário autenticado, buscando perfil...');
+          await fetchProfile(session.user.id);
         } else {
+          console.log('Usuário não autenticado, limpando estado...');
           setProfile(null);
           setUserRoles([]);
-          setLoading(false);
         }
+        
+        setLoading(false);
       }
     );
 
-    // Check for existing session
+    // Check for existing session on mount
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!mounted) return;
       
-      console.log('Session inicial:', session?.user?.email);
+      console.log('Session inicial verificada:', session?.user?.email);
       setSession(session);
       setUser(session?.user ?? null);
       
       if (session?.user) {
+        console.log('Session existente encontrada, buscando perfil...');
         fetchProfile(session.user.id).finally(() => {
           if (mounted) {
             setLoading(false);
           }
         });
       } else {
+        console.log('Nenhuma session existente');
         setLoading(false);
       }
     });

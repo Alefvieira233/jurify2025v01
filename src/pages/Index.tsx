@@ -27,12 +27,14 @@ const Index = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [profileLoading, setProfileLoading] = useState(true);
 
   // Debug logs
-  console.log('Index - Auth state:', { 
+  console.log('Index - Estado completo da autenticação:', { 
     user: user?.email, 
     profile: profile?.nome_completo, 
-    loading,
+    authLoading: loading,
+    profileLoading,
     hasUser: !!user,
     hasProfile: !!profile 
   });
@@ -43,6 +45,28 @@ const Index = () => {
       setActiveTab(tab);
     }
   }, [searchParams]);
+
+  useEffect(() => {
+    // Controlar o loading do perfil separadamente
+    if (!loading && user) {
+      console.log('Usuário carregado, aguardando perfil...');
+      // Dar um tempo para o perfil carregar
+      const timer = setTimeout(() => {
+        setProfileLoading(false);
+        console.log('Timeout do perfil atingido, continuando sem perfil se necessário');
+      }, 3000); // 3 segundos de timeout
+
+      if (profile) {
+        console.log('Perfil carregado, limpando timeout');
+        clearTimeout(timer);
+        setProfileLoading(false);
+      }
+
+      return () => clearTimeout(timer);
+    } else if (!loading && !user) {
+      setProfileLoading(false);
+    }
+  }, [loading, user, profile]);
 
   useEffect(() => {
     if (user && profile) {
@@ -185,25 +209,26 @@ const Index = () => {
     }
   };
 
-  // Se ainda estiver carregando, mostrar spinner
+  // Se ainda estiver carregando autenticação
   if (loading) {
-    console.log('Index - Showing loading spinner');
+    console.log('Index - Auth ainda carregando');
     return <LoadingSpinner fullScreen text="Carregando sistema..." />;
   }
 
   // Se não tiver usuário, não deveria chegar aqui (ProtectedRoute deveria interceptar)
   if (!user) {
-    console.log('Index - No user found, this should not happen');
+    console.log('Index - Usuário não encontrado');
     return <LoadingSpinner fullScreen text="Redirecionando..." />;
   }
 
-  // Se tiver usuário mas não tiver perfil, mostrar carregando
-  if (!profile) {
-    console.log('Index - User found but no profile yet');
+  // Se tiver usuário mas ainda estiver carregando perfil (com timeout)
+  if (profileLoading) {
+    console.log('Index - Carregando perfil do usuário');
     return <LoadingSpinner fullScreen text="Carregando perfil do usuário..." />;
   }
 
-  console.log('Index - Rendering main interface');
+  // Renderizar interface mesmo sem perfil (será criado automaticamente)
+  console.log('Index - Renderizando interface principal');
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <Sidebar 

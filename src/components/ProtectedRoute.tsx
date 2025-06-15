@@ -11,23 +11,25 @@ interface ProtectedRouteProps {
 const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
   const { user, loading } = useAuth();
 
-  console.log('ProtectedRoute - State:', { 
+  console.log('ProtectedRoute - Estado da autenticação:', { 
     hasUser: !!user, 
     userEmail: user?.email,
     loading 
   });
 
+  // Mostrar loading enquanto verifica autenticação
   if (loading) {
-    console.log('ProtectedRoute - Loading, showing spinner');
+    console.log('ProtectedRoute - Ainda carregando, mostrando spinner');
     return <LoadingSpinner fullScreen text="Verificando autenticação..." />;
   }
 
+  // Se não há usuário autenticado, redirecionar para login
   if (!user) {
-    console.log('ProtectedRoute - No user, redirecting to auth');
+    console.log('ProtectedRoute - Usuário não autenticado, redirecionando para /auth');
     return <Navigate to="/auth" replace />;
   }
 
-  console.log('ProtectedRoute - User authenticated, rendering children');
+  console.log('ProtectedRoute - Usuário autenticado, renderizando conteúdo');
   return <>{children}</>;
 };
 

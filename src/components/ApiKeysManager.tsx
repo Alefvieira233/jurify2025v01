@@ -1,69 +1,153 @@
 
 import React, { useState } from 'react';
-import { 
-  Key, 
-  Plus, 
-  Eye, 
-  EyeOff, 
-  Power, 
-  PowerOff, 
-  Trash2, 
-  Copy,
-  Shield
-} from 'lucide-react';
-import { useApiKeys } from '@/hooks/useApiKeys';
+import { Plus, Key, Eye, EyeOff, Power, PowerOff, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+interface ApiKey {
+  id: string;
+  nome: string;
+  key_value: string;
+  ativo: boolean;
+  created_at: string;
+  updated_at: string;
+  criado_por?: string;
+}
 
 const ApiKeysManager = () => {
-  const { apiKeys, loading, criarApiKey, toggleApiKey, deletarApiKey } = useApiKeys();
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [nomeNovaKey, setNomeNovaKey] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
+  const [newKeyName, setNewKeyName] = useState('');
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+  const { user } = useAuth();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const handleCriarApiKey = async () => {
-    if (!nomeNovaKey.trim()) return;
-    
-    setCreating(true);
-    try {
-      await criarApiKey(nomeNovaKey);
-      setNomeNovaKey('');
-      setShowCreateDialog(false);
-    } catch (error) {
-      // Error is handled in the hook
-    } finally {
-      setCreating(false);
+  // Buscar API Keys
+  const { data: apiKeys, isLoading } = useQuery({
+    queryKey: ['api_keys'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('api_keys')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return data as ApiKey[];
+    },
+  });
+
+  // Mutação para criar nova API Key
+  const createKeyMutation = useMutation({
+    mutationFn: async (nome: string) => {
+      // Gerar uma chave aleatória
+      const keyValue = 'jurify_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      
+      const { data, error } = await supabase
+        .from('api_keys')
+        .insert([{
+          nome,
+          key_value: keyValue,
+          criado_por: user?.id,
+          ativo: true
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api_keys'] });
+      setShowNewKeyDialog(false);
+      setNewKeyName('');
+      toast({
+        title: 'Sucesso',
+        description: 'Nova API key criada com sucesso!',
+      });
+    },
+    onError: (error) => {
+      console.error('Erro ao criar API key:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível criar a API key.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutação para alternar status
+  const toggleStatusMutation = useMutation({
+    mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
+      const { error } = await supabase
+        .from('api_keys')
+        .update({ ativo: !ativo })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api_keys'] });
+      toast({
+        title: 'Sucesso',
+        description: 'Status da API key atualizado com sucesso!',
+      });
+    },
+    onError: (error) => {
+      console.error('Erro ao alterar status:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível alterar o status da API key.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  // Mutação para deletar API Key
+  const deleteKeyMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('api_keys')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['api_keys'] });
+      toast({
+        title: 'Sucesso',
+        description: 'API key removida com sucesso!',
+      });
+    },
+    onError: (error) => {
+      console.error('Erro ao remover API key:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível remover a API key.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleCreateKey = () => {
+    if (!newKeyName.trim()) {
+      toast({
+        title: 'Erro',
+        description: 'Por favor, insira um nome para a API key.',
+        variant: 'destructive',
+      });
+      return;
     }
-  };
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: "Copiado!",
-      description: "API key copiada para a área de transferência",
-    });
+    createKeyMutation.mutate(newKeyName.trim());
   };
 
   const toggleKeyVisibility = (keyId: string) => {
@@ -76,36 +160,40 @@ const ApiKeysManager = () => {
     setVisibleKeys(newVisible);
   };
 
-  const formatKeyValue = (keyValue: string, keyId: string) => {
-    if (visibleKeys.has(keyId)) {
-      return keyValue;
-    }
-    return keyValue.substring(0, 8) + '••••••••••••••••';
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: 'Copiado!',
+      description: 'API key copiada para a área de transferência.',
+    });
   };
 
-  if (loading) {
+  const maskKey = (key: string) => {
+    if (key.length <= 10) return key;
+    return key.substring(0, 10) + '•'.repeat(key.length - 10);
+  };
+
+  if (isLoading) {
     return (
-      <div className="p-6">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Key className="h-8 w-8 animate-spin mx-auto mb-2" />
-            <p className="text-gray-600">Carregando API keys...</p>
-          </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando API keys...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gerenciar API Keys</h2>
-          <p className="text-gray-600">Controle o acesso às APIs dos Agentes IA</p>
+          <h2 className="text-xl font-semibold text-gray-900">Gerenciamento de API Keys</h2>
+          <p className="text-gray-600">Gerencie as chaves de API para integração com agentes IA</p>
         </div>
         
-        <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <Dialog open={showNewKeyDialog} onOpenChange={setShowNewKeyDialog}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
@@ -116,183 +204,167 @@ const ApiKeysManager = () => {
             <DialogHeader>
               <DialogTitle>Criar Nova API Key</DialogTitle>
               <DialogDescription>
-                Crie uma nova chave de API para acessar os endpoints dos Agentes IA.
+                Crie uma nova chave de API para integração com agentes IA.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="nome" className="text-right">
-                  Nome
-                </Label>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="keyName">Nome da API Key</Label>
                 <Input
-                  id="nome"
-                  value={nomeNovaKey}
-                  onChange={(e) => setNomeNovaKey(e.target.value)}
-                  className="col-span-3"
-                  placeholder="Ex: N8N Production"
+                  id="keyName"
+                  value={newKeyName}
+                  onChange={(e) => setNewKeyName(e.target.value)}
+                  placeholder="Ex: Agente WhatsApp, API Externa..."
                 />
               </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowNewKeyDialog(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateKey} disabled={createKeyMutation.isPending}>
+                  {createKeyMutation.isPending ? 'Criando...' : 'Criar API Key'}
+                </Button>
+              </div>
             </div>
-            <DialogFooter>
-              <Button
-                type="submit"
-                onClick={handleCriarApiKey}
-                disabled={creating || !nomeNovaKey.trim()}
-              >
-                {creating ? 'Criando...' : 'Criar API Key'}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total de Keys</p>
-              <p className="text-2xl font-bold text-gray-900">{apiKeys.length}</p>
-            </div>
-            <Key className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total de Keys</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{apiKeys?.length || 0}</div>
+          </CardContent>
+        </Card>
         
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Ativas</p>
-              <p className="text-2xl font-bold text-green-600">
-                {apiKeys.filter(key => key.ativo).length}
-              </p>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Keys Ativas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">
+              {apiKeys?.filter(key => key.ativo).length || 0}
             </div>
-            <Shield className="h-8 w-8 text-green-500" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Inativas</p>
-              <p className="text-2xl font-bold text-red-600">
-                {apiKeys.filter(key => !key.ativo).length}
-              </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Keys Inativas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {apiKeys?.filter(key => !key.ativo).length || 0}
             </div>
-            <PowerOff className="h-8 w-8 text-red-500" />
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* API Keys Table */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>API Key</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Criada em</TableHead>
-              <TableHead>Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {apiKeys.map((apiKey) => (
-              <TableRow key={apiKey.id}>
-                <TableCell>
-                  <div className="flex items-center space-x-3">
-                    <Key className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium">{apiKey.nome}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <code className="bg-gray-100 px-2 py-1 rounded font-mono text-sm">
-                      {formatKeyValue(apiKey.key_value, apiKey.id)}
-                    </code>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleKeyVisibility(apiKey.id)}
-                    >
-                      {visibleKeys.has(apiKey.id) ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copyToClipboard(apiKey.key_value)}
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge 
-                    variant={apiKey.ativo ? 'default' : 'secondary'}
-                    className={apiKey.ativo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
-                  >
-                    {apiKey.ativo ? 'Ativa' : 'Inativa'}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {new Date(apiKey.created_at).toLocaleDateString('pt-BR')}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => toggleApiKey(apiKey.id, apiKey.ativo)}
-                      className={apiKey.ativo ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
-                    >
-                      {apiKey.ativo ? (
-                        <PowerOff className="h-4 w-4" />
-                      ) : (
-                        <Power className="h-4 w-4" />
-                      )}
-                    </Button>
-                    
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => deletarApiKey(apiKey.id)}
-                      className="text-red-600 hover:text-red-700"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
+      {/* Tabela de API Keys */}
+      {!apiKeys || apiKeys.length === 0 ? (
+        <div className="text-center py-8">
+          <Key className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma API key encontrada</h3>
+          <p className="text-gray-600 mb-4">Crie sua primeira API key para começar a usar os agentes IA.</p>
+          <Button onClick={() => setShowNewKeyDialog(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Criar primeira API key
+          </Button>
+        </div>
+      ) : (
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nome</TableHead>
+                <TableHead>API Key</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Criado em</TableHead>
+                <TableHead>Ações</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-        
-        {apiKeys.length === 0 && (
-          <div className="text-center py-8">
-            <Key className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-500">Nenhuma API key criada ainda</p>
-            <p className="text-gray-400 text-sm">Crie sua primeira API key para começar</p>
-          </div>
-        )}
-      </div>
-
-      {/* Documentação */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">Como usar as API Keys</h3>
-        <div className="text-sm text-blue-800 space-y-2">
-          <p><strong>Endpoint base:</strong> <code>https://yfxgncbopvnsltjqetxw.supabase.co/functions/v1/agentes-ia-api</code></p>
-          <p><strong>Autenticação:</strong> Adicione o header <code>x-api-key: sua_api_key</code></p>
-          <p><strong>Endpoints disponíveis:</strong></p>
-          <ul className="list-disc list-inside ml-4 space-y-1">
-            <li><code>POST /agentes/executar</code> - Executa um agente IA</li>
-            <li><code>GET /agentes/listar</code> - Lista agentes disponíveis</li>
-            <li><code>POST /webhook/n8n</code> - Webhook especial para N8N</li>
-          </ul>
-        </div>
-      </div>
+            </TableHeader>
+            <TableBody>
+              {apiKeys.map((key) => (
+                <TableRow key={key.id}>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Key className="h-4 w-4 text-blue-500" />
+                      <span className="font-medium">{key.nome}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                        {visibleKeys.has(key.id) ? key.key_value : maskKey(key.key_value)}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleKeyVisibility(key.id)}
+                      >
+                        {visibleKeys.has(key.id) ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copyToClipboard(key.key_value)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={key.ativo ? 'default' : 'secondary'}
+                      className={key.ativo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                    >
+                      {key.ativo ? 'Ativa' : 'Inativa'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm text-gray-500">
+                      {new Date(key.created_at).toLocaleDateString('pt-BR')}
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => toggleStatusMutation.mutate({ id: key.id, ativo: key.ativo })}
+                        disabled={toggleStatusMutation.isPending}
+                      >
+                        {key.ativo ? (
+                          <PowerOff className="h-4 w-4 text-red-600" />
+                        ) : (
+                          <Power className="h-4 w-4 text-green-600" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteKeyMutation.mutate(key.id)}
+                        disabled={deleteKeyMutation.isPending}
+                        className="hover:bg-red-50"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 };

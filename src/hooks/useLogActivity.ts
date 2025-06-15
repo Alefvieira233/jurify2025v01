@@ -1,3 +1,4 @@
+
 import { useCallback } from 'react';
 import { useActivityLogs } from './useActivityLogs';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,6 +84,10 @@ export const useLogActivity = () => {
     });
   }, [log]);
 
+  const logN8NTest = useCallback((success: boolean, url: string, details?: any) => {
+    log('outro', 'N8N Integration', `Teste N8N ${success ? 'bem-sucedido' : 'falhou'} para ${url}`, details);
+  }, [log]);
+
   const logError = useCallback((modulo: string, erro: string, detalhes?: any) => {
     log('erro', modulo, `Erro: ${erro}`, detalhes);
   }, [log]);
@@ -103,6 +108,7 @@ export const useLogActivity = () => {
     logApiKeyCreated,
     logApiKeyToggled,
     logAgenteExecution,
+    logN8NTest,
     logError,
   };
 };

@@ -1,89 +1,217 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface SecurityPolicy {
+interface SecurityCheck {
   id: string;
   name: string;
-  category: 'data_protection' | 'access_control' | 'audit' | 'privacy';
-  status: 'active' | 'inactive';
-  description: string;
-  lastUpdated: string;
+  status: 'pass' | 'fail' | 'warning';
+  message: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  category: 'authentication' | 'database' | 'api' | 'network' | 'permissions';
+}
+
+interface SecurityMetrics {
+  totalChecks: number;
+  passedChecks: number;
+  failedChecks: number;
+  warningChecks: number;
+  securityScore: number;
+  lastScan: string;
 }
 
 export const useSecurityPolicies = () => {
-  const [policies, setPolicies] = useState<SecurityPolicy[]>([]);
+  const [checks, setChecks] = useState<SecurityCheck[]>([]);
+  const [metrics, setMetrics] = useState<SecurityMetrics>({
+    totalChecks: 0,
+    passedChecks: 0,
+    failedChecks: 0,
+    warningChecks: 0,
+    securityScore: 0,
+    lastScan: new Date().toISOString()
+  });
   const [loading, setLoading] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const defaultPolicies: SecurityPolicy[] = [
-    {
-      id: 'rls-enforcement',
-      name: 'Row Level Security Enforcement',
-      category: 'data_protection',
-      status: 'active',
-      description: 'Garante que usuários só acessem seus próprios dados',
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      id: 'session-timeout',
-      name: 'Session Timeout',
-      category: 'access_control',
-      status: 'active',
-      description: 'Sessões expiram automaticamente após período de inatividade',
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      id: 'audit-logging',
-      name: 'Audit Logging',
-      category: 'audit',
-      status: 'active',
-      description: 'Todas as ações são registradas para auditoria',
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      id: 'data-minimization',
-      name: 'Data Minimization',
-      category: 'privacy',
-      status: 'active',
-      description: 'Coleta apenas dados estritamente necessários',
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      id: 'password-policy',
-      name: 'Password Policy',
-      category: 'access_control',
-      status: 'active',
-      description: 'Política de senhas fortes obrigatória',
-      lastUpdated: new Date().toISOString()
-    },
-    {
-      id: 'api-rate-limiting',
-      name: 'API Rate Limiting',
-      category: 'data_protection',
-      status: 'active',
-      description: 'Limitação de requisições para prevenir abuso',
-      lastUpdated: new Date().toISOString()
-    }
-  ];
-
-  const fetchPolicies = async () => {
+  const runSecurityScan = async () => {
     if (!user) return;
 
     setLoading(true);
+    const scanResults: SecurityCheck[] = [];
+
     try {
-      // Para este sistema, vamos usar políticas padrão já que não temos tabela específica
-      // Em um sistema real, você poderia armazenar isso em uma tabela 'security_policies'
-      setPolicies(defaultPolicies);
-      
-    } catch (error) {
-      console.error('Erro ao buscar políticas:', error);
+      // 1. Verificar autenticação
+      try {
+        const { data: session } = await supabase.auth.getSession();
+        scanResults.push({
+          id: 'auth-session',
+          name: 'Sessão de Autenticação',
+          status: session ? 'pass' : 'fail',
+          message: session ? 'Usuário autenticado corretamente' : 'Sessão inválida ou expirada',
+          severity: session ? 'low' : 'critical',
+          category: 'authentication'
+        });
+      } catch (error) {
+        scanResults.push({
+          id: 'auth-error',
+          name: 'Sistema de Autenticação',
+          status: 'fail',
+          message: 'Erro ao verificar sistema de autenticação',
+          severity: 'critical',
+          category: 'authentication'
+        });
+      }
+
+      // 2. Verificar RLS nas tabelas críticas
+      const criticalTables = ['profiles', 'agentes_ia', 'api_keys', 'logs_atividades'];
+      for (const table of criticalTables) {
+        try {
+          const { data, error } = await supabase
+            .from(table)
+            .select('id')
+            .limit(1);
+
+          scanResults.push({
+            id: `rls-${table}`,
+            name: `RLS da tabela ${table}`,
+            status: error && error.code === 'PGRST301' ? 'pass' : 'warning',
+            message: error && error.code === 'PGRST301' 
+              ? 'RLS ativo e funcionando' 
+              : 'RLS pode não estar configurado adequadamente',
+            severity: 'medium',
+            category: 'database'
+          });
+        } catch (error) {
+          scanResults.push({
+            id: `rls-error-${table}`,
+            name: `RLS da tabela ${table}`,
+            status: 'fail',
+            message: 'Erro ao verificar RLS',
+            severity: 'high',
+            category: 'database'
+          });
+        }
+      }
+
+      // 3. Verificar API Keys ativas
+      try {
+        const { data: apiKeys, error } = await supabase
+          .from('api_keys')
+          .select('id, ativo')
+          .eq('ativo', true);
+
+        if (!error) {
+          const activeCount = apiKeys?.length || 0;
+          scanResults.push({
+            id: 'api-keys',
+            name: 'API Keys Ativas',
+            status: activeCount > 0 ? 'pass' : 'warning',
+            message: `${activeCount} API key(s) ativa(s) encontrada(s)`,
+            severity: activeCount > 0 ? 'low' : 'medium',
+            category: 'api'
+          });
+        }
+      } catch (error) {
+        scanResults.push({
+          id: 'api-keys-error',
+          name: 'Verificação de API Keys',
+          status: 'fail',
+          message: 'Erro ao verificar API keys',
+          severity: 'medium',
+          category: 'api'
+        });
+      }
+
+      // 4. Verificar logs de atividade
+      try {
+        const { data: recentLogs, error } = await supabase
+          .from('logs_atividades')
+          .select('id')
+          .gte('data_hora', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+          .limit(1);
+
+        if (!error) {
+          scanResults.push({
+            id: 'activity-logs',
+            name: 'Sistema de Auditoria',
+            status: 'pass',
+            message: 'Sistema de logs funcionando corretamente',
+            severity: 'low',
+            category: 'permissions'
+          });
+        }
+      } catch (error) {
+        scanResults.push({
+          id: 'logs-error',
+          name: 'Sistema de Auditoria',
+          status: 'fail',
+          message: 'Erro no sistema de logs de auditoria',
+          severity: 'high',
+          category: 'permissions'
+        });
+      }
+
+      // 5. Verificar conectividade N8N
+      try {
+        const { data: workflows, error } = await supabase
+          .from('n8n_workflows')
+          .select('id, ativo')
+          .eq('ativo', true)
+          .limit(1);
+
+        if (!error) {
+          const activeWorkflows = workflows?.length || 0;
+          scanResults.push({
+            id: 'n8n-connectivity',
+            name: 'Conectividade N8N',
+            status: activeWorkflows > 0 ? 'pass' : 'warning',
+            message: `${activeWorkflows} workflow(s) N8N ativo(s)`,
+            severity: 'medium',
+            category: 'network'
+          });
+        }
+      } catch (error) {
+        scanResults.push({
+          id: 'n8n-error',
+          name: 'Conectividade N8N',
+          status: 'fail',
+          message: 'Erro ao verificar workflows N8N',
+          severity: 'medium',
+          category: 'network'
+        });
+      }
+
+      // Calcular métricas
+      const totalChecks = scanResults.length;
+      const passedChecks = scanResults.filter(c => c.status === 'pass').length;
+      const failedChecks = scanResults.filter(c => c.status === 'fail').length;
+      const warningChecks = scanResults.filter(c => c.status === 'warning').length;
+      const securityScore = Math.round((passedChecks / totalChecks) * 100);
+
+      setChecks(scanResults);
+      setMetrics({
+        totalChecks,
+        passedChecks,
+        failedChecks,
+        warningChecks,
+        securityScore,
+        lastScan: new Date().toISOString()
+      });
+
       toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar as políticas de segurança.',
+        title: 'Scan de Segurança Concluído',
+        description: `${passedChecks}/${totalChecks} verificações passaram. Score: ${securityScore}%`,
+        variant: securityScore >= 80 ? 'default' : 'destructive',
+      });
+
+    } catch (error) {
+      console.error('Erro durante scan de segurança:', error);
+      toast({
+        title: 'Erro no Scan',
+        description: 'Não foi possível completar a verificação de segurança.',
         variant: 'destructive',
       });
     } finally {
@@ -91,101 +219,51 @@ export const useSecurityPolicies = () => {
     }
   };
 
-  const validateDataAccess = async (userId: string, tableName: string) => {
-    try {
-      // Verificar se o usuário tem permissão para acessar a tabela
-      const { data, error } = await supabase
-        .from(tableName as any)
-        .select('count')
-        .limit(1);
+  const getChecksByCategory = (category: string) => {
+    return checks.filter(check => check.category === category);
+  };
 
-      if (error) {
-        console.error('Acesso negado para tabela:', tableName, error);
-        return false;
-      }
+  const getCriticalIssues = () => {
+    return checks.filter(check => 
+      check.severity === 'critical' && check.status === 'fail'
+    );
+  };
 
-      return true;
-    } catch (error) {
-      console.error('Erro na validação de acesso:', error);
-      return false;
+  const getSecurityRecommendations = () => {
+    const recommendations: string[] = [];
+    
+    if (metrics.securityScore < 70) {
+      recommendations.push('Score de segurança baixo - revisar configurações críticas');
     }
-  };
-
-  const logSecurityEvent = async (
-    eventType: 'outro',
-    description: string,
-    metadata?: any
-  ) => {
-    if (!user) return;
-
-    try {
-      await supabase.rpc('registrar_log_atividade', {
-        _usuario_id: user.id,
-        _nome_usuario: user.email || 'Usuário',
-        _tipo_acao: eventType,
-        _modulo: 'Security',
-        _descricao: `${eventType}: ${description}`,
-        _detalhes_adicionais: metadata ? JSON.stringify(metadata) : null,
-      });
-    } catch (error) {
-      console.error('Erro ao registrar evento de segurança:', error);
+    
+    if (metrics.failedChecks > 0) {
+      recommendations.push('Corrigir verificações que falharam imediatamente');
     }
-  };
+    
+    if (getCriticalIssues().length > 0) {
+      recommendations.push('Atenção para problemas críticos de segurança');
+    }
+    
+    if (checks.filter(c => c.category === 'authentication' && c.status === 'fail').length > 0) {
+      recommendations.push('Revisar configurações de autenticação');
+    }
 
-  const checkPasswordStrength = (password: string) => {
-    const minLength = 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumbers = /\d/.test(password);
-    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-
-    const score = [
-      password.length >= minLength,
-      hasUpperCase,
-      hasLowerCase,
-      hasNumbers,
-      hasSpecialChar
-    ].filter(Boolean).length;
-
-    return {
-      score,
-      strength: score < 3 ? 'weak' : score < 5 ? 'medium' : 'strong',
-      requirements: {
-        minLength: password.length >= minLength,
-        hasUpperCase,
-        hasLowerCase,
-        hasNumbers,
-        hasSpecialChar
-      }
-    };
-  };
-
-  const sanitizeInput = (input: string) => {
-    // Remove caracteres potencialmente perigosos
-    return input
-      .replace(/[<>]/g, '') // Remove < e >
-      .replace(/javascript:/gi, '') // Remove javascript:
-      .replace(/on\w+=/gi, '') // Remove event handlers
-      .trim();
-  };
-
-  const validateEmailFormat = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return recommendations;
   };
 
   useEffect(() => {
-    fetchPolicies();
+    if (user) {
+      runSecurityScan();
+    }
   }, [user]);
 
   return {
-    policies,
+    checks,
+    metrics,
     loading,
-    fetchPolicies,
-    validateDataAccess,
-    logSecurityEvent,
-    checkPasswordStrength,
-    sanitizeInput,
-    validateEmailFormat,
+    runSecurityScan,
+    getChecksByCategory,
+    getCriticalIssues,
+    getSecurityRecommendations,
   };
 };

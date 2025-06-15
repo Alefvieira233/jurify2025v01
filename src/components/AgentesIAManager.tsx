@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Bot, 
@@ -15,7 +16,10 @@ import {
   BarChart,
   Zap,
   Key,
-  Activity
+  Activity,
+  AlertCircle,
+  CheckCircle,
+  Clock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -84,7 +88,6 @@ const AgentesIAManager = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Debug: Log quando o componente é montado
   console.log('🤖 AgentesIAManager - Componente montado');
 
   const areas = [
@@ -278,9 +281,7 @@ const AgentesIAManager = () => {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-red-500 mb-4">
-              <svg className="h-12 w-12 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
+              <AlertCircle className="h-12 w-12 mx-auto" />
             </div>
             <h3 className="text-lg font-medium text-gray-900 mb-2">Erro ao carregar agentes IA</h3>
             <p className="text-gray-600 mb-4">Não foi possível carregar os dados dos agentes.</p>
@@ -380,7 +381,7 @@ const AgentesIAManager = () => {
 
         <TabsContent value="agentes" className="space-y-6">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -394,69 +395,53 @@ const AgentesIAManager = () => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Ativos</p>
+                  <p className="text-sm font-medium text-gray-600">Agentes Ativos</p>
                   <p className="text-2xl font-bold text-green-600">
                     {agentes.filter(a => a.status === 'ativo').length}
                   </p>
                 </div>
-                <Power className="h-8 w-8 text-green-500" />
+                <CheckCircle className="h-8 w-8 text-green-500" />
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Chat Interno</p>
+                  <p className="text-sm font-medium text-gray-600">Leads Capturados</p>
                   <p className="text-2xl font-bold text-blue-600">
-                    {agentes.filter(a => a.tipo_agente === 'chat_interno').length}
+                    {statsAgentes?.reduce((acc, stats) => acc + stats.total_leads_mes, 0) || 0}
                   </p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-blue-500" />
+                <Users className="h-8 w-8 text-blue-500" />
               </div>
             </div>
 
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-600">Análise</p>
-                  <p className="text-2xl font-bold text-purple-600">
-                    {agentes.filter(a => a.tipo_agente === 'analise_dados').length}
-                  </p>
+                  <p className="text-sm font-medium text-gray-600">Última Execução</p>
+                  <p className="text-sm font-bold text-gray-900">Há poucos minutos</p>
                 </div>
-                <BarChart className="h-8 w-8 text-purple-500" />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">API Externa</p>
-                  <p className="text-2xl font-bold text-amber-600">
-                    {agentes.filter(a => a.tipo_agente === 'api_externa').length}
-                  </p>
-                </div>
-                <Zap className="h-8 w-8 text-amber-500" />
+                <Clock className="h-8 w-8 text-orange-500" />
               </div>
             </div>
           </div>
 
-          {/* Filters */}
+          {/* Filtros */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Buscar por nome, área ou descrição..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Buscar agentes..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
               </div>
               
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-full md:w-48">
+                <SelectTrigger>
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -467,32 +452,36 @@ const AgentesIAManager = () => {
               </Select>
 
               <Select value={tipoFilter} onValueChange={setTipoFilter}>
-                <SelectTrigger className="w-full md:w-48">
+                <SelectTrigger>
                   <SelectValue placeholder="Tipo" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os Tipos</SelectItem>
                   {tiposAgente.map(tipo => (
-                    <SelectItem key={tipo.value} value={tipo.value}>{tipo.label}</SelectItem>
+                    <SelectItem key={tipo.value} value={tipo.value}>
+                      {tipo.label}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
 
               <Select value={areaFilter} onValueChange={setAreaFilter}>
-                <SelectTrigger className="w-full md:w-48">
+                <SelectTrigger>
                   <SelectValue placeholder="Área Jurídica" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todas">Todas as Áreas</SelectItem>
                   {areas.map(area => (
-                    <SelectItem key={area} value={area}>{area}</SelectItem>
+                    <SelectItem key={area} value={area}>
+                      {area}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          {/* Agents Table */}
+          {/* Tabela de Agentes */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
             <Table>
               <TableHeader>
@@ -500,9 +489,9 @@ const AgentesIAManager = () => {
                   <TableHead>Agente</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead>Área Jurídica</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead>Leads/Mês</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Leads (mês)</TableHead>
+                  <TableHead>Última Atualização</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -519,34 +508,23 @@ const AgentesIAManager = () => {
                             <Bot className={`h-4 w-4 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
                           </div>
                           <div>
-                            <p className="font-medium text-gray-900">{agente.nome}</p>
-                            <p className="text-sm text-gray-500">
-                              Delay: {agente.delay_resposta}s
-                            </p>
+                            <div className="font-medium text-gray-900">{agente.nome}</div>
+                            <div className="text-sm text-gray-500 truncate max-w-xs">
+                              {agente.descricao_funcao}
+                            </div>
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                          <TipoIcon className="h-3 w-3 mr-1" />
-                          {tipoInfo.label}
-                        </Badge>
+                        <div className="flex items-center space-x-2">
+                          <TipoIcon className="h-4 w-4 text-blue-500" />
+                          <span className="text-sm">{tipoInfo.label}</span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                           {agente.area_juridica}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm text-gray-600 max-w-xs truncate">
-                          {agente.descricao_funcao || agente.objetivo}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Users className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{getLeadsCount(agente.id)}</span>
-                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -557,33 +535,46 @@ const AgentesIAManager = () => {
                         </Badge>
                       </TableCell>
                       <TableCell>
+                        <div className="text-center">
+                          <span className="text-lg font-semibold text-blue-600">
+                            {getLeadsCount(agente.id)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-gray-500">
+                          {new Date(agente.updated_at).toLocaleDateString('pt-BR')}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center space-x-2">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleViewDetails(agente)}
+                            className="hover:bg-blue-50"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
-                          
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEdit(agente)}
+                            className="hover:bg-blue-50"
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
-                          
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => toggleStatus(agente)}
-                            className={agente.status === 'ativo' ? 'text-red-600 hover:text-red-700' : 'text-green-600 hover:text-green-700'}
+                            className={agente.status === 'ativo' ? 'hover:bg-red-50' : 'hover:bg-green-50'}
+                            disabled={toggleStatusMutation.isPending}
                           >
                             {agente.status === 'ativo' ? (
-                              <PowerOff className="h-4 w-4" />
+                              <PowerOff className="h-4 w-4 text-red-600" />
                             ) : (
-                              <Power className="h-4 w-4" />
+                              <Power className="h-4 w-4 text-green-600" />
                             )}
                           </Button>
                         </div>
@@ -593,13 +584,6 @@ const AgentesIAManager = () => {
                 })}
               </TableBody>
             </Table>
-            
-            {filteredAgentes.length === 0 && (
-              <div className="text-center py-8">
-                <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Nenhum agente encontrado</p>
-              </div>
-            )}
           </div>
         </TabsContent>
 
@@ -612,7 +596,7 @@ const AgentesIAManager = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Modals */}
+      {/* Modais */}
       {showNovoAgente && (
         <NovoAgenteForm
           agente={selectedAgente}

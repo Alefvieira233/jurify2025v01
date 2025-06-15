@@ -17,6 +17,7 @@ import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
 import NotificationsPanel from "@/components/NotificationsPanel";
 import LogsPanel from "@/components/LogsPanel";
 import IntegracoesConfig from "@/components/IntegracoesConfig";
+import LoadingSpinner from "@/components/LoadingSpinner";
 import { useSearchParams } from "react-router-dom";
 
 type ActiveTab = 'dashboard' | 'leads' | 'pipeline' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'agentes' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs' | 'integracoes';
@@ -72,25 +73,95 @@ const Index = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'leads':
-        return hasPermission('leads', 'read') ? <LeadsPanel /> : <div>Sem permissão</div>;
+        return hasPermission('leads', 'read') ? <LeadsPanel /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'pipeline':
-        return hasPermission('leads', 'read') ? <PipelineJuridico /> : <div>Sem permissão</div>;
+        return hasPermission('leads', 'read') ? <PipelineJuridico /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'agendamentos':
-        return hasPermission('agendamentos', 'read') ? <AgendamentosManager /> : <div>Sem permissão</div>;
+        return hasPermission('agendamentos', 'read') ? <AgendamentosManager /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'contratos':
-        return hasPermission('contratos', 'read') ? <ContratosManager /> : <div>Sem permissão</div>;
+        return hasPermission('contratos', 'read') ? <ContratosManager /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'relatorios':
-        return hasPermission('relatorios', 'read') ? <RelatoriosGerenciais /> : <div>Sem permissão</div>;
+        return hasPermission('relatorios', 'read') ? <RelatoriosGerenciais /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'whatsapp':
-        return hasPermission('whatsapp_ia', 'read') ? <WhatsAppIA /> : <div>Sem permissão</div>;
+        return hasPermission('whatsapp_ia', 'read') ? <WhatsAppIA /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'agentes':
-        return hasPermission('whatsapp_ia', 'read') ? <AgentesIAManager /> : <div>Sem permissão</div>;
+        return hasPermission('whatsapp_ia', 'read') ? <AgentesIAManager /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'usuarios':
-        return hasPermission('usuarios', 'read') ? <UsuariosManager /> : <div>Sem permissão</div>;
+        return hasPermission('usuarios', 'read') ? <UsuariosManager /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'logs':
-        return hasPermission('usuarios', 'read') ? <LogsPanel /> : <div>Sem permissão</div>;
+        return hasPermission('usuarios', 'read') ? <LogsPanel /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'integracoes':
-        return hasPermission('usuarios', 'read') ? <IntegracoesConfig /> : <div>Sem permissão</div>;
+        return hasPermission('usuarios', 'read') ? <IntegracoesConfig /> : (
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Acesso Negado</h3>
+              <p className="text-gray-600">Você não tem permissão para acessar esta seção.</p>
+            </div>
+          </div>
+        );
       case 'configuracoes':
         return <ConfiguracoesGerais />;
       case 'notificacoes':
@@ -101,14 +172,7 @@ const Index = () => {
   };
 
   if (!user || !profile) {
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-amber-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen text="Carregando sistema..." />;
   }
 
   return (

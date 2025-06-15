@@ -1,25 +1,45 @@
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Home, ArrowLeft, Scale } from 'lucide-react';
 
 const NotFound = () => {
-  const location = useLocation();
-
-  useEffect(() => {
-    console.error(
-      "404 Error: User attempted to access non-existent route:",
-      location.pathname
-    );
-  }, [location.pathname]);
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-4">Oops! Page not found</p>
-        <a href="/" className="text-blue-500 hover:text-blue-700 underline">
-          Return to Home
-        </a>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="bg-amber-500 p-3 rounded-lg">
+              <Scale className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Jurify</h1>
+              <p className="text-sm text-gray-600">Automação Jurídica</p>
+            </div>
+          </div>
+          <CardTitle className="text-6xl font-bold text-gray-900 mb-4">404</CardTitle>
+          <h2 className="text-xl font-semibold text-gray-700">Página não encontrada</h2>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-gray-600">
+            A página que você está procurando não existe ou foi movida.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Button asChild className="bg-amber-500 hover:bg-amber-600">
+              <Link to="/">
+                <Home className="h-4 w-4 mr-2" />
+                Voltar ao Dashboard
+              </Link>
+            </Button>
+            <Button variant="outline" onClick={() => window.history.back()}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Página Anterior
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

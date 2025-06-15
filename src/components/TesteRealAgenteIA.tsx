@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLogActivity } from '@/hooks/useLogActivity';
 import { useAgentesIA } from '@/hooks/useAgentesIA';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ExecutionLog {
   timestamp: string;
@@ -21,9 +22,11 @@ interface ExecutionResult {
   response?: any;
   error?: string;
   executionTime: number;
-  source: 'n8n' | 'local_openai';
+  source: 'n8n_edge_function';
   log_id?: string;
   agente_nome?: string;
+  status?: number;
+  webhook_url?: string;
 }
 
 const TesteRealAgenteIA = () => {
@@ -31,10 +34,10 @@ const TesteRealAgenteIA = () => {
   const [executionLogs, setExecutionLogs] = useState<ExecutionLog[]>([]);
   const [result, setResult] = useState<ExecutionResult | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
-  const [userInput, setUserInput] = useState('');
+  const [userInput, setUserInput] = useState('Como elaborar um contrato de prestação de serviços advocatícios?');
   const { toast } = useToast();
   const { logAgenteExecution, logError } = useLogActivity();
-  const { agentes, executeAgente } = useAgentesIA();
+  const { agentes } = useAgentesIA();
 
   const addLog = (level: ExecutionLog['level'], message: string) => {
     const newLog: ExecutionLog = {
@@ -67,57 +70,132 @@ const TesteRealAgenteIA = () => {
     const startTime = Date.now();
     const selectedAgent = agentes.find(a => a.id === selectedAgentId);
     
-    addLog('info', '🤖 Iniciando execução REAL do Agente IA...');
-    addLog('info', `🎯 Agente selecionado: ${selectedAgent?.nome}`);
-    addLog('info', `📝 Input do usuário: "${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : ''}"`);
-    addLog('info', '🔗 Tentando execução via N8N primeiro...');
+    addLog('info', '🤖 Iniciando execução REAL do Agente IA via N8N...');
+    addLog('info', `🎯 Agente selecionado: ${selectedAgent?.nome || 'Agente não encontrado'}`);
+    addLog('info', `📝 Input: "${userInput.substring(0, 100)}${userInput.length > 100 ? '...' : '}"`);
+    addLog('info', '🔗 Chamando edge function n8n-webhook-forwarder...');
+
+    const payload = {
+      agentId: selectedAgentId,
+      prompt: userInput,
+      parameters: {
+        temperature: 0.7,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0
+      }
+    };
+
+    addLog('info', `📦 Payload preparado: ${JSON.stringify(payload)}`);
 
     try {
-      const response = await executeAgente(selectedAgentId, userInput);
+      addLog('info', '🚀 Enviando via Supabase Edge Function...');
+      
+      const { data, error } = await supabase.functions.invoke('n8n-webhook-forwarder', {
+        body: payload
+      });
+
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      if (response) {
-        addLog('success', `✅ Execução concluída com SUCESSO em ${duration}ms!`);
-        addLog('info', `📊 Fonte da resposta: ${response.source || 'N8N'}`);
+      addLog('info', `⏱️ Tempo total de execução: ${duration}ms`);
+
+      if (error) {
+        throw new Error(`Edge Function Error: ${error.message}`);
+      }
+
+      if (!data) {
+        throw new Error('Resposta vazia da edge function');
+      }
+
+      addLog('info', `📥 Resposta da edge function recebida`);
+      addLog('info', `✅ Status: ${data.success ? 'Sucesso' : 'Erro'}`);
+      
+      if (data.status) {
+        addLog('info', `📊 HTTP Status N8N: ${data.status}`);
+      }
+
+      if (data.log_id) {
+        addLog('info', `📋 Log ID: ${data.log_id}`);
+      }
+
+      if (data.success && data.response) {
+        addLog('success', '🎉 Resposta do agente IA recebida com sucesso!');
         
-        if (response.log_id) {
-          addLog('info', `📋 ID do log de execução: ${response.log_id}`);
+        // Verificar se temos uma resposta de IA válida
+        let aiResponse = '';
+        if (typeof data.response === 'string') {
+          aiResponse = data.response;
+        } else if (data.response.message) {
+          aiResponse = data.response.message;
+        } else if (data.response.raw_response) {
+          aiResponse = data.response.raw_response;
+        } else {
+          aiResponse = JSON.stringify(data.response, null, 2);
         }
 
         setResult({
           success: true,
-          response: response.response || response,
+          response: aiResponse,
           executionTime: duration,
-          source: response.source || 'n8n',
-          log_id: response.log_id,
-          agente_nome: selectedAgent?.nome
+          source: 'n8n_edge_function',
+          log_id: data.log_id,
+          agente_nome: selectedAgent?.nome,
+          status: data.status,
+          webhook_url: data.webhook_url
         });
 
+        if (selectedAgent) {
+          logAgenteExecution(selectedAgent.nome, 'sucesso', duration);
+        }
+
         toast({
-          title: "✅ Agente Executado!",
-          description: `Resposta gerada em ${duration}ms via ${response.source === 'n8n' ? 'N8N' : 'OpenAI Local'}`,
+          title: "✅ Teste Executado!",
+          description: `Agente IA respondeu em ${duration}ms via N8N`,
         });
 
       } else {
-        throw new Error('Resposta nula ou vazia do agente');
+        // Erro na execução
+        const errorMessage = data.error || 'Erro desconhecido na execução';
+        addLog('error', `❌ Erro: ${errorMessage}`);
+        
+        setResult({
+          success: false,
+          error: errorMessage,
+          executionTime: duration,
+          source: 'n8n_edge_function',
+          log_id: data.log_id,
+          agente_nome: selectedAgent?.nome,
+          status: data.status,
+          webhook_url: data.webhook_url
+        });
+
+        if (selectedAgent) {
+          logAgenteExecution(selectedAgent.nome, 'erro', duration);
+        }
+
+        toast({
+          title: "❌ Erro na Execução",
+          description: errorMessage,
+          variant: "destructive",
+        });
       }
 
     } catch (error: any) {
       const endTime = Date.now();
       const duration = endTime - startTime;
 
-      addLog('error', `❌ ERRO na execução: ${error.message}`);
+      addLog('error', `❌ ERRO CRÍTICO: ${error.message}`);
       
       setResult({
         success: false,
         error: error.message,
         executionTime: duration,
-        source: 'n8n',
+        source: 'n8n_edge_function',
         agente_nome: selectedAgent?.nome
       });
 
-      logError('Agentes IA', 'Falha na execução do teste real', {
+      logError('Agentes IA', 'Falha crítica na execução via N8N', {
         agenteId: selectedAgentId,
         agenteName: selectedAgent?.nome,
         error: error.message,
@@ -126,8 +204,8 @@ const TesteRealAgenteIA = () => {
       });
 
       toast({
-        title: "❌ Erro na Execução",
-        description: `Falha: ${error.message}`,
+        title: "❌ Erro Crítico",
+        description: `Falha na comunicação: ${error.message}`,
         variant: "destructive",
       });
     } finally {
@@ -164,9 +242,9 @@ const TesteRealAgenteIA = () => {
                 <Brain className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <CardTitle className="text-purple-900">Teste Real de Execução - Agente IA</CardTitle>
+                <CardTitle className="text-purple-900">🚀 Teste Real - Agente IA + N8N</CardTitle>
                 <CardDescription className="text-purple-700">
-                  Execução completa com N8N + OpenAI em ambiente de produção
+                  Execução completa via edge function → N8N → OpenAI → resposta
                 </CardDescription>
               </div>
             </div>
@@ -192,7 +270,7 @@ const TesteRealAgenteIA = () => {
                 ) : (
                   <>
                     <Zap className="h-4 w-4 mr-2" />
-                    🚀 EXECUTAR AGENTE REAL
+                    🚀 EXECUTAR TESTE REAL
                   </>
                 )}
               </Button>
@@ -203,10 +281,10 @@ const TesteRealAgenteIA = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             {/* Seleção do Agente */}
             <div>
-              <label className="block text-sm font-medium mb-2">Selecionar Agente IA:</label>
+              <label className="block text-sm font-medium mb-2">Agente IA:</label>
               <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Escolha um agente para testar..." />
+                  <SelectValue placeholder="Selecione um agente..." />
                 </SelectTrigger>
                 <SelectContent>
                   {agentes.map((agente) => (
@@ -216,7 +294,6 @@ const TesteRealAgenteIA = () => {
                           {agente.status}
                         </Badge>
                         <span>{agente.nome}</span>
-                        <span className="text-xs text-gray-500">({agente.area_juridica})</span>
                       </div>
                     </SelectItem>
                   ))}
@@ -224,24 +301,16 @@ const TesteRealAgenteIA = () => {
               </Select>
             </div>
 
-            {/* Informações do Agente Selecionado */}
+            {/* Detalhes do Agente */}
             {selectedAgentId && (
-              <div className="bg-white p-4 rounded border">
+              <div className="bg-white p-3 rounded border">
                 {(() => {
                   const agente = agentes.find(a => a.id === selectedAgentId);
                   return agente ? (
-                    <div>
-                      <h4 className="font-semibold text-purple-900 mb-2">📋 Detalhes do Agente:</h4>
-                      <div className="text-sm space-y-1">
-                        <div><strong>Nome:</strong> {agente.nome}</div>
-                        <div><strong>Área:</strong> {agente.area_juridica}</div>
-                        <div><strong>Função:</strong> {agente.descricao_funcao}</div>
-                        <div><strong>Status:</strong> 
-                          <Badge className={agente.status === 'ativo' ? 'bg-green-100 text-green-800 ml-1' : 'bg-gray-100 text-gray-800 ml-1'}>
-                            {agente.status}
-                          </Badge>
-                        </div>
-                      </div>
+                    <div className="text-sm">
+                      <div className="font-semibold text-purple-900 mb-1">📋 {agente.nome}</div>
+                      <div className="text-gray-600">{agente.area_juridica}</div>
+                      <div className="text-xs text-gray-500 mt-1">{agente.descricao_funcao}</div>
                     </div>
                   ) : null;
                 })()}
@@ -249,19 +318,25 @@ const TesteRealAgenteIA = () => {
             )}
           </div>
 
-          {/* Input do Usuário */}
+          {/* Input do Prompt */}
           <div>
             <label className="block text-sm font-medium mb-2">Prompt para o Agente:</label>
             <Textarea
               value={userInput}
               onChange={(e) => setUserInput(e.target.value)}
-              placeholder="Digite sua pergunta ou solicitação para o agente IA... 
-Exemplo: 'Como elaborar um contrato de prestação de serviços advocatícios?'"
-              rows={4}
+              placeholder="Digite sua pergunta..."
+              rows={3}
               className="w-full"
             />
-            <div className="text-xs text-gray-500 mt-1">
-              {userInput.length}/1000 caracteres
+          </div>
+
+          {/* Informação do Endpoint */}
+          <div className="mt-4 p-3 bg-blue-50 rounded border">
+            <div className="text-sm">
+              <div className="font-medium text-blue-900">🎯 Endpoint N8N de Produção:</div>
+              <div className="font-mono text-xs text-blue-700 break-all">
+                https://primary-production-adcb.up.railway.app/webhook/Agente%20Jurify
+              </div>
             </div>
           </div>
         </CardContent>
@@ -289,7 +364,7 @@ Exemplo: 'Como elaborar um contrato de prestação de serviços advocatícios?'"
               {isExecuting && (
                 <div className="flex items-center space-x-2 animate-pulse">
                   <span className="text-gray-500">[{new Date().toLocaleTimeString('pt-BR')}]</span>
-                  <span className="text-yellow-400">⏳ Processando resposta do agente...</span>
+                  <span className="text-yellow-400">⏳ Aguardando resposta do N8N...</span>
                 </div>
               )}
             </div>
@@ -313,86 +388,78 @@ Exemplo: 'Como elaborar um contrato de prestação de serviços advocatícios?'"
           <CardContent>
             <div className="space-y-4">
               {/* Status Summary */}
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="text-center">
                   <div className={`text-2xl font-bold ${result.success ? 'text-green-600' : 'text-red-600'}`}>
                     {result.success ? '✅' : '❌'}
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {result.success ? 'Sucesso' : 'Falhou'}
-                  </div>
+                  <div className="text-sm text-gray-600">Status</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
                     {result.executionTime}ms
                   </div>
-                  <div className="text-sm text-gray-600">Tempo Total</div>
+                  <div className="text-sm text-gray-600">Tempo</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600">
-                    {result.source === 'n8n' ? 'N8N' : 'Local'}
+                    {result.status || 'N/A'}
                   </div>
-                  <div className="text-sm text-gray-600">Fonte</div>
+                  <div className="text-sm text-gray-600">HTTP Status</div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-orange-600">
-                    {result.agente_nome?.substring(0, 10) || 'N/A'}
+                    N8N
                   </div>
-                  <div className="text-sm text-gray-600">Agente</div>
+                  <div className="text-sm text-gray-600">Fonte</div>
                 </div>
               </div>
 
-              {/* Response from AI */}
+              {/* Resposta da IA */}
               {result.success && result.response && (
                 <div>
                   <h4 className="font-semibold mb-2 text-green-900">🤖 Resposta do Agente IA:</h4>
                   <div className="bg-white p-4 rounded border max-h-96 overflow-y-auto">
                     <div className="prose max-w-none">
-                      {typeof result.response === 'string' ? (
-                        <p className="whitespace-pre-wrap">{result.response}</p>
-                      ) : (
-                        <pre className="text-sm whitespace-pre-wrap">
-                          {JSON.stringify(result.response, null, 2)}
-                        </pre>
-                      )}
+                      <p className="whitespace-pre-wrap">{result.response}</p>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Error Details */}
+              {/* Detalhes do Erro */}
               {!result.success && result.error && (
                 <div>
-                  <h4 className="font-semibold mb-2 text-red-900">❌ Detalhes do Erro:</h4>
+                  <h4 className="font-semibold mb-2 text-red-900">❌ Erro Detalhado:</h4>
                   <div className="bg-red-100 p-4 rounded border border-red-200">
-                    <p className="text-red-800">{result.error}</p>
+                    <p className="text-red-800 font-mono text-sm">{result.error}</p>
                   </div>
                 </div>
               )}
 
-              {/* Additional Data */}
-              {result.log_id && (
-                <div className="text-xs text-gray-500">
-                  ID do Log de Execução: {result.log_id}
-                </div>
-              )}
+              {/* Informações Técnicas */}
+              <div className="text-xs text-gray-500 space-y-1">
+                {result.log_id && <div>Log ID: {result.log_id}</div>}
+                {result.webhook_url && <div>Webhook: {result.webhook_url}</div>}
+                <div>Timestamp: {new Date().toISOString()}</div>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Informações Importantes */}
+      {/* Informações do Sistema */}
       <Card className="border-blue-200 bg-blue-50">
         <CardHeader>
-          <CardTitle className="text-blue-900">ℹ️ Como Funciona o Teste Real</CardTitle>
+          <CardTitle className="text-blue-900">ℹ️ Fluxo de Execução</CardTitle>
         </CardHeader>
         <CardContent className="text-blue-800 text-sm space-y-2">
-          <p>• <strong>Execução Real:</strong> Este teste executa o agente IA em ambiente de produção real</p>
-          <p>• <strong>Fluxo N8N:</strong> Primeiro tenta via N8N (webhook produção), depois OpenAI local como fallback</p>
-          <p>• <strong>Prompt Completo:</strong> Combina o prompt base do agente + contexto + sua pergunta</p>
-          <p>• <strong>Logs Detalhados:</strong> Todos os passos são registrados na tabela logs_execucao_agentes</p>
-          <p>• <strong>Resposta Real:</strong> A resposta exibida é a mesma que seria entregue ao usuário final</p>
-          <p>• <strong>Monitoramento:</strong> Tempo de execução, fonte da resposta e possíveis erros são capturados</p>
+          <p>• <strong>1. Frontend:</strong> Envia payload com agentId, prompt e parâmetros</p>
+          <p>• <strong>2. Edge Function:</strong> n8n-webhook-forwarder processa e valida dados</p>
+          <p>• <strong>3. N8N Webhook:</strong> Recebe POST no endpoint de produção</p>
+          <p>• <strong>4. OpenAI API:</strong> N8N processa via ChatGPT</p>
+          <p>• <strong>5. Resposta:</strong> JSON retorna com conteúdo da IA</p>
+          <p>• <strong>6. Logs:</strong> Tudo registrado na tabela logs_execucao_agentes</p>
         </CardContent>
       </Card>
     </div>

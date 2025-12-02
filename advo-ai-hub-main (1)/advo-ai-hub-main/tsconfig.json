@@ -1,0 +1,42 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ],
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    // 🚀 PADRÃO ELON MUSK: Modo estrito completo
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    
+    // 🚀 QUALIDADE DE CÓDIGO TESLA/SPACEX
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    
+    // 🚀 PERFORMANCE E SEGURANÇA
+    "skipLibCheck": false,
+    "allowJs": false,
+    "forceConsistentCasingInFileNames": true,
+    "isolatedModules": true,
+    
+    // 🚀 DEBUGGING E DESENVOLVIMENTO
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "removeComments": false
+  }
+}

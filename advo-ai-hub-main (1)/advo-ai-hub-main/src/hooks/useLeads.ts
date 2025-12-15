@@ -1,51 +1,108 @@
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useSupabaseQuery } from './useSupabaseQuery';
 import type { Database } from '@/integrations/supabase/types';
 
 export type Lead = Database['public']['Tables']['leads']['Row'];
 export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
 
-export const useLeads = () => {
+const ITEMS_PER_PAGE = 25;
+
+export const useLeads = (options?: { enablePagination?: boolean; pageSize?: number }) => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const fetchLeadsQuery = useCallback(async () => {
-    console.log('🔍 [useLeads] Buscando leads...');
-    
+  const enablePagination = options?.enablePagination ?? false;
+  const pageSize = options?.pageSize ?? ITEMS_PER_PAGE;
+
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isEmpty, setIsEmpty] = useState(false);
+
+  // Paginação
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  const fetchLeads = useCallback(async (page: number = 1) => {
+    if (!user) return;
+
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      setError(null);
+      console.log(`🔍 [useLeads] Buscando leads (página ${page})...`);
+
+      let query = supabase
         .from('leads')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('❌ [useLeads] Erro ao buscar leads:', error);
-        throw error;
+      // Aplicar paginação se habilitada
+      if (enablePagination) {
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        query = query.range(from, to);
       }
 
-      console.log(`✅ [useLeads] ${data?.length || 0} leads encontrados`);
-      return { data, error: null };
-    } catch (error) {
-      console.error('❌ [useLeads] Erro na consulta:', error);
-      return { data: null, error };
-    }
-  }, []);
+      const { data, error: fetchError, count } = await query;
 
-  const {
-    data: leads,
-    loading,
-    error,
-    refetch: fetchLeads,
-    mutate: setLeads,
-    isEmpty
-  } = useSupabaseQuery<Lead>('leads', fetchLeadsQuery, {
-    enabled: !!user,
-    staleTime: 15000
-  });
+      if (fetchError) {
+        console.error('❌ [useLeads] Erro ao buscar leads:', fetchError);
+        throw fetchError;
+      }
+
+      setLeads(data || []);
+      setIsEmpty(!data || data.length === 0);
+
+      if (count !== null) {
+        setTotalCount(count);
+        setTotalPages(Math.ceil(count / pageSize));
+      }
+
+      console.log(`✅ [useLeads] ${data?.length || 0} leads encontrados (total: ${count})`);
+
+    } catch (error: any) {
+      console.error('❌ [useLeads] Erro na consulta:', error);
+      setError(error.message || 'Erro ao carregar leads');
+      setLeads([]);
+      setIsEmpty(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, enablePagination, pageSize]);
+
+  // Carregar leads na montagem
+  useEffect(() => {
+    if (user) {
+      fetchLeads(currentPage);
+    }
+  }, [user, currentPage, fetchLeads]);
+
+  // Funções de paginação
+  const goToPage = useCallback((page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  }, [totalPages]);
+
+  const nextPage = useCallback(() => {
+    if (currentPage < totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [currentPage, totalPages]);
+
+  const prevPage = useCallback(() => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  }, [currentPage]);
+
+  const refreshLeads = useCallback(() => {
+    fetchLeads(currentPage);
+  }, [fetchLeads, currentPage]);
 
   const createLead = useCallback(async (data: CreateLeadData): Promise<boolean> => {
     if (!user) {
@@ -125,13 +182,61 @@ export const useLeads = () => {
     }
   }, [user, toast, leads, setLeads]);
 
+  const deleteLead = useCallback(async (id: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      console.log(`🗑️ [useLeads] Deletando lead ${id}...`);
+      const { error } = await supabase
+        .from('leads')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      console.log('✅ [useLeads] Lead deletado com sucesso');
+
+      setLeads(leads.filter(lead => lead.id !== id));
+
+      toast({
+        title: 'Sucesso',
+        description: 'Lead removido com sucesso!',
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error('❌ [useLeads] Erro ao deletar lead:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Não foi possível remover o lead.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [user, toast, leads, setLeads]);
+
   return {
+    // Dados
     leads,
     loading,
     error,
     isEmpty,
-    fetchLeads,
+
+    // Operações CRUD
+    fetchLeads: refreshLeads,
     createLead,
     updateLead,
+    deleteLead,
+
+    // Paginação
+    currentPage,
+    totalPages,
+    totalCount,
+    pageSize,
+    goToPage,
+    nextPage,
+    prevPage,
+    hasNextPage: currentPage < totalPages,
+    hasPrevPage: currentPage > 1,
   };
 };

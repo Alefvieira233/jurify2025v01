@@ -5,7 +5,7 @@
  * Validação robusta, rate limiting, retry logic e monitoramento completo.
  */
 
-import { enterpriseMultiAgentSystem } from '@/lib/multiagents/EnterpriseMultiAgentSystem';
+import { multiAgentSystem } from '@/lib/multiagents';
 import { supabase } from '@/integrations/supabase/client';
 
 // 🎯 TIPOS ENTERPRISE WHATSAPP
@@ -302,7 +302,7 @@ export class EnterpriseWhatsAppIntegration {
       await this.saveMessageHistory(message, leadData.id, 'incoming');
 
       // Processa via sistema multiagentes enterprise
-      await enterpriseMultiAgentSystem.processLead(leadData, message.text);
+      await multiAgentSystem.processLead(leadData, message.text);
 
       console.log('✅ Mensagem processada pelo sistema enterprise');
 

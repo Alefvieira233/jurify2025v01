@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { enterpriseMultiAgentSystem, LeadData, Priority } from '@/lib/multiagents/EnterpriseMultiAgentSystem';
+import { multiAgentSystem } from '@/lib/multiagents';
+import { LeadData, Priority } from '@/lib/multiagents/types';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -61,7 +62,7 @@ export const useEnterpriseMultiAgent = () => {
       console.log('🚀 Inicializando sistema enterprise...');
       
       // Verifica se sistema está funcionando
-      const stats = enterpriseMultiAgentSystem.getSystemStats();
+      const stats = multiAgentSystem.getSystemStats();
       
       if (stats.total_agents === 0) {
         throw new Error('Sistema multiagentes não inicializado');
@@ -308,7 +309,7 @@ export const useEnterpriseMultiAgent = () => {
       if (error) throw error;
 
       // Processa via sistema enterprise
-      await enterpriseMultiAgentSystem.processLead(savedLead, leadData.message);
+      await multiAgentSystem.processLead(savedLead, leadData.message);
 
       toast({
         title: "✅ Lead Processado",
@@ -471,6 +472,6 @@ export const useEnterpriseMultiAgent = () => {
     validateLeadData,
 
     // Sistema
-    systemStats: enterpriseMultiAgentSystem.getSystemStats()
+    systemStats: multiAgentSystem.getSystemStats()
   };
 };

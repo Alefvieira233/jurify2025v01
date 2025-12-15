@@ -1,108 +1,115 @@
+/**
+ * 📅 GOOGLE OAUTH CALLBACK PAGE
+ *
+ * Processa o retorno da autenticação OAuth do Google Calendar.
+ * Troca o código por tokens e redireciona de volta para configurações.
+ *
+ * @route /auth/google/callback
+ * @version 2.0.0 (OAuth Real)
+ */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 
-const GoogleAuthCallback = () => {
+const GoogleAuthCallback: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [status, setStatus] = React.useState<'loading' | 'success' | 'error'>('loading');
+  const { handleOAuthCallback } = useGoogleCalendar();
+  const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   useEffect(() => {
-    const handleCallback = async () => {
+    const processCallback = async () => {
       try {
+        // Extrair parâmetros da URL
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const error = searchParams.get('error');
 
+        // Se houve erro no OAuth
         if (error) {
-          throw new Error(`Google OAuth error: ${error}`);
+          throw new Error(`Erro OAuth: ${error}`);
         }
 
-        if (!code || !state || state !== user?.id) {
-          throw new Error('Invalid callback parameters');
+        // Se não tem código, erro
+        if (!code || !state) {
+          throw new Error('Código ou state ausentes no callback');
         }
 
-        // Para agora, apenas simulamos o sucesso até configurar as credenciais reais
-        console.log('Google OAuth callback received:', { code, state });
+        console.log('🔄 [GoogleAuthCallback] Processando callback...');
 
-        // Habilitar integração por padrão (simulação)
-        await supabase
-          .from('google_calendar_settings')
-          .upsert({
-            user_id: user?.id,
-            calendar_enabled: true,
-            auto_sync: true,
-            sync_direction: 'jurify_to_google',
-            notification_enabled: true
-          });
+        // Processar callback
+        const success = await handleOAuthCallback(code, state);
 
-        setStatus('success');
-        
-        toast({
-          title: "Conectado com sucesso!",
-          description: "Sua conta Google foi conectada ao Jurify.",
-        });
+        if (success) {
+          setStatus('success');
+          // Redirecionar para configurações após 2 segundos
+          setTimeout(() => {
+            navigate('/configuracoes?tab=integracoes');
+          }, 2000);
+        } else {
+          throw new Error('Falha ao processar callback');
+        }
 
-        setTimeout(() => {
-          navigate('/?tab=configuracoes');
-        }, 2000);
-
-      } catch (error) {
-        console.error('Google auth callback error:', error);
+      } catch (error: any) {
+        console.error('❌ [GoogleAuthCallback] Erro:', error);
         setStatus('error');
-        
-        toast({
-          title: "Erro na conexão",
-          description: "Não foi possível conectar com sua conta Google.",
-          variant: "destructive",
-        });
+        setErrorMessage(error.message || 'Erro desconhecido');
 
+        // Redirecionar para configurações após 5 segundos
         setTimeout(() => {
-          navigate('/?tab=configuracoes');
-        }, 3000);
+          navigate('/configuracoes?tab=integracoes');
+        }, 5000);
       }
     };
 
-    if (user?.id) {
-      handleCallback();
-    }
-  }, [searchParams, user?.id, navigate, toast]);
+    processCallback();
+  }, [searchParams, handleOAuthCallback, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-700 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle>Conectando com Google</CardTitle>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-700 p-4">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle className="text-center text-xl">
+            Conectando Google Calendar
+          </CardTitle>
         </CardHeader>
-        <CardContent className="text-center space-y-4">
-          {status === 'loading' && (
-            <>
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-amber-500" />
-              <p className="text-gray-600">Processando autenticação...</p>
-            </>
+        <CardContent>
+          {status === 'processing' && (
+            <div className="text-center py-8">
+              <Loader2 className="h-12 w-12 animate-spin text-amber-500 mx-auto mb-4" />
+              <p className="text-gray-300 font-medium">Processando autenticação...</p>
+              <p className="text-sm text-gray-400 mt-2">Aguarde enquanto validamos suas credenciais</p>
+            </div>
           )}
-          
+
           {status === 'success' && (
-            <>
-              <CheckCircle className="h-8 w-8 mx-auto text-green-500" />
-              <p className="text-gray-600">Conexão realizada com sucesso!</p>
-              <p className="text-sm text-gray-500">Redirecionando...</p>
-            </>
+            <div className="text-center py-8">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-100 mb-2">
+                Conectado com sucesso!
+              </h3>
+              <p className="text-gray-300">Google Calendar configurado corretamente.</p>
+              <p className="text-sm text-gray-400 mt-4">
+                Redirecionando para configurações...
+              </p>
+            </div>
           )}
-          
+
           {status === 'error' && (
-            <>
-              <XCircle className="h-8 w-8 mx-auto text-red-500" />
-              <p className="text-gray-600">Erro na conexão</p>
-              <p className="text-sm text-gray-500">Redirecionando...</p>
-            </>
+            <div className="text-center py-8">
+              <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-red-300 mb-2">
+                Erro na Autenticação
+              </h3>
+              <p className="text-red-200 mb-4 text-sm">{errorMessage}</p>
+              <p className="text-sm text-gray-400 mt-4">
+                Redirecionando para configurações em 5 segundos...
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>

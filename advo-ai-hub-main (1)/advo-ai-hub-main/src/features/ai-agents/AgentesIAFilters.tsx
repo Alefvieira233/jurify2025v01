@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, RefreshCw } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useDebounce } from '@/hooks/useDebounce';
 import { 
   Select, 
   SelectContent, 
@@ -44,6 +45,28 @@ export const AgentesIAFilters: React.FC<AgentesIAFiltersProps> = ({
   totalFiltrados,
   agentesAtivos
 }) => {
+  // Local state for immediate UI feedback
+  const [localSearch, setLocalSearch] = useState(filters.searchTerm);
+  const debouncedSearch = useDebounce(localSearch, 500);
+
+  // Sync local state when external filters change (e.g. clear filters)
+  useEffect(() => {
+    if (filters.searchTerm !== debouncedSearch) {
+       setLocalSearch(filters.searchTerm);
+    }
+  }, [filters.searchTerm]);
+
+  // Trigger filter change when debounced value updates
+  useEffect(() => {
+    if (debouncedSearch !== filters.searchTerm) {
+      onFilterChange('searchTerm', debouncedSearch);
+    }
+  }, [debouncedSearch]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setLocalSearch(e.target.value);
+  };
+
   return (
     <Card className="mb-6">
       <CardContent className="p-6">
@@ -58,8 +81,8 @@ export const AgentesIAFilters: React.FC<AgentesIAFiltersProps> = ({
               <Input
                 type="text"
                 placeholder="Nome, área jurídica ou descrição..."
-                value={filters.searchTerm}
-                onChange={(e) => onFilterChange('searchTerm', e.target.value)}
+                value={localSearch}
+                onChange={handleSearchChange}
                 className="pl-10"
               />
             </div>

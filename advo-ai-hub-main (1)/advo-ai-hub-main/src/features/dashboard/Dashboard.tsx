@@ -1,15 +1,51 @@
 
-import React from 'react';
-import { Users, FileText, Calendar, Bot, TrendingUp, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Users, FileText, Calendar, Bot, TrendingUp, Clock, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
+import { seedDatabase } from '@/scripts/seed-database';
+import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const { metrics, loading, error, refetch, isEmpty } = useDashboardMetrics();
+  const [isSeeding, setIsSeeding] = useState(false);
+  const { toast } = useToast();
+
+  const handleGenerateTestData = async () => {
+    try {
+      setIsSeeding(true);
+      toast({
+        title: 'Gerando dados de teste...',
+        description: 'Isso pode levar alguns segundos.',
+      });
+
+      await seedDatabase();
+
+      toast({
+        title: 'Dados gerados com sucesso!',
+        description: 'O dashboard será atualizado automaticamente.',
+      });
+
+      // Aguardar 1 segundo e recarregar
+      setTimeout(() => {
+        refetch();
+      }, 1000);
+
+    } catch (error: any) {
+      console.error('Erro ao gerar dados:', error);
+      toast({
+        title: 'Erro ao gerar dados',
+        description: error.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -86,14 +122,28 @@ const Dashboard = () => {
           <CardContent className="p-8">
             <div className="text-center">
               <TrendingUp className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-blue-900 mb-2">Dashboard em preparação</h3>
-              <p className="text-blue-700 mb-4">Os dados estão sendo carregados. Comece cadastrando alguns leads para ver as métricas.</p>
-              <Button 
-                onClick={refetch}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                Atualizar métricas
-              </Button>
+              <h3 className="text-lg font-medium text-blue-900 mb-2">Dashboard vazio</h3>
+              <p className="text-blue-700 mb-6">
+                Nenhum dado encontrado. Você pode gerar dados de teste para visualizar o sistema funcionando
+                ou começar cadastrando leads reais.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={handleGenerateTestData}
+                  disabled={isSeeding}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {isSeeding ? 'Gerando...' : 'Gerar Dados de Teste'}
+                </Button>
+                <Button
+                  onClick={refetch}
+                  variant="outline"
+                  className="border-blue-300"
+                >
+                  Atualizar métricas
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>

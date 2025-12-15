@@ -8,6 +8,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import NovoLeadForm from '@/components/forms/NovoLeadForm';
 
 interface Lead {
   id: string;
@@ -26,6 +27,7 @@ const PipelineJuridico = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterArea, setFilterArea] = useState('');
   const [filterResponsavel, setFilterResponsavel] = useState('');
+  const [showFormModal, setShowFormModal] = useState(false);
   const { toast } = useToast();
 
   const { leads, loading, error, isEmpty, updateLead, fetchLeads } = useLeads();
@@ -92,6 +94,11 @@ const PipelineJuridico = () => {
     fetchLeads();
   };
 
+  const handleFormSuccess = () => {
+    setShowFormModal(false);
+    fetchLeads();
+  };
+
   // Loading State
   if (loading) {
     return (
@@ -150,7 +157,10 @@ const PipelineJuridico = () => {
                 <CardTitle className="text-2xl">Pipeline Jurídico</CardTitle>
                 <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Lead
               </Button>
@@ -198,7 +208,10 @@ const PipelineJuridico = () => {
                 <CardTitle className="text-2xl">Pipeline Jurídico</CardTitle>
                 <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Lead
               </Button>
@@ -216,7 +229,10 @@ const PipelineJuridico = () => {
               </div>
               <h3 className="text-xl font-semibold text-blue-900 mb-2">Pipeline vazio</h3>
               <p className="text-blue-700 mb-6">Nenhum lead cadastrado ainda. Comece criando seu primeiro lead para visualizar o pipeline.</p>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar primeiro lead
               </Button>
@@ -357,6 +373,13 @@ const PipelineJuridico = () => {
           ))}
         </div>
       </DragDropContext>
+
+      {/* Modal Novo Lead */}
+      <NovoLeadForm
+        open={showFormModal}
+        onOpenChange={setShowFormModal}
+        onSuccess={handleFormSuccess}
+      />
     </div>
   );
 };

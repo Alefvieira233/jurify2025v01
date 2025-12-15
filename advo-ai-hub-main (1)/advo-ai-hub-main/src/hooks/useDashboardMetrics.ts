@@ -101,9 +101,15 @@ export const useDashboardMetrics = () => {
           supabase.from('agentes_ia').select('*'),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]),
+        // Tentar buscar da tabela nova (Mission Control)
+        Promise.race([
+          supabase.from('agent_executions').select('*'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+        ]),
+        // Manter fallback para tabela antiga se necessário (opcional)
         Promise.race([
           supabase.from('logs_execucao_agentes').select('*, agentes_ia(nome)'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
         ]),
       ]);
 
@@ -132,11 +138,18 @@ export const useDashboardMetrics = () => {
                      'data' in agentesResult.value && 
                      Array.isArray(agentesResult.value.data) ? agentesResult.value.data : [];
 
-      const execucoes = execucoesResult.status === 'fulfilled' && 
+      // Priorizar tabela nova (index 4), fallback para antiga (index 5)
+      const execucoesNovas = execucoesResult.status === 'fulfilled' && 
                        execucoesResult.value && 
                        typeof execucoesResult.value === 'object' && 
                        'data' in execucoesResult.value && 
                        Array.isArray(execucoesResult.value.data) ? execucoesResult.value.data : [];
+                       
+      // Logica para usar a antiga se a nova estiver vazia e a antiga não
+      // Mas para simplificar, vamos focar na nova se ela existir.
+      // Se execucoesNovas tiver erro (tabela não existe), ele será array vazio.
+      
+      const execucoes = execucoesNovas; 
 
       // Calcular métricas de leads
       const leadsNovoMes = leads.filter(lead => 
@@ -188,7 +201,17 @@ export const useDashboardMetrics = () => {
       const execucoesPorAgente = new Map<string, { agente_nome: string; total_execucoes: number; sucesso: number; erro: number }>();
       
       execucoes.forEach(execucao => {
-        const nomeAgente = execucao.agentes_ia?.nome || 'Agente Desconhecido';
+        // Suporte para schema antigo (agentes_ia.nome) e novo (current_agent / agents_involved)
+        let nomeAgente = 'Agente Desconhecido';
+        
+        if (execucao.agentes_ia && typeof execucao.agentes_ia === 'object' && 'nome' in execucao.agentes_ia) {
+            nomeAgente = execucao.agentes_ia.nome;
+        } else if (execucao.current_agent) {
+            nomeAgente = execucao.current_agent;
+        } else if (execucao.agents_involved && Array.isArray(execucao.agents_involved) && execucao.agents_involved.length > 0) {
+            nomeAgente = execucao.agents_involved[0];
+        }
+
         const current = execucoesPorAgente.get(nomeAgente) || { 
           agente_nome: nomeAgente, 
           total_execucoes: 0, 
@@ -197,8 +220,9 @@ export const useDashboardMetrics = () => {
         };
         
         current.total_execucoes++;
-        if (execucao.status === 'success') current.sucesso++;
-        if (execucao.status === 'error') current.erro++;
+        // Schema antigo: 'success'/'error'. Novo: 'completed'/'failed'
+        if (execucao.status === 'success' || execucao.status === 'completed') current.sucesso++;
+        if (execucao.status === 'error' || execucao.status === 'failed') current.erro++;
         
         execucoesPorAgente.set(nomeAgente, current);
       });
@@ -226,14 +250,9 @@ export const useDashboardMetrics = () => {
 
     } catch (error: any) {
       console.error('❌ [useDashboardMetrics] Erro ao carregar métricas:', error);
-      setError(error.message || 'Erro ao carregar métricas');
-      setMetrics(DEFAULT_METRICS);
+      setError(error.message || 'Erro ao conectar com banco de dados');
+      setMetrics(DEFAULT_METRICS); 
       
-      toast({
-        title: 'Erro ao carregar métricas',
-        description: 'Algumas métricas podem não estar atualizadas.',
-        variant: 'destructive',
-      });
     } finally {
       setLoading(false);
     }

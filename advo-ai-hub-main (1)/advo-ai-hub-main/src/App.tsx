@@ -30,6 +30,8 @@ const IntegracoesConfig = lazy(() => import("./features/settings/IntegracoesConf
 const ConfiguracoesGerais = lazy(() => import("./features/settings/ConfiguracoesGerais"));
 const NotificationsPanel = lazy(() => import("./features/notifications/NotificationsPanel"));
 const TimelineConversas = lazy(() => import("./features/timeline/TimelineConversas"));
+const AgentsPlayground = lazy(() => import("./pages/AgentsPlayground"));
+const MissionControl = lazy(() => import("./features/mission-control/MissionControl"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -69,6 +71,8 @@ const App = () => (
                 <Route path="notificacoes" element={<NotificationsPanel />} />
                 <Route path="timeline" element={<TimelineConversas />} />
                 <Route path="planos" element={<Pricing />} />
+                <Route path="admin/playground" element={<AgentsPlayground />} />
+                <Route path="admin/mission-control" element={<MissionControl />} />
               </Route>
 
               <Route path="*" element={<NotFound />} />

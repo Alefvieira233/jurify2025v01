@@ -5,7 +5,8 @@
  * Testa funcionalidade, performance, segurança e integração.
  */
 
-import { enterpriseMultiAgentSystem, AGENT_CONFIG, Priority } from '@/lib/multiagents/EnterpriseMultiAgentSystem';
+import { multiAgentSystem } from '@/lib/multiagents';
+import { Priority } from '@/lib/multiagents/types';
 import { supabase } from '@/integrations/supabase/client';
 
 export class EnterpriseTestSuite {
@@ -102,7 +103,7 @@ export class EnterpriseTestSuite {
     const test = this.createTestObject('System Initialization');
 
     try {
-      const stats = enterpriseMultiAgentSystem.getSystemStats();
+      const stats = multiAgentSystem.getSystemStats();
 
       // Verifica se todos os agentes foram inicializados
       const expectedAgents = Object.values(AGENT_CONFIG.NAMES);
@@ -141,14 +142,14 @@ export class EnterpriseTestSuite {
     const test = this.createTestObject('Agent Communication');
 
     try {
-      const coordinator = enterpriseMultiAgentSystem.getAgent(AGENT_CONFIG.NAMES.COORDINATOR);
+      const coordinator = multiAgentSystem.getAgent(AGENT_CONFIG.NAMES.COORDINATOR);
       
       if (!coordinator) {
         throw new Error('Coordenador não encontrado');
       }
 
       // Simula comunicação
-      const statsBefore = enterpriseMultiAgentSystem.getSystemStats();
+      const statsBefore = multiAgentSystem.getSystemStats();
       
       await coordinator.receiveMessage({
         id: `test_comm_${Date.now()}`,
@@ -164,7 +165,7 @@ export class EnterpriseTestSuite {
       // Aguarda processamento
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      const statsAfter = enterpriseMultiAgentSystem.getSystemStats();
+      const statsAfter = multiAgentSystem.getSystemStats();
 
       if (statsAfter.messages_processed <= statsBefore.messages_processed) {
         throw new Error('Mensagem não foi processada');
@@ -205,15 +206,15 @@ export class EnterpriseTestSuite {
         metadata: { test: true, test_type: 'enterprise' }
       };
 
-      const statsBefore = enterpriseMultiAgentSystem.getSystemStats();
+      const statsBefore = multiAgentSystem.getSystemStats();
 
       // Processa lead
-      await enterpriseMultiAgentSystem.processLead(testLead, testLead.message);
+      await multiAgentSystem.processLead(testLead, testLead.message);
 
       // Aguarda processamento
       await new Promise(resolve => setTimeout(resolve, 3000));
 
-      const statsAfter = enterpriseMultiAgentSystem.getSystemStats();
+      const statsAfter = multiAgentSystem.getSystemStats();
 
       if (statsAfter.messages_processed <= statsBefore.messages_processed) {
         throw new Error('Lead não foi processado');
@@ -254,7 +255,7 @@ export class EnterpriseTestSuite {
 
       for (const invalidLead of invalidLeads) {
         try {
-          await enterpriseMultiAgentSystem.processLead(invalidLead as any, invalidLead.message);
+          await multiAgentSystem.processLead(invalidLead as any, invalidLead.message);
           // Se chegou aqui, a validação falhou
         } catch (error) {
           // Erro esperado - validação funcionou
@@ -302,7 +303,7 @@ export class EnterpriseTestSuite {
 
       // Processa todos simultaneamente
       const promises = leads.map(lead => 
-        enterpriseMultiAgentSystem.processLead(lead, lead.message)
+        multiAgentSystem.processLead(lead, lead.message)
       );
 
       await Promise.allSettled(promises);
@@ -343,7 +344,7 @@ export class EnterpriseTestSuite {
     try {
       // Testa roteamento para agente inexistente
       try {
-        await enterpriseMultiAgentSystem.routeMessage({
+        await multiAgentSystem.routeMessage({
           id: `error_test_${Date.now()}`,
           from: 'TestSuite',
           to: 'AgenteInexistente',
@@ -362,7 +363,7 @@ export class EnterpriseTestSuite {
 
       // Testa lead com dados extremamente inválidos
       try {
-        await enterpriseMultiAgentSystem.processLead(null as any, '');
+        await multiAgentSystem.processLead(null as any, '');
         throw new Error('Deveria ter falhado para dados nulos');
       } catch (error) {
         // Erro esperado
@@ -484,7 +485,7 @@ export class EnterpriseTestSuite {
             source: 'security_test'
           };
 
-          await enterpriseMultiAgentSystem.processLead(testLead, maliciousInput);
+          await multiAgentSystem.processLead(testLead, maliciousInput);
           
           // Verifica se dados foram sanitizados (implementação específica necessária)
           securityTestsPassed++;
@@ -531,16 +532,16 @@ export class EnterpriseTestSuite {
 
       console.log('🎯 Iniciando fluxo E2E enterprise...');
 
-      const statsBefore = enterpriseMultiAgentSystem.getSystemStats();
+      const statsBefore = multiAgentSystem.getSystemStats();
 
       // 1. Processa lead
-      await enterpriseMultiAgentSystem.processLead(testLead, testLead.message);
+      await multiAgentSystem.processLead(testLead, testLead.message);
 
       // 2. Aguarda processamento completo
       await new Promise(resolve => setTimeout(resolve, 5000));
 
       // 3. Verifica resultados
-      const statsAfter = enterpriseMultiAgentSystem.getSystemStats();
+      const statsAfter = multiAgentSystem.getSystemStats();
 
       if (statsAfter.messages_processed <= statsBefore.messages_processed) {
         throw new Error('Fluxo E2E não gerou mensagens');

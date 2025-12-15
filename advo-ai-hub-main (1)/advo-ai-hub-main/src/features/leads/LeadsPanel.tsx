@@ -6,16 +6,20 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useLeads } from '@/hooks/useLeads';
+import { useLeads, type Lead } from '@/hooks/useLeads';
 import { useDebounce } from '@/hooks/useDebounce';
 import TimelineConversas from '@/features/timeline/TimelineConversas';
+import NovoLeadForm from '@/components/forms/NovoLeadForm';
+import EditarLeadForm from '@/components/forms/EditarLeadForm';
 
 const LeadsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [selectedLead, setSelectedLead] = useState<string | null>(null);
   const [showTimeline, setShowTimeline] = useState(false);
-  const { leads, loading, error, isEmpty, fetchLeads } = useLeads();
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [editingLead, setEditingLead] = useState<Lead | null>(null);
+  const { leads, loading, error, isEmpty, fetchLeads, deleteLead } = useLeads();
 
   // Debounce search term para evitar filtros excessivos
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -65,6 +69,30 @@ const LeadsPanel = () => {
   const handleCloseTimeline = () => {
     setSelectedLead(null);
     setShowTimeline(false);
+  };
+
+  const handleFormSuccess = () => {
+    setShowFormModal(false);
+    fetchLeads();
+  };
+
+  const handleEditLead = (lead: Lead) => {
+    setEditingLead(lead);
+  };
+
+  const handleEditSuccess = () => {
+    setEditingLead(null);
+    fetchLeads();
+  };
+
+  const handleDeleteLead = async (id: string, nome: string) => {
+    const confirmacao = window.confirm(
+      `Tem certeza que deseja excluir o lead "${nome}"?\n\nEsta ação não pode ser desfeita.`
+    );
+
+    if (confirmacao) {
+      await deleteLead(id);
+    }
   };
 
   // Loading State
@@ -123,7 +151,10 @@ const LeadsPanel = () => {
                 <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
                 <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Lead
               </Button>
@@ -171,7 +202,10 @@ const LeadsPanel = () => {
                 <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
                 <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Lead
               </Button>
@@ -189,7 +223,10 @@ const LeadsPanel = () => {
               </div>
               <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum lead cadastrado</h3>
               <p className="text-blue-700 mb-6">Comece criando seu primeiro lead para começar a gerenciar suas oportunidades de negócio.</p>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Criar primeiro lead
               </Button>
@@ -223,7 +260,11 @@ const LeadsPanel = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Atualizar
               </Button>
-              <Button className="bg-amber-500 hover:bg-amber-600" aria-label="Criar novo lead">
+              <Button
+                className="bg-amber-500 hover:bg-amber-600"
+                onClick={() => setShowFormModal(true)}
+                aria-label="Criar novo lead"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Lead
               </Button>
@@ -324,10 +365,21 @@ const LeadsPanel = () => {
                   <Button variant="outline" size="sm" aria-label="Visualizar detalhes do lead">
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" aria-label="Editar lead">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditLead(lead)}
+                    aria-label="Editar lead"
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700" aria-label="Excluir lead">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteLead(lead.id, lead.nome_completo)}
+                    className="text-red-600 hover:text-red-700"
+                    aria-label="Excluir lead"
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -368,6 +420,23 @@ const LeadsPanel = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Novo Lead */}
+      <NovoLeadForm
+        open={showFormModal}
+        onOpenChange={setShowFormModal}
+        onSuccess={handleFormSuccess}
+      />
+
+      {/* Modal Editar Lead */}
+      {editingLead && (
+        <EditarLeadForm
+          open={!!editingLead}
+          onOpenChange={(open) => !open && setEditingLead(null)}
+          lead={editingLead}
+          onSuccess={handleEditSuccess}
+        />
       )}
     </div>
   );

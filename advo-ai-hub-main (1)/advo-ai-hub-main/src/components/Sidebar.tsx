@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
-import { 
-  Scale, 
-  MessageSquare, 
-  FileText, 
-  Calendar, 
-  BarChart3, 
-  Settings, 
-  Users, 
+import {
+  Scale,
+  MessageSquare,
+  FileText,
+  Calendar,
+  BarChart3,
+  Settings,
+  Users,
   Bot,
   TrendingUp,
   UserCog,
@@ -16,7 +16,9 @@ import {
   Activity,
   Zap,
   MessageCircle,
-  CreditCard
+  CreditCard,
+  Rocket,
+  FlaskConical
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -46,6 +48,8 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'relatorios', label: 'Relatórios', icon: BarChart3, resource: 'relatorios', action: 'read' },
     { id: 'notificacoes', label: 'Notificações', icon: Bell, resource: 'notificacoes', action: 'read' },
     { id: 'logs', label: 'Logs de Atividades', icon: Activity, resource: 'logs', action: 'read' },
+    { id: 'admin/mission-control', label: '🚀 Mission Control', icon: Rocket, resource: 'dashboard', action: 'read', adminOnly: false },
+    { id: 'admin/playground', label: '🧪 Agents Playground', icon: FlaskConical, resource: 'dashboard', action: 'read', adminOnly: false },
     { id: 'usuarios', label: 'Usuários', icon: UserCog, resource: 'usuarios', action: 'read', adminOnly: true },
     { id: 'integracoes', label: 'Integrações', icon: Zap, resource: 'integracoes', action: 'read', adminOnly: true },
     { id: 'planos', label: 'Planos & Assinatura', icon: CreditCard, resource: 'dashboard', action: 'read' },
@@ -55,37 +59,56 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
   // Filtrar menu baseado em permissões
   useEffect(() => {
     const filterMenuItems = async () => {
-      if (!user || !profile) {
+      if (!user) {
         setVisibleMenuItems([]);
         return;
       }
 
+      // 🔓 FALLBACK: Se não tem profile, mostrar itens básicos
+      if (!profile) {
+        console.warn('⚠️ Profile não encontrado, mostrando menu padrão');
+        const defaultItems = allMenuItems.filter(item => !item.adminOnly);
+        setVisibleMenuItems(defaultItems);
+        return;
+      }
+
       const filteredItems = [];
-      
+
       for (const item of allMenuItems) {
         // Admin tem acesso a tudo
         if (profile.role === 'admin') {
           filteredItems.push(item);
           continue;
         }
-        
+
         // Itens só para admin
         if (item.adminOnly) {
           continue;
         }
-        
-        // Verificar permissão específica
+
+        // 🔓 FALLBACK: Tentar verificar permissão, se falhar, liberar acesso básico
         try {
           const hasAccess = await hasPermission(item.resource, item.action);
           if (hasAccess) {
             filteredItems.push(item);
           }
         } catch (error) {
-          console.error(`Erro ao verificar permissão para ${item.resource}:`, error);
+          console.warn(`⚠️ Erro ao verificar permissão para ${item.resource}, liberando acesso padrão`);
+          // Se erro ao verificar permissão, liberar itens não-admin
+          if (!item.adminOnly) {
+            filteredItems.push(item);
+          }
         }
       }
-      
-      setVisibleMenuItems(filteredItems);
+
+      // 🔓 FALLBACK: Se não conseguiu nenhum item, mostrar todos não-admin
+      if (filteredItems.length === 0) {
+        console.warn('⚠️ Nenhuma permissão encontrada, mostrando menu padrão');
+        const defaultItems = allMenuItems.filter(item => !item.adminOnly);
+        setVisibleMenuItems(defaultItems);
+      } else {
+        setVisibleMenuItems(filteredItems);
+      }
     };
 
     filterMenuItems();

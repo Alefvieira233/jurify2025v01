@@ -2,15 +2,36 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, Plug, Users, Bell, Server, TestTube } from 'lucide-react';
-import IntegracoesSection from './configuracoes/IntegracoesSection';
-import UsuariosPermissoesSection from './configuracoes/UsuariosPermissoesSection';
-import NotificacoesSection from './configuracoes/NotificacoesSection';
-import SistemaSection from './configuracoes/SistemaSection';
-import TesteN8N from './TesteN8N';
+import { Settings, Plug, Users, Bell, Server, TestTube, ShieldAlert } from 'lucide-react';
+import { useRBAC } from '@/hooks/useRBAC';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+// TODO: Criar esses componentes
+// import IntegracoesSection from './configuracoes/IntegracoesSection';
+// import UsuariosPermissoesSection from './configuracoes/UsuariosPermissoesSection';
+// import NotificacoesSection from './configuracoes/NotificacoesSection';
+// import SistemaSection from './configuracoes/SistemaSection';
+// import TesteN8N from './TesteN8N';
 
 const ConfiguracoesGerais = () => {
-  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode acessar configurações
+  // ✅ RBAC: Verificação de permissões
+  const { can, canManageConfig, userRole } = useRBAC();
+
+  // Se não pode acessar configurações, mostrar mensagem
+  if (!can('configuracoes', 'read')) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            Você não tem permissão para acessar as configurações.
+            <br />
+            <span className="text-sm text-gray-500">Role atual: {userRole}</span>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -45,23 +66,53 @@ const ConfiguracoesGerais = () => {
         </TabsList>
 
         <TabsContent value="integracoes">
-          <IntegracoesSection />
+          <Card>
+            <CardHeader>
+              <CardTitle>Integrações</CardTitle>
+              <CardDescription>Configurações de integrações em construção</CardDescription>
+            </CardHeader>
+          </Card>
+          {/* <IntegracoesSection /> */}
         </TabsContent>
 
         <TabsContent value="usuarios">
-          <UsuariosPermissoesSection />
+          <Card>
+            <CardHeader>
+              <CardTitle>Usuários & Permissões</CardTitle>
+              <CardDescription>Configurações em construção</CardDescription>
+            </CardHeader>
+          </Card>
+          {/* <UsuariosPermissoesSection /> */}
         </TabsContent>
 
         <TabsContent value="notificacoes">
-          <NotificacoesSection />
+          <Card>
+            <CardHeader>
+              <CardTitle>Notificações</CardTitle>
+              <CardDescription>Configurações em construção</CardDescription>
+            </CardHeader>
+          </Card>
+          {/* <NotificacoesSection /> */}
         </TabsContent>
 
         <TabsContent value="sistema">
-          <SistemaSection />
+          <Card>
+            <CardHeader>
+              <CardTitle>Sistema</CardTitle>
+              <CardDescription>Configurações em construção</CardDescription>
+            </CardHeader>
+          </Card>
+          {/* <SistemaSection /> */}
         </TabsContent>
 
         <TabsContent value="teste-n8n">
-          <TesteN8N />
+          <Card>
+            <CardHeader>
+              <CardTitle>Teste N8N</CardTitle>
+              <CardDescription>Funcionalidade em construção</CardDescription>
+            </CardHeader>
+          </Card>
+          {/* <TesteN8N /> */}
         </TabsContent>
       </Tabs>
     </div>

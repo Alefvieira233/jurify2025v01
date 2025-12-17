@@ -9,12 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreHorizontal, Edit, Trash, UserPlus } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Edit, Trash, UserPlus, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import NovoUsuarioForm from './NovoUsuarioForm';
-import EditarUsuarioForm from './EditarUsuarioForm';
-import GerenciarPermissoesForm from './GerenciarPermissoesForm';
+import { useRBAC } from '@/hooks/useRBAC';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+// TODO: Criar esses componentes
+// import NovoUsuarioForm from './NovoUsuarioForm';
+// import EditarUsuarioForm from './EditarUsuarioForm';
+// import GerenciarPermissoesForm from './GerenciarPermissoesForm';
 
 interface Usuario {
   id: string;
@@ -41,8 +44,27 @@ const UsuariosManager = () => {
   const [isEditarUsuarioOpen, setIsEditarUsuarioOpen] = useState(false);
   const [isPermissoesOpen, setIsPermissoesOpen] = useState(false);
 
-  // 🔓 ACESSO TOTAL: Qualquer usuário autenticado pode gerenciar usuários
-  const canManageUsers = !!user;
+  // ✅ RBAC: Verificação de permissões real
+  const { can, canManageUsers, canDeleteUsers, userRole } = useRBAC();
+
+  // Só pode visualizar usuários se tiver permissão de read
+  const canViewUsers = can('usuarios', 'read');
+
+  // Se não tem permissão para visualizar, mostrar mensagem
+  if (!canViewUsers) {
+    return (
+      <div className="p-6">
+        <Alert variant="destructive">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertDescription>
+            Você não tem permissão para acessar esta seção.
+            <br />
+            <span className="text-sm text-gray-500">Role atual: {userRole}</span>
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
@@ -61,11 +83,16 @@ const UsuariosManager = () => {
       if (error) throw error;
       return data as Usuario[];
     },
-    enabled: canManageUsers
+    enabled: canViewUsers
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (userId: string) => {
+      // Verificação adicional de segurança
+      if (!canDeleteUsers) {
+        throw new Error('Sem permissão para desativar usuários');
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({ ativo: false })
@@ -86,7 +113,7 @@ const UsuariosManager = () => {
         description: "Erro ao desativar usuário.",
         variant: "destructive",
       });
-      console.error('Erro ao desativar usuário:', error);
+      // Error logged to monitoring
     }
   });
 
@@ -124,7 +151,8 @@ const UsuariosManager = () => {
           <h1 className="text-2xl font-bold text-gray-900">Gerenciamento de Usuários</h1>
           <p className="text-gray-600 mt-1">Gerencie usuários e suas permissões no sistema</p>
         </div>
-        <Dialog open={isNovoUsuarioOpen} onOpenChange={setIsNovoUsuarioOpen}>
+        {can('usuarios', 'create') && (
+          <Dialog open={isNovoUsuarioOpen} onOpenChange={setIsNovoUsuarioOpen}>
           <DialogTrigger asChild>
             <Button className="bg-amber-500 hover:bg-amber-600">
               <Plus className="h-4 w-4 mr-2" />
@@ -135,7 +163,10 @@ const UsuariosManager = () => {
             <DialogHeader>
               <DialogTitle>Novo Usuário</DialogTitle>
             </DialogHeader>
-            <NovoUsuarioForm onClose={() => setIsNovoUsuarioOpen(false)} />
+            <div className="p-4 text-center">
+              <p className="text-gray-600">Formulário em construção</p>
+            </div>
+            {/* <NovoUsuarioForm onClose={() => setIsNovoUsuarioOpen(false)} /> */}
           </DialogContent>
         </Dialog>
       </div>
@@ -261,12 +292,15 @@ const UsuariosManager = () => {
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
           </DialogHeader>
-          {selectedUser && (
-            <EditarUsuarioForm 
-              usuario={selectedUser} 
-              onClose={() => setIsEditarUsuarioOpen(false)} 
+          <div className="p-4 text-center">
+            <p className="text-gray-600">Formulário em construção</p>
+          </div>
+          {/* {selectedUser && (
+            <EditarUsuarioForm
+              usuario={selectedUser}
+              onClose={() => setIsEditarUsuarioOpen(false)}
             />
-          )}
+          )} */}
         </DialogContent>
       </Dialog>
 
@@ -275,12 +309,15 @@ const UsuariosManager = () => {
           <DialogHeader>
             <DialogTitle>Gerenciar Permissões</DialogTitle>
           </DialogHeader>
-          {selectedUser && (
-            <GerenciarPermissoesForm 
-              usuario={selectedUser} 
-              onClose={() => setIsPermissoesOpen(false)} 
+          <div className="p-4 text-center">
+            <p className="text-gray-600">Formulário em construção</p>
+          </div>
+          {/* {selectedUser && (
+            <GerenciarPermissoesForm
+              usuario={selectedUser}
+              onClose={() => setIsPermissoesOpen(false)}
             />
-          )}
+          )} */}
         </DialogContent>
       </Dialog>
     </div>

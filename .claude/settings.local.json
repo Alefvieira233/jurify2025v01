@@ -3,7 +3,20 @@
     "allow": [
       "Bash(npm run dev:*)",
       "Bash(find:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(node:*)",
+      "Bash(git push:*)",
+      "Bash(supabase --version:*)",
+      "Bash(curl:*)",
+      "Bash(dir:*)",
+      "Bash(findstr:*)",
+      "Bash(cat:*)",
+      "Bash(tree:*)",
+      "Bash(npx supabase:*)",
+      "Bash(set SUPABASE_ACCESS_TOKEN=sbp_9e65aaca45f9e36a5a4fb68d358154e084d0ee8c)",
+      "Bash(cmd /c deploy-edge-function-agora.bat)",
+      "Bash(export SUPABASE_ACCESS_TOKEN=sbp_9e65aaca45f9e36a5a4fb68d358154e084d0ee8c)",
+      "Bash(python3:*)"
     ]
   }
 }

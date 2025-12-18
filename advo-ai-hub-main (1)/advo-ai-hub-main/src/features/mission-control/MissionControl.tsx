@@ -419,3 +419,5 @@ export function MissionControl() {
     </div>
   );
 }
+
+export default MissionControl;

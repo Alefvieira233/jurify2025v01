@@ -153,22 +153,23 @@ const UsuariosManager = () => {
         </div>
         {can('usuarios', 'create') && (
           <Dialog open={isNovoUsuarioOpen} onOpenChange={setIsNovoUsuarioOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-amber-500 hover:bg-amber-600">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Usuário
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Novo Usuário</DialogTitle>
-            </DialogHeader>
-            <div className="p-4 text-center">
-              <p className="text-gray-600">Formulário em construção</p>
-            </div>
-            {/* <NovoUsuarioForm onClose={() => setIsNovoUsuarioOpen(false)} /> */}
-          </DialogContent>
-        </Dialog>
+            <DialogTrigger asChild>
+              <Button className="bg-amber-500 hover:bg-amber-600">
+                <Plus className="h-4 w-4 mr-2" />
+                Novo Usuário
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Novo Usuário</DialogTitle>
+              </DialogHeader>
+              <div className="p-4 text-center">
+                <p className="text-gray-600">Formulário em construção</p>
+              </div>
+              {/* <NovoUsuarioForm onClose={() => setIsNovoUsuarioOpen(false)} /> */}
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Filtros e Busca */}

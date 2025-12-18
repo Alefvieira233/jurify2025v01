@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { componentTagger } from "lovable-tagger";
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 // 🚀 PADRÃO ELON MUSK: Configuração segura para produção
 export default defineConfig(({ mode }) => {
@@ -39,6 +40,20 @@ export default defineConfig(({ mode }) => {
         jsxRuntime: 'automatic'
       }),
       isDev && componentTagger(),
+
+      // ✅ Sentry source maps upload (apenas em produção)
+      isProd && sentryVitePlugin({
+        org: process.env.SENTRY_ORG || "jurify",
+        project: process.env.SENTRY_PROJECT || "jurify-frontend",
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+        sourcemaps: {
+          assets: './dist/**',
+          ignore: ['node_modules'],
+          filesToDeleteAfterUpload: ['./dist/**/*.map']
+        },
+        telemetry: false,
+        silent: false,
+      }),
     ].filter(Boolean),
 
     // 🚀 RESOLUÇÃO E ALIASES
@@ -56,7 +71,8 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2020',
       minify: isProd ? 'esbuild' : false,
-      sourcemap: isDev ? true : 'hidden',
+      // ✅ Source maps para Sentry (hidden em prod para não expor ao público)
+      sourcemap: isProd ? 'hidden' : true,
       rollupOptions: {
         output: {
           // Code splitting inteligente

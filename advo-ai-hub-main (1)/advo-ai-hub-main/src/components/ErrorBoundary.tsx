@@ -3,8 +3,9 @@ import React, { Component, ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AlertTriangle, RefreshCw, Bug, Send } from 'lucide-react';
+import * as Sentry from '@sentry/react';
 
-// 🚀 PADRÃO ELON MUSK: Error Boundary de classe mundial
+// 🚀 PADRÃO ELON MUSK: Error Boundary de classe mundial + Sentry Integration
 
 interface Props {
   children: ReactNode;
@@ -29,16 +30,23 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('🚨 [ErrorBoundary] Erro capturado:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
     });
 
-    // Em produção, enviar para serviço de monitoramento
-    if (process.env.NODE_ENV === 'production') {
-      // Implementar envio para Sentry, LogRocket, etc.
-    }
+    // ✅ Enviar erro para Sentry
+    Sentry.captureException(error, {
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+      tags: {
+        errorBoundary: true,
+      },
+    });
   }
 
   handleReload = () => {

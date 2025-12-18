@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 // import UsuariosPermissoesSection from './configuracoes/UsuariosPermissoesSection';
 // import NotificacoesSection from './configuracoes/NotificacoesSection';
 // import SistemaSection from './configuracoes/SistemaSection';
-// import TesteN8N from './TesteN8N';
 
 const ConfiguracoesGerais = () => {
   // ✅ RBAC: Verificação de permissões

@@ -18,7 +18,9 @@
       "Bash(export SUPABASE_ACCESS_TOKEN=sbp_9e65aaca45f9e36a5a4fb68d358154e084d0ee8c)",
       "Bash(python3:*)",
       "Bash(git commit:*)",
-      "Bash(taskkill //F //PID 21144)"
+      "Bash(taskkill //F //PID 21144)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm install:*)"
     ]
   }
 }

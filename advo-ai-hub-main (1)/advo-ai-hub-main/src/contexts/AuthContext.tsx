@@ -3,6 +3,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { setSentryUser } from '@/lib/sentry';
 
 interface Profile {
   id: string;
@@ -190,6 +191,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         if (session?.user) {
           await fetchProfile(session.user.id);
+          // ✅ Configurar usuário no Sentry
+          setSentryUser(session.user);
         }
       } catch (error) {
         console.error('Erro ao obter sessão:', error);
@@ -292,6 +295,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await logSecurityEvent('logout', 'Usuário encerrou sessão');
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      // ✅ Limpar usuário do Sentry
+      setSentryUser(null);
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
     }

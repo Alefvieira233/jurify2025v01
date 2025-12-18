@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,6 +9,11 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Layout from "./components/Layout";
 import LoadingSpinner from "./components/LoadingSpinner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { initSentry } from "./lib/sentry";
+import * as Sentry from '@sentry/react';
+
+// ✅ Inicializar Sentry ANTES de tudo
+initSentry();
 
 // Import direto sem lazy (para debug)
 import Auth from "./pages/Auth";
@@ -42,6 +47,9 @@ const queryClient = new QueryClient({
   },
 });
 
+// Wrap BrowserRouter com Sentry para tracking de navegação
+const SentryRoutes = Sentry.withSentryReactRouterV6Routing(Routes);
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -51,7 +59,7 @@ const App = () => (
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<LoadingSpinner fullScreen text="Carregando..." />}>
-              <Routes>
+              <SentryRoutes>
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/auth/google/callback" element={<GoogleAuthCallback />} />
 
@@ -77,7 +85,7 @@ const App = () => (
                 </Route>
 
                 <Route path="*" element={<NotFound />} />
-              </Routes>
+              </SentryRoutes>
             </Suspense>
           </AuthProvider>
         </BrowserRouter>

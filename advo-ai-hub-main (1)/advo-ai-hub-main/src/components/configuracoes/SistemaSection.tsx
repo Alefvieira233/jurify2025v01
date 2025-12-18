@@ -10,7 +10,6 @@ import LogsMonitoramento from '../LogsMonitoramento';
 import AdminUserSection from './AdminUserSection';
 import SystemHealthCheck from '../SystemHealthCheck';
 import SecurityDashboard from '../SecurityDashboard';
-import TesteN8NProducao from '../TesteN8NProducao';
 import TesteRealAgenteIA from '../TesteRealAgenteIA';
 
 const SistemaSection = () => {
@@ -21,7 +20,7 @@ const SistemaSection = () => {
 
       {/* Main tabs */}
       <Tabs defaultValue="status" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="status" className="flex items-center gap-2">
             <Activity className="h-4 w-4" />
             Status
@@ -33,10 +32,6 @@ const SistemaSection = () => {
           <TabsTrigger value="teste-agente" className="flex items-center gap-2">
             <Brain className="h-4 w-4" />
             Teste Agente
-          </TabsTrigger>
-          <TabsTrigger value="teste-n8n" className="flex items-center gap-2">
-            <TestTube className="h-4 w-4" />
-            Teste N8N
           </TabsTrigger>
           <TabsTrigger value="backup" className="flex items-center gap-2">
             <Database className="h-4 w-4" />
@@ -66,10 +61,6 @@ const SistemaSection = () => {
 
         <TabsContent value="teste-agente">
           <TesteRealAgenteIA />
-        </TabsContent>
-
-        <TabsContent value="teste-n8n">
-          <TesteN8NProducao />
         </TabsContent>
 
         <TabsContent value="backup">

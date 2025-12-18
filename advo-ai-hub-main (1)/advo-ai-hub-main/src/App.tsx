@@ -37,6 +37,7 @@ import NotificationsPanel from "./features/notifications/NotificationsPanel";
 import TimelineConversas from "./features/timeline/TimelineConversas";
 import AgentsPlayground from "./pages/AgentsPlayground";
 import MissionControl from "./features/mission-control/MissionControl";
+import DebugSupabase from "./components/DebugSupabase";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -56,6 +57,8 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        {/* 🔍 Debug Supabase Connection (apenas dev) */}
+        <DebugSupabase />
         <BrowserRouter>
           <AuthProvider>
             <Suspense fallback={<LoadingSpinner fullScreen text="Carregando..." />}>

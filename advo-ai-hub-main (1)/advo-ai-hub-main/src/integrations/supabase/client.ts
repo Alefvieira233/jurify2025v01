@@ -1,34 +1,49 @@
-// CORREÇÃO DE SEGURANÇA: Usando variáveis de ambiente
+/**
+ * 🔒 SUPABASE CLIENT - STRICT MODE (SEM MOCKS)
+ * ================================================
+ * Cliente Supabase refatorado para produção.
+ * - Sem fallbacks ou mocks
+ * - Falha imediata se credenciais ausentes
+ * - Type-safe com Database schema
+ * ================================================
+ */
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
-import { mockSupabaseClient } from './mock';
 
-// Configuração segura usando variáveis de ambiente
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// 🧪 MODO MOCK para desenvolvimento sem backend
-let client: any;
-
-if (USE_MOCK) {
-  console.warn('⚠️ [SUPABASE] Usando MOCK MODE - Dados simulados para desenvolvimento');
-  client = mockSupabaseClient;
-} else {
-  if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-    console.error(
-      'Variáveis de ambiente do Supabase não configuradas. ' +
-      'Verifique VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env'
-    );
-  }
-
-  if (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY) {
-    client = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-  } else {
-    // Fallback para evitar crash imediato se faltar env
-    console.warn('⚠️ [SUPABASE] Fallback para mock devido a falta de credenciais');
-    client = mockSupabaseClient;
-  }
+// 🚨 VALIDAÇÃO OBRIGATÓRIA: Falha rápido se variáveis ausentes
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error('🚨 FALHA CRÍTICA: Variáveis de ambiente do Supabase ausentes.');
+  console.error('Verifique seu arquivo .env:');
+  console.error('  - VITE_SUPABASE_URL');
+  console.error('  - VITE_SUPABASE_ANON_KEY');
+  throw new Error('Supabase URL e Anon Key são obrigatórios no .env');
 }
 
-export const supabase = client;
+// ✅ Criar cliente Supabase com configurações seguras
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,        // Manter sessão entre reloads
+    autoRefreshToken: true,       // Refresh automático de token
+    detectSessionInUrl: true,     // Detectar token na URL (OAuth callbacks)
+  },
+  db: {
+    schema: 'public',             // Schema padrão
+  },
+  global: {
+    headers: {
+      'x-application-name': 'jurify-frontend',
+    },
+  },
+});
+
+// ✅ Log de inicialização (apenas dev)
+if (import.meta.env.MODE === 'development') {
+  console.log('✅ Supabase client inicializado:', {
+    url: supabaseUrl,
+    mode: import.meta.env.MODE,
+  });
+}

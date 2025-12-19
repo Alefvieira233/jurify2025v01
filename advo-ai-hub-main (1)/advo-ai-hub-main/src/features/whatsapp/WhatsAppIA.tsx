@@ -10,16 +10,22 @@ import {
   Clock,
   CheckCircle2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Smartphone
 } from 'lucide-react';
 import { useWhatsAppConversations } from '@/hooks/useWhatsAppConversations';
+import WhatsAppSetup from './WhatsAppSetup';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const WhatsAppIA = () => {
+  // ============================================
+  // 🔒 HOOKS - SEMPRE NO TOPO (React Rules of Hooks)
+  // ============================================
   const [isActive, setIsActive] = useState(true);
   const [newMessage, setNewMessage] = useState('');
+  const [showSetup, setShowSetup] = useState(false);
 
   const {
     conversations,
@@ -34,7 +40,7 @@ const WhatsAppIA = () => {
     fetchConversations,
   } = useWhatsAppConversations();
 
-  // Calcular estatísticas em tempo real
+  // Calcular estatísticas em tempo real (SEMPRE executa)
   const iaStats = useMemo(() => {
     const totalConversations = conversations.length;
     const activeConversations = conversations.filter(c => c.status === 'ativo').length;
@@ -52,6 +58,9 @@ const WhatsAppIA = () => {
     ];
   }, [conversations]);
 
+  // ============================================
+  // 🛠️ FUNÇÕES AUXILIARES
+  // ============================================
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedConversation) return;
 
@@ -85,6 +94,22 @@ const WhatsAppIA = () => {
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  // ============================================
+  // 🔀 EARLY RETURNS (após todos os hooks)
+  // ============================================
+
+  // Setup Screen
+  if (showSetup) {
+    return (
+      <WhatsAppSetup
+        onConnectionSuccess={() => {
+          setShowSetup(false);
+          fetchConversations();
+        }}
+      />
+    );
+  }
 
   // Loading State
   if (loading) {
@@ -126,13 +151,23 @@ const WhatsAppIA = () => {
               <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-red-900 mb-2">Erro ao carregar conversas</h3>
               <p className="text-red-700 mb-4">{error}</p>
-              <Button
-                onClick={fetchConversations}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Tentar novamente
-              </Button>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={fetchConversations}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Tentar novamente
+                </Button>
+                <Button
+                  onClick={() => setShowSetup(true)}
+                  variant="outline"
+                  className="border-green-600 text-green-700 hover:bg-green-50"
+                >
+                  <Smartphone className="h-4 w-4 mr-2" />
+                  Conectar WhatsApp
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -172,9 +207,16 @@ const WhatsAppIA = () => {
               <p className="text-blue-700 mb-6">
                 As conversas do WhatsApp aparecerão aqui assim que chegarem.
               </p>
-              <p className="text-sm text-blue-600">
+              <p className="text-sm text-blue-600 mb-6">
                 Status da IA: {isActive ? 'Ativa e aguardando mensagens' : 'Pausada'}
               </p>
+              <Button
+                onClick={() => setShowSetup(true)}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Smartphone className="h-4 w-4 mr-2" />
+                Conectar WhatsApp
+              </Button>
             </div>
           </CardContent>
         </Card>

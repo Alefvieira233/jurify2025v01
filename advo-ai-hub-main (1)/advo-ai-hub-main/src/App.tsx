@@ -38,6 +38,7 @@ import TimelineConversas from "./features/timeline/TimelineConversas";
 import AgentsPlayground from "./pages/AgentsPlayground";
 import MissionControl from "./features/mission-control/MissionControl";
 import DebugSupabase from "./components/DebugSupabase";
+import { WhatsAppErrorBoundary } from "./features/whatsapp/WhatsAppErrorBoundary";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -74,7 +75,11 @@ const App = () => (
                   <Route path="agendamentos" element={<AgendamentosManager />} />
                   <Route path="contratos" element={<ContratosManager />} />
                   <Route path="relatorios" element={<RelatoriosGerenciais />} />
-                  <Route path="whatsapp" element={<WhatsAppIA />} />
+                  <Route path="whatsapp" element={
+                    <WhatsAppErrorBoundary>
+                      <WhatsAppIA />
+                    </WhatsAppErrorBoundary>
+                  } />
                   <Route path="agentes" element={<AgentesIAManager />} />
                   <Route path="usuarios" element={<UsuariosManager />} />
                   <Route path="logs" element={<LogsPanel />} />

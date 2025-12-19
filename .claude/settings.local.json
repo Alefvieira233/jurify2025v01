@@ -20,7 +20,8 @@
       "Bash(git commit:*)",
       "Bash(taskkill //F //PID 21144)",
       "Bash(npm run type-check:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git add:*)"
     ]
   }
 }

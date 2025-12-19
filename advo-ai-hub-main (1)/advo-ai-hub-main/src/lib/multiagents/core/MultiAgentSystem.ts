@@ -124,12 +124,13 @@ export class MultiAgentSystem implements IMessageRouter {
    * @param leadData - Dados do lead
    * @param message - Mensagem inicial do lead
    * @param channel - Canal de origem (whatsapp, email, etc)
+   * @returns Resultado do processamento com executionId e dados dos agentes
    */
   public async processLead(
     leadData: LeadData,
     message: string,
-    channel: 'whatsapp' | 'email' | 'chat' | 'phone' = 'whatsapp'
-  ): Promise<void> {
+    channel: 'whatsapp' | 'email' | 'chat' | 'phone' | 'playground' = 'whatsapp'
+  ): Promise<any> {
     if (!this.isInitialized) {
       await this.initialize();
     }
@@ -162,6 +163,9 @@ export class MultiAgentSystem implements IMessageRouter {
     // Importa tipos dinamicamente
     const { MessageType, Priority } = await import('../types');
 
+    // Gera execution ID único
+    const executionId = `exec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     // Envia tarefa inicial para coordenador
     await coordinator.receiveMessage({
       id: `init_${Date.now()}`,
@@ -177,6 +181,20 @@ export class MultiAgentSystem implements IMessageRouter {
       priority: Priority.HIGH,
       requires_response: false
     });
+
+    // ✅ RETORNAR resultado estruturado
+    // TODO: Implementar coleta real de resultados dos agentes via context
+    // Por enquanto, retorna estrutura básica para não quebrar o Playground
+    return {
+      executionId,
+      qualificationResult: context.decisions?.qualification || null,
+      legalValidation: context.decisions?.legalValidation || null,
+      proposal: context.decisions?.proposal || null,
+      formattedMessages: context.decisions?.formattedMessages || null,
+      finalResult: context.decisions?.finalResult || null,
+      totalTokens: 0, // TODO: Implementar tracking de tokens
+      estimatedCost: 0 // TODO: Implementar cálculo de custo
+    };
   }
 
   /**

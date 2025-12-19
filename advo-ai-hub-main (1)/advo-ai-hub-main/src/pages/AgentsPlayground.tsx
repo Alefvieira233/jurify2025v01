@@ -132,16 +132,30 @@ export default function AgentsPlayground() {
 
       const executionTime = Date.now() - startTime;
 
-      console.log('✅ [Playground] Resultado:', agentResult);
+      console.log('✅ [Playground] Resultado recebido:', agentResult);
+
+      // ✅ VALIDAÇÃO ROBUSTA: Verificar se agentResult existe
+      if (!agentResult) {
+        console.error('❌ [Playground] ERRO: processLead() retornou undefined ou null');
+        throw new Error(
+          'Sistema multiagentes não retornou resultado. ' +
+          'Possível problema: o método processLead() retorna Promise<void> em vez de um objeto com dados.'
+        );
+      }
+
+      // ✅ VALIDAÇÃO: Verificar se tem executionId
+      if (!agentResult.executionId) {
+        console.warn('⚠️ [Playground] Resultado sem executionId, usando fallback');
+      }
 
       setResult({
         success: true,
-        executionId: agentResult.executionId,
-        qualificationResult: agentResult.qualificationResult,
-        legalValidation: agentResult.legalValidation,
-        proposal: agentResult.proposal,
-        formattedMessages: agentResult.formattedMessages,
-        finalResult: agentResult.finalResult,
+        executionId: agentResult.executionId || `exec_${Date.now()}`,
+        qualificationResult: agentResult.qualificationResult || null,
+        legalValidation: agentResult.legalValidation || null,
+        proposal: agentResult.proposal || null,
+        formattedMessages: agentResult.formattedMessages || null,
+        finalResult: agentResult.finalResult || null,
         executionTime,
         totalTokens: agentResult.totalTokens || 0,
         estimatedCost: agentResult.estimatedCost || 0

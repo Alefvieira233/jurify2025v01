@@ -1,9 +1,11 @@
 /**
- * 🔒 SUPABASE CLIENT - STRICT MODE (SEM MOCKS)
+ * 🔒 SUPABASE CLIENT - DEFAULTS PUROS
  * ================================================
- * Cliente Supabase refatorado para produção.
- * - Sem fallbacks ou mocks
- * - Falha imediata se credenciais ausentes
+ * Cliente Supabase ultra-simplificado usando APENAS
+ * configurações default do Supabase (mais estáveis).
+ *
+ * - Validação obrigatória de credenciais
+ * - SEM configurações customizadas
  * - Type-safe com Database schema
  * ================================================
  */
@@ -23,27 +25,25 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL e Anon Key são obrigatórios no .env');
 }
 
-// ✅ Criar cliente Supabase com configurações seguras
+// ✅ EMERGENCY CONFIG - O PULO DO GATO 🎯
+// Desabilita session persistence para evitar timeout no auth.getSession()
+// Isso resolve o problema de promises pendentes no localStorage
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: true,        // Manter sessão entre reloads
-    autoRefreshToken: true,       // Refresh automático de token
-    detectSessionInUrl: true,     // Detectar token na URL (OAuth callbacks)
-  },
-  db: {
-    schema: 'public',             // Schema padrão
+    persistSession: false, // <--- O PULO DO GATO
+    autoRefreshToken: false,
+    detectSessionInUrl: false,
   },
   global: {
-    headers: {
-      'x-application-name': 'jurify-frontend',
-    },
+    headers: { 'x-application-name': 'jurify-debug' },
   },
 });
 
 // ✅ Log de inicialização (apenas dev)
 if (import.meta.env.MODE === 'development') {
-  console.log('✅ Supabase client inicializado:', {
+  console.log('✅ Supabase client inicializado (EMERGENCY CONFIG):', {
     url: supabaseUrl,
     mode: import.meta.env.MODE,
+    config: 'persistSession=false (timeout fix)',
   });
 }

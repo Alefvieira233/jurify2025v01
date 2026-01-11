@@ -85,72 +85,145 @@ const RelatoriosGerenciais = () => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">Relatórios Gerenciais</CardTitle>
-              <p className="text-gray-600">Análises e insights do seu escritório jurídico</p>
+      {/* Header Premium */}
+      <div className="relative fade-in">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1
+              className="text-5xl md:text-6xl font-bold text-[hsl(var(--primary))] tracking-tight"
+              style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.03em' }}
+            >
+              Relatórios
+            </h1>
+
+            {/* Live Badge */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent)_/_0.3)] via-[hsl(var(--accent)_/_0.2)] to-transparent rounded-full blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative px-4 py-2 bg-gradient-to-r from-[hsl(var(--accent)_/_0.15)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-full border border-[hsl(var(--accent)_/_0.3)] backdrop-blur-sm">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Live
+                </span>
+              </div>
             </div>
-            <Button className="bg-amber-500 hover:bg-amber-600">
-              <Download className="h-4 w-4 mr-2" />
-              Exportar Relatórios
+          </div>
+
+          <div className="flex gap-3">
+            {/* Export Button Premium */}
+            <Button
+              className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+              <Download className="relative h-4 w-4 mr-2" strokeWidth={2.5} />
+              <span className="relative" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>Exportar Relatórios</span>
             </Button>
           </div>
-        </CardHeader>
-      </Card>
+        </div>
 
-      {/* KPIs Principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardContent className="p-6">
+        {/* Subtitle */}
+        <p className="text-[hsl(var(--muted-foreground))] mt-3 text-base" style={{ fontFamily: "'Inter', sans-serif" }}>
+          Análises e insights do seu escritório jurídico
+        </p>
+      </div>
+
+      {/* KPIs Premium */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Leads Card */}
+        <Card className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in">
+          <div className="absolute -inset-1 bg-gradient-to-br from-blue-500/20 via-blue-400/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+          <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total de Leads</p>
-                <p className="text-3xl font-bold text-gray-900">{metrics.totalLeads}</p>
-                <p className="text-sm text-green-600">+{metrics.leadsNovoMes} este mês</p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  Total de Leads
+                </p>
+                <p className="text-4xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {metrics.totalLeads}
+                </p>
+                <p className="text-sm text-green-600 font-semibold">+{metrics.leadsNovoMes} este mês</p>
               </div>
-              <Users className="h-8 w-8 text-blue-600" />
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-blue-400/10 to-transparent rounded-2xl blur-md opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
+                <div className="relative p-3.5 bg-gradient-to-br from-blue-500/20 via-blue-400/10 to-transparent rounded-2xl backdrop-blur-sm">
+                  <Users className="h-6 w-6 text-blue-600 group-hover:scale-110 transition-transform duration-500" strokeWidth={2.5} />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        {/* Contratos Card */}
+        <Card className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-green-500/20 via-green-400/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+          <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Contratos</p>
-                <p className="text-3xl font-bold text-gray-900">{metrics.contratos}</p>
-                <p className="text-sm text-green-600">{metrics.contratosAssinados} assinados</p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  Contratos
+                </p>
+                <p className="text-4xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {metrics.contratos}
+                </p>
+                <p className="text-sm text-green-600 font-semibold">{metrics.contratosAssinados} assinados</p>
               </div>
-              <FileText className="h-8 w-8 text-green-600" />
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/20 via-green-400/10 to-transparent rounded-2xl blur-md opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
+                <div className="relative p-3.5 bg-gradient-to-br from-green-500/20 via-green-400/10 to-transparent rounded-2xl backdrop-blur-sm">
+                  <FileText className="h-6 w-6 text-green-600 group-hover:scale-110 transition-transform duration-500" strokeWidth={2.5} />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        {/* Agendamentos Card */}
+        <Card className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in" style={{ animationDelay: '0.2s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-purple-500/20 via-purple-400/10 to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+          <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Agendamentos</p>
-                <p className="text-3xl font-bold text-gray-900">{metrics.agendamentos}</p>
-                <p className="text-sm text-blue-600">{metrics.agendamentosHoje} hoje</p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  Agendamentos
+                </p>
+                <p className="text-4xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {metrics.agendamentos}
+                </p>
+                <p className="text-sm text-purple-600 font-semibold">{metrics.agendamentosHoje} hoje</p>
               </div>
-              <Calendar className="h-8 w-8 text-purple-600" />
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500/20 via-purple-400/10 to-transparent rounded-2xl blur-md opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
+                <div className="relative p-3.5 bg-gradient-to-br from-purple-500/20 via-purple-400/10 to-transparent rounded-2xl backdrop-blur-sm">
+                  <Calendar className="h-6 w-6 text-purple-600 group-hover:scale-110 transition-transform duration-500" strokeWidth={2.5} />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-6">
+        {/* Agentes IA Card */}
+        <Card className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+          <CardContent className="relative p-6">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Agentes IA</p>
-                <p className="text-3xl font-bold text-gray-900">{metrics.agentesAtivos}</p>
-                <p className="text-sm text-purple-600">{metrics.execucoesAgentesHoje} execuções hoje</p>
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider" style={{ fontFamily: "'Inter', sans-serif" }}>
+                  Agentes IA
+                </p>
+                <p className="text-4xl font-bold text-[hsl(var(--foreground))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {metrics.agentesAtivos}
+                </p>
+                <p className="text-sm text-[hsl(var(--accent))] font-semibold">{metrics.execucoesAgentesHoje} execuções hoje</p>
               </div>
-              <TrendingUp className="h-8 w-8 text-amber-600" />
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-2xl blur-md opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
+                <div className="relative p-3.5 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-2xl backdrop-blur-sm">
+                  <TrendingUp className="h-6 w-6 text-[hsl(var(--accent))] group-hover:scale-110 transition-transform duration-500" strokeWidth={2.5} />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

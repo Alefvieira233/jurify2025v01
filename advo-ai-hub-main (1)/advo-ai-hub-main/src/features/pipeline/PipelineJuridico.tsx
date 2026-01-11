@@ -246,34 +246,61 @@ const PipelineJuridico = () => {
   // Main Content
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">Pipeline Jurídico</CardTitle>
-              <p className="text-gray-600">
-                Gestão visual do funil de vendas jurídico • {leads.length} leads no total
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRetry}
-                variant="outline"
-                size="sm"
-                aria-label="Atualizar pipeline"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
-              </Button>
-              <Button className="bg-amber-500 hover:bg-amber-600" aria-label="Adicionar novo lead ao pipeline">
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Lead
-              </Button>
+      {/* Header Premium */}
+      <div className="relative fade-in">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1
+              className="text-5xl md:text-6xl font-bold text-[hsl(var(--primary))] tracking-tight"
+              style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.03em' }}
+            >
+              Pipeline
+            </h1>
+
+            {/* Live Badge */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent)_/_0.3)] via-[hsl(var(--accent)_/_0.2)] to-transparent rounded-full blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative px-4 py-2 bg-gradient-to-r from-[hsl(var(--accent)_/_0.15)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-full border border-[hsl(var(--accent)_/_0.3)] backdrop-blur-sm">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Live
+                </span>
+              </div>
             </div>
           </div>
-        </CardHeader>
-      </Card>
+
+          <div className="flex gap-3">
+            {/* Refresh Button Premium */}
+            <Button
+              onClick={handleRetry}
+              variant="outline"
+              size="sm"
+              className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-[hsl(var(--accent)_/_0.5)] transition-all duration-500"
+              aria-label="Atualizar pipeline"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--accent)_/_0.1)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+              <RefreshCw className="h-4 w-4 mr-2 group-hover/btn:rotate-180 transition-transform duration-700" />
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600 }}>Atualizar</span>
+            </Button>
+
+            {/* Novo Lead Button Premium */}
+            <Button
+              onClick={() => setShowFormModal(true)}
+              className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
+              aria-label="Adicionar novo lead ao pipeline"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+              <Plus className="relative h-4 w-4 mr-2" strokeWidth={2.5} />
+              <span className="relative" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>Novo Lead</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Subtitle */}
+        <p className="text-[hsl(var(--muted-foreground))] mt-3 text-base" style={{ fontFamily: "'Inter', sans-serif" }}>
+          Gestão visual do funil de vendas jurídico • <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{leads.length}</span> leads no total
+        </p>
+      </div>
 
       {/* Filtros */}
       <Card>
@@ -315,24 +342,44 @@ const PipelineJuridico = () => {
         </CardContent>
       </Card>
 
-      {/* Pipeline Kanban */}
+      {/* Pipeline Kanban Premium */}
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 overflow-x-auto">
-          {stages.map(stage => (
-            <Card key={stage.id} className={`${stage.color} min-h-96`}>
-              <CardHeader className="pb-3">
-                <h3 className="font-semibold text-gray-900">{stage.title}</h3>
-                <span className="text-sm text-gray-500">
-                  {groupedLeads[stage.id]?.length || 0} leads
-                </span>
+          {stages.map((stage, stageIndex) => (
+            <Card
+              key={stage.id}
+              className={`relative group ${stage.color} min-h-96 rounded-3xl border-2 overflow-hidden fade-in`}
+              style={{ animationDelay: `${stageIndex * 0.08}s` }}
+            >
+              {/* Stage Glow Effect */}
+              <div className="absolute -inset-1 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-3xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+              <CardHeader className="relative pb-3">
+                <h3
+                  className="font-bold text-gray-900 text-base"
+                  style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                >
+                  {stage.title}
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span
+                    className="text-lg font-bold text-gray-700"
+                    style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    {groupedLeads[stage.id]?.length || 0}
+                  </span>
+                  <span className="text-xs text-gray-500">leads</span>
+                </div>
               </CardHeader>
-              
+
               <Droppable droppableId={stage.id}>
                 {(provided, snapshot) => (
                   <CardContent
                     ref={provided.innerRef}
                     {...provided.droppableProps}
-                    className={`space-y-3 min-h-80 ${snapshot.isDraggingOver ? 'bg-opacity-50' : ''}`}
+                    className={`relative space-y-3 min-h-80 transition-all duration-300 ${
+                      snapshot.isDraggingOver ? 'bg-white/30 scale-[1.02]' : ''
+                    }`}
                   >
                     {groupedLeads[stage.id]?.map((lead, index) => (
                       <Draggable key={lead.id} draggableId={lead.id} index={index}>
@@ -341,23 +388,45 @@ const PipelineJuridico = () => {
                             ref={provided.innerRef}
                             {...provided.draggableProps}
                             {...provided.dragHandleProps}
-                            className={`bg-white p-3 rounded-lg border shadow-sm cursor-move hover:shadow-md transition-shadow ${
-                              snapshot.isDragging ? 'rotate-2 shadow-lg' : ''
+                            className={`relative group/card bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-gray-200 cursor-move transition-all duration-500 ${
+                              snapshot.isDragging
+                                ? 'rotate-3 shadow-2xl scale-105 border-[hsl(var(--accent))]'
+                                : 'hover:shadow-lg hover:border-[hsl(var(--accent)_/_0.3)] hover:-translate-y-1'
                             }`}
                           >
-                            <div className="space-y-2">
-                              <h4 className="font-medium text-gray-900 text-sm">
+                            {/* Card Glow on Drag */}
+                            {snapshot.isDragging && (
+                              <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] to-transparent rounded-2xl blur-lg" />
+                            )}
+
+                            <div className="relative space-y-2">
+                              <h4
+                                className="font-bold text-gray-900 text-sm leading-tight"
+                                style={{ fontFamily: "'Cormorant Garamond', serif" }}
+                              >
                                 {lead.nome_completo}
                               </h4>
-                              <div className="text-xs text-gray-600 space-y-1">
-                                <div>📞 {lead.telefone || 'N/A'}</div>
-                                <div>⚖️ {lead.area_juridica}</div>
-                                <div>👤 {lead.responsavel}</div>
+                              <div className="text-xs text-gray-600 space-y-1.5" style={{ fontFamily: "'Inter', sans-serif" }}>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="opacity-50">📞</span>
+                                  <span className="truncate">{lead.telefone || 'N/A'}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="opacity-50">⚖️</span>
+                                  <span className="truncate">{lead.area_juridica}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="opacity-50">👤</span>
+                                  <span className="truncate">{lead.responsavel}</span>
+                                </div>
                                 {lead.valor_causa && (
-                                  <div>💰 R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}</div>
+                                  <div className="flex items-center gap-1.5 font-semibold text-[hsl(var(--accent))]">
+                                    <span className="opacity-50">💰</span>
+                                    <span>R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}</span>
+                                  </div>
                                 )}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
                                 {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                               </div>
                             </div>

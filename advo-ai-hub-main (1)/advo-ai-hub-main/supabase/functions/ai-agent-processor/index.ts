@@ -11,6 +11,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
+import { applyRateLimit } from "../_shared/rate-limiter.ts";
 
 // 🔒 CORS Headers
 const corsHeaders = {
@@ -281,6 +282,34 @@ Deno.serve(async (req) => {
     }
 
     console.log(`✅ Authenticated user: ${user.id}`);
+
+    // 🛡️ Rate Limiting - Protege custos da OpenAI
+    // Limite: 20 requisições de IA por minuto por usuário
+    const rateLimitCheck = await applyRateLimit(
+      req,
+      {
+        maxRequests: 20,
+        windowSeconds: 60,
+        namespace: "ai-agent",
+      },
+      {
+        supabase,
+        user,
+        corsHeaders,
+      }
+    );
+
+    if (!rateLimitCheck.allowed) {
+      console.warn(
+        `⚠️ Rate limit exceeded for user ${user.id}:`,
+        rateLimitCheck.result
+      );
+      return rateLimitCheck.response;
+    }
+
+    console.log(
+      `✅ Rate limit OK: ${rateLimitCheck.result.remaining}/${rateLimitCheck.result.limit} remaining`
+    );
 
     // 🔑 Verifica API Key da OpenAI
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");

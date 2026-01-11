@@ -227,50 +227,106 @@ const WhatsAppIA = () => {
   // Main Content
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">WhatsApp IA Jurídica</h1>
-          <p className="text-gray-600">
-            Atendimento inteligente 24/7 para leads jurídicos • {conversations.length} conversas
-          </p>
-        </div>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">Status da IA:</span>
-            <button
-              onClick={() => setIsActive(!isActive)}
-              className={`flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium ${
-                isActive
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}
+      {/* Header Premium */}
+      <div className="relative fade-in">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1
+              className="text-5xl md:text-6xl font-bold text-[hsl(var(--primary))] tracking-tight"
+              style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.03em' }}
             >
-              {isActive ? <Play className="h-3 w-3" /> : <Pause className="h-3 w-3" />}
-              <span>{isActive ? 'Ativo' : 'Pausado'}</span>
-            </button>
+              WhatsApp IA
+            </h1>
+
+            {/* Status Badge */}
+            <div className="relative group">
+              <div className={`absolute inset-0 ${isActive ? 'bg-gradient-to-r from-green-500/30 via-green-400/20' : 'bg-gradient-to-r from-red-500/30 via-red-400/20'} to-transparent rounded-full blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-500`} />
+              <button
+                onClick={() => setIsActive(!isActive)}
+                className={`relative flex items-center gap-2 px-4 py-2 rounded-full border backdrop-blur-sm transition-all duration-500 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-green-500/15 via-green-400/10 to-transparent border-green-500/30 text-green-700'
+                    : 'bg-gradient-to-r from-red-500/15 via-red-400/10 to-transparent border-red-500/30 text-red-700'
+                }`}
+              >
+                {isActive ? <Play className="h-3.5 w-3.5" strokeWidth={2.5} /> : <Pause className="h-3.5 w-3.5" strokeWidth={2.5} />}
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  {isActive ? 'Ativo' : 'Pausado'}
+                </span>
+              </button>
+            </div>
           </div>
-          <button className="bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2">
-            <Settings className="h-4 w-4" />
-            <span>Configurar IA</span>
-          </button>
+
+          <div className="flex gap-3">
+            {/* Settings Button Premium */}
+            <Button
+              className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+              <Settings className="relative h-4 w-4 mr-2 group-hover/btn:rotate-90 transition-transform duration-700" strokeWidth={2.5} />
+              <span className="relative" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>Configurar IA</span>
+            </Button>
+          </div>
         </div>
+
+        {/* Subtitle */}
+        <p className="text-[hsl(var(--muted-foreground))] mt-3 text-base" style={{ fontFamily: "'Inter', sans-serif" }}>
+          Atendimento inteligente 24/7 para leads jurídicos • <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{conversations.length}</span> conversas
+        </p>
       </div>
 
-      {/* IA Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* IA Stats Premium */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {iaStats.map((stat, index) => {
           const Icon = stat.icon;
+          const glowColors = [
+            'from-blue-500/20 via-blue-400/10',
+            'from-green-500/20 via-green-400/10',
+            'from-orange-500/20 via-orange-400/10',
+            'from-purple-500/20 via-purple-400/10'
+          ];
+          const iconColors = ['text-blue-600', 'text-green-600', 'text-orange-600', 'text-purple-600'];
+
           return (
-            <div key={index} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{stat.label}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value}</p>
+            <Card
+              key={index}
+              className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in"
+              style={{ animationDelay: `${index * 0.1}s` }}
+            >
+              {/* Card Glow Effect */}
+              <div className={`absolute -inset-1 bg-gradient-to-br ${glowColors[index]} to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700`} />
+
+              {/* Shine Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+
+              <CardContent className="relative p-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-2">
+                    <p
+                      className="text-sm font-medium text-[hsl(var(--muted-foreground))] uppercase tracking-wider"
+                      style={{ fontFamily: "'Inter', sans-serif" }}
+                    >
+                      {stat.label}
+                    </p>
+                    <p
+                      className={`text-4xl font-bold text-[hsl(var(--foreground))]`}
+                      style={{ fontFamily: "'Space Grotesk', sans-serif" }}
+                    >
+                      {stat.value}
+                    </p>
+                  </div>
+
+                  {/* Icon with Glow */}
+                  <div className="relative">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${glowColors[index]} to-transparent rounded-2xl blur-md opacity-40 group-hover:opacity-60 transition-opacity duration-500`} />
+                    <div className={`relative p-3.5 bg-gradient-to-br ${glowColors[index]} to-transparent rounded-2xl backdrop-blur-sm`}>
+                      <Icon className={`h-6 w-6 ${iconColors[index]} group-hover:scale-110 transition-transform duration-500`} strokeWidth={2.5} />
+                    </div>
+                  </div>
                 </div>
-                <Icon className="h-8 w-8 text-amber-500" />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           );
         })}
       </div>

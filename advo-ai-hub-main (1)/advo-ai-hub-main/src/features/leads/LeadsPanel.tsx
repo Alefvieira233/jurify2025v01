@@ -240,38 +240,61 @@ const LeadsPanel = () => {
   // Main Content
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <div>
-              <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
-              <p className="text-gray-600">
-                Gerencie seus leads e oportunidades • {leads.length} leads no total
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRetry}
-                variant="outline"
-                size="sm"
-                aria-label="Atualizar lista de leads"
-              >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
-              </Button>
-              <Button
-                className="bg-amber-500 hover:bg-amber-600"
-                onClick={() => setShowFormModal(true)}
-                aria-label="Criar novo lead"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Novo Lead
-              </Button>
+      {/* Header Premium */}
+      <div className="relative fade-in">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h1
+              className="text-5xl md:text-6xl font-bold text-[hsl(var(--primary))] tracking-tight"
+              style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.03em' }}
+            >
+              Leads
+            </h1>
+
+            {/* Live Badge */}
+            <div className="relative group">
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent)_/_0.3)] via-[hsl(var(--accent)_/_0.2)] to-transparent rounded-full blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="relative px-4 py-2 bg-gradient-to-r from-[hsl(var(--accent)_/_0.15)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-full border border-[hsl(var(--accent)_/_0.3)] backdrop-blur-sm">
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                  Live
+                </span>
+              </div>
             </div>
           </div>
-        </CardHeader>
-      </Card>
+
+          <div className="flex gap-3">
+            {/* Refresh Button Premium */}
+            <Button
+              onClick={handleRetry}
+              variant="outline"
+              size="sm"
+              className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-[hsl(var(--accent)_/_0.5)] transition-all duration-500"
+              aria-label="Atualizar lista de leads"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--accent)_/_0.1)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+              <RefreshCw className="h-4 w-4 mr-2 group-hover/btn:rotate-180 transition-transform duration-700" />
+              <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600 }}>Atualizar</span>
+            </Button>
+
+            {/* Novo Lead Button Premium */}
+            <Button
+              onClick={() => setShowFormModal(true)}
+              className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
+              aria-label="Criar novo lead"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+              <Plus className="relative h-4 w-4 mr-2" strokeWidth={2.5} />
+              <span className="relative" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>Novo Lead</span>
+            </Button>
+          </div>
+        </div>
+
+        {/* Subtitle */}
+        <p className="text-[hsl(var(--muted-foreground))] mt-3 text-base" style={{ fontFamily: "'Inter', sans-serif" }}>
+          Gerencie seus leads e oportunidades • <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{leads.length}</span> leads no total
+        </p>
+      </div>
 
       {/* Filtros */}
       <Card>
@@ -303,20 +326,40 @@ const LeadsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Lista de Leads */}
+      {/* Lista de Leads Premium */}
       <div className="grid gap-4">
-        {filteredLeads.map((lead) => (
-          <Card key={lead.id}>
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
+        {filteredLeads.map((lead, index) => (
+          <Card
+            key={lead.id}
+            className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in"
+            style={{ animationDelay: `${index * 0.05}s` }}
+          >
+            {/* Card Glow Effect */}
+            <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.1)] via-[hsl(var(--primary)_/_0.05)] to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+            {/* Shine Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+
+            <CardContent className="relative p-6">
+              <div className="flex justify-between items-start gap-4">
                 <div className="space-y-3 flex-1">
-                  <div className="flex items-center gap-3">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h3
+                      className="text-xl font-bold text-[hsl(var(--foreground))]"
+                      style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.02em' }}
+                    >
                       {lead.nome_completo}
                     </h3>
-                    <Badge className={getStatusColor(lead.status)}>
-                      {getStatusLabel(lead.status)}
-                    </Badge>
+
+                    {/* Premium Status Badge */}
+                    <div className="relative group/badge">
+                      <div className={`absolute inset-0 ${getStatusColor(lead.status)} rounded-full blur opacity-50 group-hover/badge:opacity-75 transition-opacity duration-300`} />
+                      <Badge className={`relative ${getStatusColor(lead.status)} px-3 py-1 shadow-sm`}>
+                        <span className="font-semibold text-xs" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                          {getStatusLabel(lead.status)}
+                        </span>
+                      </Badge>
+                    </div>
                   </div>
 
                   <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
@@ -354,33 +397,51 @@ const LeadsPanel = () => {
                 </div>
 
                 <div className="flex gap-2 ml-4">
+                  {/* Timeline Button Premium */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleViewTimeline(lead.id, lead.nome_completo)}
+                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-[hsl(var(--accent)_/_0.5)] transition-all duration-500"
                     aria-label="Ver timeline de conversas"
                   >
-                    <MessageCircle className="h-4 w-4" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--accent)_/_0.1)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                    <MessageCircle className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
                   </Button>
-                  <Button variant="outline" size="sm" aria-label="Visualizar detalhes do lead">
-                    <Eye className="h-4 w-4" />
+
+                  {/* View Button Premium */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-blue-500/50 transition-all duration-500"
+                    aria-label="Visualizar detalhes do lead"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                    <Eye className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
                   </Button>
+
+                  {/* Edit Button Premium */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleEditLead(lead)}
+                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-purple-500/50 transition-all duration-500"
                     aria-label="Editar lead"
                   >
-                    <Edit className="h-4 w-4" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                    <Edit className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
                   </Button>
+
+                  {/* Delete Button Premium */}
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => handleDeleteLead(lead.id, lead.nome_completo)}
-                    className="text-red-600 hover:text-red-700"
+                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-red-500/50 text-red-600 hover:text-red-700 transition-all duration-500"
                     aria-label="Excluir lead"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                    <Trash2 className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
                   </Button>
                 </div>
               </div>

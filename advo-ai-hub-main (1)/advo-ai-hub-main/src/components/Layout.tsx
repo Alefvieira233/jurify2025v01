@@ -49,7 +49,10 @@ const Layout = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 flex">
+        <div className="min-h-screen bg-[hsl(var(--background))] flex relative overflow-hidden">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 gradient-mesh opacity-50 pointer-events-none" />
+
             <OnboardingFlow />
 
             <Sidebar
@@ -57,8 +60,10 @@ const Layout = () => {
                 onSectionChange={handleSectionChange}
             />
 
-            <main className="flex-1 p-6 overflow-auto">
-                <Outlet />
+            <main className="flex-1 p-8 overflow-auto relative z-10 scrollbar-thin">
+                <div className="max-w-[1600px] mx-auto">
+                    <Outlet />
+                </div>
             </main>
         </div>
     );

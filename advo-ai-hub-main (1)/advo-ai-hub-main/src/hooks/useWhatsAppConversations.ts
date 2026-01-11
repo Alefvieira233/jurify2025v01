@@ -131,19 +131,45 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
     sender: 'agent'
   ): Promise<boolean> => {
     try {
-      const { error: insertError } = await supabase
-        .from('whatsapp_messages')
-        .insert({
-          conversation_id: conversationId,
-          sender,
-          content,
-          message_type: 'text',
-          timestamp: new Date().toISOString(),
-        });
+      // 1. Busca informações da conversa para obter o número do lead
+      const { data: conversation, error: convError } = await supabase
+        .from('whatsapp_conversations')
+        .select('phone_number, lead_id, tenant_id')
+        .eq('id', conversationId)
+        .single();
 
-      if (insertError) throw insertError;
+      if (convError || !conversation) {
+        throw new Error('Conversa não encontrada');
+      }
 
-      // Atualizar última mensagem da conversa
+      // 2. Envia mensagem via WhatsApp API (Edge Function)
+      console.log('📤 [useWhatsAppConversations] Enviando mensagem via WhatsApp API...');
+      const { data: sendResult, error: sendError } = await supabase.functions.invoke(
+        'send-whatsapp-message',
+        {
+          body: {
+            to: conversation.phone_number,
+            text: content,
+            conversationId: conversationId,
+            leadId: conversation.lead_id,
+            tenantId: conversation.tenant_id,
+          },
+        }
+      );
+
+      if (sendError) {
+        console.error('❌ [useWhatsAppConversations] Erro ao enviar via API:', sendError);
+        throw new Error(sendError.message || 'Erro ao enviar mensagem via WhatsApp');
+      }
+
+      if (!sendResult?.success) {
+        throw new Error(sendResult?.error || 'Falha ao enviar mensagem via WhatsApp');
+      }
+
+      console.log('✅ [useWhatsAppConversations] Mensagem enviada via WhatsApp:', sendResult.messageId);
+
+      // 3. A Edge Function já salva a mensagem no banco, mas vamos garantir que a UI atualize
+      // Atualizar última mensagem da conversa (caso a Edge Function não tenha feito)
       await supabase
         .from('whatsapp_conversations')
         .update({
@@ -154,7 +180,7 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
 
       toast({
         title: 'Mensagem enviada',
-        description: 'Sua mensagem foi enviada com sucesso',
+        description: 'Sua mensagem foi enviada via WhatsApp com sucesso',
       });
 
       return true;
@@ -162,7 +188,7 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
       console.error('❌ [useWhatsAppConversations] Erro ao enviar mensagem:', err);
       toast({
         title: 'Erro ao enviar mensagem',
-        description: err.message,
+        description: err.message || 'Erro ao processar mensagem',
         variant: 'destructive',
       });
       return false;

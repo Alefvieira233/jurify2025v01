@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Users, FileText, Calendar, Bot, TrendingUp, Clock, CheckCircle, AlertTriangle, Sparkles } from 'lucide-react';
+import { Users, FileText, Calendar, Bot, TrendingUp, Clock, CheckCircle, AlertTriangle, Sparkles, ArrowUpRight, BarChart3, Activity } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -152,81 +152,191 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Visão geral do seu escritório jurídico</p>
+    <div className="space-y-10">
+      {/* Ultra-Premium Header */}
+      <div className="flex justify-between items-start fade-in">
+        <div className="space-y-3">
+          <div className="flex items-center space-x-4">
+            <h1 className="text-6xl font-bold text-[hsl(var(--foreground))] tracking-tight" style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.03em' }}>
+              Dashboard
+            </h1>
+            <div className="px-4 py-2 bg-gradient-to-r from-[hsl(var(--accent)_/_0.15)] to-[hsl(var(--accent)_/_0.08)] rounded-full border border-[hsl(var(--accent)_/_0.3)]">
+              <span className="text-xs font-bold text-[hsl(var(--accent))] uppercase tracking-wider">Live</span>
+            </div>
+          </div>
+          <p className="text-[hsl(var(--muted-foreground))] text-base font-medium">
+            Métricas em tempo real do seu escritório jurídico
+          </p>
         </div>
-        <Button onClick={refetch} variant="outline" size="sm" aria-label="Atualizar métricas do dashboard">
-          Atualizar
-        </Button>
+
+        {/* Premium Refresh Button */}
+        <div className="relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(var(--accent)_/_0.5)] rounded-2xl blur-lg opacity-0 group-hover:opacity-50 transition-opacity duration-500" />
+          <Button
+            onClick={refetch}
+            variant="outline"
+            className="relative border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))] hover:border-[hsl(var(--accent))] transition-all duration-300 px-6 py-3 rounded-2xl shadow-lg group-hover:shadow-2xl"
+            aria-label="Atualizar métricas do dashboard"
+          >
+            <Activity className="h-4 w-4 mr-2.5 group-hover:rotate-180 transition-transform duration-700" strokeWidth={2.5} />
+            <span className="font-semibold">Atualizar</span>
+          </Button>
+        </div>
       </div>
 
-      {/* Métricas principais */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total de Leads</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalLeads}</div>
-            <p className="text-xs text-muted-foreground">
-              +{metrics.leadsNovoMes} novos este mês
-            </p>
-          </CardContent>
-        </Card>
+      {/* Ultra-Premium Metric Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+        {/* Leads Card */}
+        <div className="relative group fade-in" style={{ animationDelay: '0.1s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-blue-500/20 to-blue-600/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Contratos</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.contratos}</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.contratosAssinados} assinados
-            </p>
-          </CardContent>
-        </Card>
+          <Card className="relative card-hover border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-2xl rounded-3xl overflow-hidden">
+            {/* Shine Effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agendamentos</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.agendamentos}</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.agendamentosHoje} hoje
-            </p>
-          </CardContent>
-        </Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 pt-6 px-6">
+              <CardTitle className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
+                Total de Leads
+              </CardTitle>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl blur-md opacity-40" />
+                <div className="relative p-3.5 bg-gradient-to-br from-blue-500/15 to-blue-600/10 rounded-2xl">
+                  <Users className="h-6 w-6 text-blue-600" strokeWidth={2.5} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <div className="text-5xl font-bold text-[hsl(var(--foreground))] mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {metrics.totalLeads}
+              </div>
+              <div className="flex items-center space-x-2.5">
+                <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 font-bold px-3 py-1.5 shadow-lg">
+                  <ArrowUpRight className="h-3.5 w-3.5 mr-1" strokeWidth={3} />
+                  +{metrics.leadsNovoMes}
+                </Badge>
+                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">este mês</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Agentes IA</CardTitle>
-            <Bot className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.agentesAtivos}</div>
-            <p className="text-xs text-muted-foreground">
-              {metrics.execucoesAgentesHoje} execuções hoje
-            </p>
-          </CardContent>
-        </Card>
+        {/* Contratos Card */}
+        <div className="relative group fade-in" style={{ animationDelay: '0.2s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+          <Card className="relative card-hover border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-2xl rounded-3xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 pt-6 px-6">
+              <CardTitle className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
+                Contratos
+              </CardTitle>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl blur-md opacity-40" />
+                <div className="relative p-3.5 bg-gradient-to-br from-purple-500/15 to-purple-600/10 rounded-2xl">
+                  <FileText className="h-6 w-6 text-purple-600" strokeWidth={2.5} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <div className="text-5xl font-bold text-[hsl(var(--foreground))] mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {metrics.contratos}
+              </div>
+              <div className="flex items-center space-x-2.5">
+                <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 font-bold px-3 py-1.5 shadow-lg">
+                  <CheckCircle className="h-3.5 w-3.5 mr-1" strokeWidth={3} />
+                  {metrics.contratosAssinados}
+                </Badge>
+                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">assinados</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Agendamentos Card */}
+        <div className="relative group fade-in" style={{ animationDelay: '0.3s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-orange-500/20 to-orange-600/10 rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+          <Card className="relative card-hover border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-2xl rounded-3xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 pt-6 px-6">
+              <CardTitle className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
+                Agendamentos
+              </CardTitle>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl blur-md opacity-40" />
+                <div className="relative p-3.5 bg-gradient-to-br from-orange-500/15 to-orange-600/10 rounded-2xl">
+                  <Calendar className="h-6 w-6 text-orange-600" strokeWidth={2.5} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <div className="text-5xl font-bold text-[hsl(var(--foreground))] mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {metrics.agendamentos}
+              </div>
+              <div className="flex items-center space-x-2.5">
+                <Badge className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 font-bold px-3 py-1.5 shadow-lg">
+                  <Clock className="h-3.5 w-3.5 mr-1" strokeWidth={3} />
+                  {metrics.agendamentosHoje}
+                </Badge>
+                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">hoje</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Agentes IA Card - Premium Gold */}
+        <div className="relative group fade-in" style={{ animationDelay: '0.4s' }}>
+          <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.3)] to-[hsl(var(--accent)_/_0.15)] rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+
+          <Card className="relative card-hover border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-2xl rounded-3xl overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 pt-6 px-6">
+              <CardTitle className="text-xs font-bold text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
+                Agentes IA
+              </CardTitle>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-[hsl(var(--accent))] to-[hsl(43_74%_49%)] rounded-2xl blur-md opacity-50" />
+                <div className="relative p-3.5 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] to-[hsl(var(--accent)_/_0.1)] rounded-2xl">
+                  <Bot className="h-6 w-6 text-[hsl(var(--accent))]" strokeWidth={2.5} />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-6 pb-6">
+              <div className="text-5xl font-bold text-[hsl(var(--foreground))] mb-4" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                {metrics.agentesAtivos}
+              </div>
+              <div className="flex items-center space-x-2.5">
+                <Badge className="bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(43_74%_49%)] text-[hsl(222_47%_11%)] border-0 font-bold px-3 py-1.5 shadow-lg">
+                  <Sparkles className="h-3.5 w-3.5 mr-1" strokeWidth={3} />
+                  {metrics.execucoesAgentesHoje}
+                </Badge>
+                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">execuções hoje</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
       {/* Leads por Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className="border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-premium fade-in" style={{ animationDelay: '0.5s' }}>
           <CardHeader>
-            <CardTitle>Pipeline de Leads</CardTitle>
-            <CardDescription>Distribuição por status no funil</CardDescription>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-br from-[hsl(var(--primary)_/_0.1)] to-[hsl(var(--primary)_/_0.05)] rounded-lg">
+                <TrendingUp className="h-5 w-5 text-[hsl(var(--primary))]" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Pipeline de Leads
+                </CardTitle>
+                <CardDescription className="text-sm">Distribuição por status no funil</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             {Object.entries(metrics.leadsPorStatus).map(([status, count]) => {
               const statusLabels: Record<string, string> = {
                 novo_lead: 'Novos Leads',
@@ -237,31 +347,64 @@ const Dashboard = () => {
                 lead_perdido: 'Leads Perdidos'
               };
 
+              const statusColors: Record<string, string> = {
+                novo_lead: 'from-blue-500 to-blue-600',
+                em_qualificacao: 'from-yellow-500 to-yellow-600',
+                proposta_enviada: 'from-purple-500 to-purple-600',
+                contrato_assinado: 'from-green-500 to-green-600',
+                em_atendimento: 'from-teal-500 to-teal-600',
+                lead_perdido: 'from-red-500 to-red-600'
+              };
+
               const percentage = metrics.totalLeads > 0 ? (count / metrics.totalLeads) * 100 : 0;
 
               return (
-                <div key={status} className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>{statusLabels[status]}</span>
-                    <span className="font-medium">{count}</span>
+                <div key={status} className="space-y-2.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-semibold text-[hsl(var(--foreground))]">{statusLabels[status]}</span>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-sm font-mono font-bold text-[hsl(var(--muted-foreground))]">{count}</span>
+                      <span className="text-xs text-[hsl(var(--muted-foreground))]">({percentage.toFixed(0)}%)</span>
+                    </div>
                   </div>
-                  <Progress value={percentage} className="h-2" />
+                  <div className="relative h-3 bg-[hsl(var(--muted))] rounded-full overflow-hidden">
+                    <div
+                      className={`absolute inset-y-0 left-0 bg-gradient-to-r ${statusColors[status]} rounded-full transition-all duration-500 ease-out`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
                 </div>
               );
             })}
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-premium fade-in" style={{ animationDelay: '0.6s' }}>
           <CardHeader>
-            <CardTitle>Áreas Jurídicas</CardTitle>
-            <CardDescription>Leads por especialização</CardDescription>
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-br from-[hsl(var(--accent)_/_0.15)] to-[hsl(var(--accent)_/_0.05)] rounded-lg">
+                <BarChart3 className="h-5 w-5 text-[hsl(var(--accent))]" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Áreas Jurídicas
+                </CardTitle>
+                <CardDescription className="text-sm">Leads por especialização</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-4">
             {metrics.leadsPorArea.slice(0, 5).map((area, index) => (
-              <div key={index} className="flex justify-between items-center">
-                <span className="text-sm font-medium">{area.area}</span>
-                <Badge variant="secondary">{area.total}</Badge>
+              <div
+                key={index}
+                className="flex justify-between items-center p-3 rounded-xl bg-[hsl(var(--muted)_/_0.3)] hover:bg-[hsl(var(--muted)_/_0.5)] transition-all duration-300 group"
+              >
+                <span className="text-sm font-semibold text-[hsl(var(--foreground))] group-hover:text-[hsl(var(--accent))] transition-colors">
+                  {area.area}
+                </span>
+                <Badge className="bg-gradient-to-r from-[hsl(var(--accent))] to-[hsl(38_92%_42%)] text-[hsl(var(--primary))] border-0 font-bold px-3 py-1">
+                  {area.total}
+                </Badge>
               </div>
             ))}
           </CardContent>
@@ -269,33 +412,62 @@ const Dashboard = () => {
       </div>
 
       {/* Performance dos Agentes */}
-      <Card>
+      <Card className="border-[hsl(var(--card-border))] bg-[hsl(var(--card))] shadow-premium fade-in" style={{ animationDelay: '0.7s' }}>
         <CardHeader>
-          <CardTitle>Performance dos Agentes IA</CardTitle>
-          <CardDescription>Execuções recentes e taxa de sucesso</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-gradient-to-br from-[hsl(var(--accent)_/_0.15)] to-[hsl(var(--accent)_/_0.05)] rounded-lg">
+                <Bot className="h-6 w-6 text-[hsl(var(--accent))]" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold" style={{ fontFamily: "'Playfair Display', serif" }}>
+                  Performance dos Agentes IA
+                </CardTitle>
+                <CardDescription className="text-sm mt-1">Execuções recentes e taxa de sucesso</CardDescription>
+              </div>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {metrics.execucoesRecentesAgentes.map((agente, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <div>
-                  <p className="font-medium">{agente.agente_nome}</p>
-                  <p className="text-sm text-gray-600">
-                    {agente.total_execucoes} execuções
-                  </p>
-                </div>
-                <div className="flex gap-2">
-                  <Badge variant="default" className="bg-green-100 text-green-800">
-                    {agente.sucesso} ✓
-                  </Badge>
-                  {agente.erro > 0 && (
-                    <Badge variant="destructive">
-                      {agente.erro} ✗
+            {metrics.execucoesRecentesAgentes.map((agente, index) => {
+              const successRate = agente.total_execucoes > 0
+                ? (agente.sucesso / agente.total_execucoes) * 100
+                : 0;
+
+              return (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-[hsl(var(--muted)_/_0.3)] to-[hsl(var(--muted)_/_0.1)] hover:from-[hsl(var(--muted)_/_0.5)] hover:to-[hsl(var(--muted)_/_0.2)] transition-all duration-300 border border-[hsl(var(--border))] group"
+                >
+                  <div className="flex items-center space-x-4 flex-1">
+                    <div className="p-3 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] to-[hsl(var(--accent)_/_0.1)] rounded-xl">
+                      <Sparkles className="h-5 w-5 text-[hsl(var(--accent))]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-bold text-[hsl(var(--foreground))] group-hover:text-[hsl(var(--accent))] transition-colors">
+                        {agente.agente_nome}
+                      </p>
+                      <p className="text-sm text-[hsl(var(--muted-foreground))] font-medium">
+                        {agente.total_execucoes} execuções • {successRate.toFixed(0)}% sucesso
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2.5">
+                    <Badge className="bg-green-100 text-green-800 border-0 font-bold px-3 py-1.5">
+                      <CheckCircle className="h-3.5 w-3.5 mr-1.5" />
+                      {agente.sucesso}
                     </Badge>
-                  )}
+                    {agente.erro > 0 && (
+                      <Badge variant="destructive" className="font-bold px-3 py-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
+                        {agente.erro}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

@@ -25,25 +25,39 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL e Anon Key são obrigatórios no .env');
 }
 
-// ✅ EMERGENCY CONFIG - O PULO DO GATO 🎯
-// Desabilita session persistence para evitar timeout no auth.getSession()
-// Isso resolve o problema de promises pendentes no localStorage
+// 🧹 LIMPEZA DE STORAGE ANTIGO (apenas dev, apenas uma vez por sessão)
+if (import.meta.env.MODE === 'development') {
+  const storageCleared = sessionStorage.getItem('jurify-storage-cleared-v1');
+  if (!storageCleared) {
+    console.log('🧹 Limpando tokens antigos do localStorage...');
+    Object.keys(localStorage)
+      .filter(key => key.startsWith('sb-') || key.includes('supabase'))
+      .forEach(key => {
+        localStorage.removeItem(key);
+        console.log(`  🗑️ Removido: ${key}`);
+      });
+    sessionStorage.setItem('jurify-storage-cleared-v1', 'true');
+    console.log('✅ Limpeza concluída. Sessão será persistida corretamente.');
+  }
+}
+
+// ✅ CONFIGURAÇÃO CORRETA - SESSION PERSISTENCE ATIVADA
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: false, // <--- O PULO DO GATO
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
+    persistSession: true,      // ✅ Sessão salva no localStorage
+    autoRefreshToken: true,    // ✅ Token renovado automaticamente
+    detectSessionInUrl: true,  // ✅ Detecta session em callback URLs
   },
   global: {
-    headers: { 'x-application-name': 'jurify-debug' },
+    headers: { 'x-application-name': 'jurify' },
   },
 });
 
 // ✅ Log de inicialização (apenas dev)
 if (import.meta.env.MODE === 'development') {
-  console.log('✅ Supabase client inicializado (EMERGENCY CONFIG):', {
+  console.log('✅ Supabase client inicializado:', {
     url: supabaseUrl,
     mode: import.meta.env.MODE,
-    config: 'persistSession=false (timeout fix)',
+    config: 'persistSession=true, autoRefreshToken=true',
   });
 }

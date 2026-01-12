@@ -42,11 +42,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Auto logout after 4 hours of inactivity
+  // Auto logout after inactivity (pausado quando aba minimizada)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
+    let isPaused = false;
 
     const resetTimeout = () => {
+      // Não resetar se estiver pausado (aba oculta)
+      if (isPaused) return;
+
       if (timeoutId) clearTimeout(timeoutId);
       if (session) {
         timeoutId = setTimeout(() => {
@@ -60,6 +64,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     };
 
+    // Pausar timeout quando aba está oculta
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isPaused = true;
+        if (timeoutId) clearTimeout(timeoutId);
+      } else {
+        isPaused = false;
+        resetTimeout();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
     events.forEach(event => {
       document.addEventListener(event, resetTimeout, true);
@@ -69,6 +86,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       events.forEach(event => {
         document.removeEventListener(event, resetTimeout, true);
       });

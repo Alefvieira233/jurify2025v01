@@ -28,4 +28,10 @@ dist-ssr
 .env
 .env.local
 .env.production
+.env.*.BACKUP
+.env.BACKUP_SEGURO
 *.pem
+
+# Temporary files
+tmpclaude-*
+src/**/tmpclaude-*

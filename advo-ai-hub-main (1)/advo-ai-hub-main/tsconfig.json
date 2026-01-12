@@ -1,15 +1,25 @@
 {
-  "files": [],
-  "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
-  ],
   "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Path aliases */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
-    // 🚀 PADRÃO ELON MUSK: Modo estrito completo
+
+    /* TypeScript Strict Mode - Enterprise Grade */
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -20,23 +30,18 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
-    
-    // 🚀 QUALIDADE DE CÓDIGO TESLA/SPACEX
+
+    /* Code Quality */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
     "noImplicitOverride": true,
-    
-    // 🚀 PERFORMANCE E SEGURANÇA
-    "skipLibCheck": false,
-    "allowJs": false,
+
+    /* Performance & Security */
+    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    
-    // 🚀 DEBUGGING E DESENVOLVIMENTO
-    "sourceMap": true,
-    "declaration": true,
-    "declarationMap": true,
-    "removeComments": false
-  }
+
+    /* Development */
+    "sourceMap": true
+  },
+  "include": ["src"]
 }

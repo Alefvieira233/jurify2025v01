@@ -65,8 +65,9 @@ export class GoogleOAuthService {
 
   /**
    * Gera URL de autenticação OAuth do Google
+   * @param state - State criptográfico para validação CSRF (não user user.id!)
    */
-  static getAuthUrl(userId: string): string {
+  static getAuthUrl(state: string): string {
     if (!this.isConfigured()) {
       throw new Error('Google OAuth não configurado. Configure VITE_GOOGLE_CLIENT_ID e VITE_GOOGLE_CLIENT_SECRET no .env');
     }
@@ -78,7 +79,7 @@ export class GoogleOAuthService {
       scope: GOOGLE_SCOPES,
       access_type: 'offline', // Para obter refresh_token
       prompt: 'consent', // Força mostrar tela de consentimento
-      state: userId, // Para validar o callback
+      state, // State criptográfico para validação CSRF
     });
 
     return `${GOOGLE_AUTH_URL}?${params.toString()}`;

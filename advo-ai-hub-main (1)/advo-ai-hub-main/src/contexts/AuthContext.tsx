@@ -115,16 +115,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  // Validate password strength (simplified for better UX)
+  // Validate password strength - Enterprise grade
   const validatePassword = (password: string) => {
-    const minLength = 6; // Reduzido de 8 para 6
+    const minLength = 12; // Padrão enterprise: 12+ caracteres
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
     const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password);
 
     const requirements = [
-      { met: password.length >= minLength, text: 'Mínimo 6 caracteres' },
+      { met: password.length >= minLength, text: 'Mínimo 12 caracteres' },
       { met: hasUpperCase, text: 'Uma letra maiúscula' },
       { met: hasLowerCase, text: 'Uma letra minúscula' },
       { met: hasNumbers, text: 'Um número' },
@@ -132,7 +132,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     ];
 
     const score = requirements.filter(req => req.met).length;
-    const isStrong = score >= 3; // Reduzido de 4 para 3 (mais flexível)
+    const isStrong = score >= 4; // Obrigatório 4 de 5 requisitos
 
     return { isStrong, requirements, score };
   };
@@ -198,7 +198,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
              setSession(null);
              setUser(null);
              setProfile(null);
-             localStorage.clear(); // Garante que lixo antigo não atrapalhe
+             // Remover apenas chaves Supabase (não destruir dados de outras apps)
+             Object.keys(localStorage)
+               .filter(key => key.startsWith('sb-') || key.includes('supabase'))
+               .forEach(key => localStorage.removeItem(key));
              return;
           }
           throw error;

@@ -153,11 +153,16 @@ export const useGoogleCalendar = () => {
     try {
       console.log('🔄 [useGoogleCalendar] Iniciando autenticação OAuth...');
 
+      // Gerar state criptográfico seguro (não usar user.id - previsível!)
+      const cryptoState = Array.from(
+        crypto.getRandomValues(new Uint8Array(32))
+      ).map(b => b.toString(16).padStart(2, '0')).join('');
+
       // Gerar URL de autenticação
-      const authUrl = GoogleOAuthService.getAuthUrl(user.id);
+      const authUrl = GoogleOAuthService.getAuthUrl(cryptoState);
 
       // Salvar state no localStorage para validar callback
-      localStorage.setItem('google_oauth_state', user.id);
+      localStorage.setItem('google_oauth_state', cryptoState);
 
       // Redirecionar para Google
       window.location.href = authUrl;

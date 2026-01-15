@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -6,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Bot, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RankingAgentesTableProps {
   periodo: string;
@@ -20,34 +20,69 @@ interface AgenteStats {
   valorGerado: number;
 }
 
+const normalizeLabel = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+const getDataInicio = (periodo: string): string => {
+  const agora = new Date();
+  switch (periodo) {
+    case 'mes':
+      return new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+    case 'trimestre': {
+      const mesAtual = agora.getMonth();
+      const inicioTrimestre = Math.floor(mesAtual / 3) * 3;
+      return new Date(agora.getFullYear(), inicioTrimestre, 1).toISOString();
+    }
+    case 'ano':
+      return new Date(agora.getFullYear(), 0, 1).toISOString();
+    default:
+      return new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
+  }
+};
+
 const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) => {
+  const { profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
+
   const { data: rankingAgentes } = useQuery({
-    queryKey: ['ranking-agentes', periodo],
+    queryKey: ['ranking-agentes', tenantId, periodo],
     queryFn: async () => {
-      // Buscar dados dos agentes IA
-      const { data: agentesIA } = await supabase
+      if (!tenantId) return [] as AgenteStats[];
+
+      const dataInicio = getDataInicio(periodo);
+      const iaResponsavel = 'ia juridica';
+
+      const { data: agentesIA, error: agentesError } = await supabase
         .from('agentes_ia')
-        .select('*');
+        .select('id, nome, area_juridica, delay_resposta')
+        .eq('tenant_id', tenantId);
 
-      // Buscar leads por área jurídica para correlacionar com agentes IA
-      const { data: leads } = await supabase
+      if (agentesError) throw agentesError;
+
+      const { data: leads, error: leadsError } = await supabase
         .from('leads')
-        .select('area_juridica, responsavel, valor_causa, status');
+        .select('area_juridica, responsavel, valor_causa, status, created_at')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', dataInicio);
 
-      // Buscar contratos para calcular taxa de fechamento
-      const { data: contratos } = await supabase
+      if (leadsError) throw leadsError;
+
+      const { data: contratos, error: contratosError } = await supabase
         .from('contratos')
-        .select('responsavel, valor_causa, status');
+        .select('responsavel, valor_causa, status, status_assinatura, created_at')
+        .eq('tenant_id', tenantId)
+        .gte('created_at', dataInicio);
+
+      if (contratosError) throw contratosError;
 
       const agentesStats: AgenteStats[] = [];
 
-      // Processar agentes IA
       if (agentesIA && Array.isArray(agentesIA) && agentesIA.length > 0) {
         agentesIA.forEach(agente => {
           if (agente && agente.nome && agente.area_juridica) {
             const leadsDoAgente = leads?.filter(lead => lead?.area_juridica === agente.area_juridica) || [];
-            const contratosDoAgente = contratos?.filter(contrato => 
-              contrato?.responsavel === 'IA Jurídica' && contrato?.status === 'assinado'
+            const contratosDoAgente = contratos?.filter(contrato =>
+              normalizeLabel(contrato?.responsavel || '') === iaResponsavel &&
+              (contrato?.status_assinatura === 'assinado' || contrato?.status === 'assinado')
             ) || [];
 
             agentesStats.push({
@@ -62,19 +97,18 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
         });
       }
 
-      // Processar agentes humanos
-      const responsaveisHumanos = leads ? 
+      const responsaveisHumanos = leads ?
         [...new Set(leads
           .map(lead => lead?.responsavel)
-          .filter(resp => resp && resp !== 'IA Jurídica' && typeof resp === 'string')
+          .filter(resp => resp && normalizeLabel(resp) !== iaResponsavel && typeof resp === 'string')
         )] : [];
-      
+
       if (responsaveisHumanos.length > 0) {
         responsaveisHumanos.forEach(responsavel => {
           if (responsavel && typeof responsavel === 'string') {
             const leadsDoResponsavel = leads?.filter(lead => lead?.responsavel === responsavel) || [];
-            const contratosDoResponsavel = contratos?.filter(contrato => 
-              contrato?.responsavel === responsavel && contrato?.status === 'assinado'
+            const contratosDoResponsavel = contratos?.filter(contrato =>
+              contrato?.responsavel === responsavel && (contrato?.status_assinatura === 'assinado' || contrato?.status === 'assinado')
             ) || [];
 
             agentesStats.push({
@@ -82,14 +116,13 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
               tipo: 'humano',
               leadsAtendidos: leadsDoResponsavel.length,
               taxaFechamento: leadsDoResponsavel.length > 0 ? (contratosDoResponsavel.length / leadsDoResponsavel.length) * 100 : 0,
-              tempoMedioResposta: Math.floor(Math.random() * 60) + 30, // Simular tempo de resposta humano
+              tempoMedioResposta: Math.floor(Math.random() * 60) + 30,
               valorGerado: contratosDoResponsavel.reduce((sum, c) => sum + (c.valor_causa || 0), 0)
             });
           }
         });
       }
 
-      // Ordenar por leads atendidos
       return agentesStats.sort((a, b) => b.leadsAtendidos - a.leadsAtendidos);
     }
   });
@@ -107,7 +140,7 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
             <TableHead>Tipo</TableHead>
             <TableHead className="text-center">Leads Atendidos</TableHead>
             <TableHead className="text-center">Taxa de Fechamento</TableHead>
-            <TableHead className="text-center">Tempo Médio</TableHead>
+            <TableHead className="text-center">Tempo Medio</TableHead>
             <TableHead className="text-right">Valor Gerado</TableHead>
           </TableRow>
         </TableHeader>
@@ -138,15 +171,15 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
               </TableCell>
               <TableCell className="text-center">
                 <span className={`font-medium ${
-                  agente.taxaFechamento >= 20 ? 'text-green-600' : 
+                  agente.taxaFechamento >= 20 ? 'text-green-600' :
                   agente.taxaFechamento >= 10 ? 'text-yellow-600' : 'text-red-600'
                 }`}>
                   {agente.taxaFechamento.toFixed(1)}%
                 </span>
               </TableCell>
               <TableCell className="text-center">
-                {agente.tempoMedioResposta < 60 ? 
-                  `${agente.tempoMedioResposta}s` : 
+                {agente.tempoMedioResposta < 60 ?
+                  `${agente.tempoMedioResposta}s` :
                   `${Math.floor(agente.tempoMedioResposta / 60)}min`
                 }
               </TableCell>
@@ -160,7 +193,7 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
 
       {rankingAgentes.length === 0 && (
         <div className="text-center py-8 text-gray-500">
-          Nenhum dado encontrado para o período selecionado
+          Nenhum dado encontrado para o periodo selecionado
         </div>
       )}
     </div>

@@ -20,6 +20,9 @@ function loadEnv() {
     const value = valueParts.join('=').trim();
     if (key && value) env[key.trim()] = value;
   });
+  Object.entries(process.env).forEach(([key, value]) => {
+    if (value) env[key] = value;
+  });
   return env;
 }
 
@@ -33,10 +36,33 @@ async function testar() {
 
     const supabaseUrl = env.VITE_SUPABASE_URL;
     const anonKey = env.VITE_SUPABASE_ANON_KEY;
-    const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
+    const testEmail = env.TEST_USER_EMAIL || 'teste@jurify.com';
+    const testPassword = env.TEST_USER_PASSWORD || 'teste123';
 
     const supabase = createClient(supabaseUrl, anonKey);
-    const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: testEmail,
+      password: testPassword
+    });
+
+    if (signInError) {
+      console.error('ƒ?O Falha no login de teste:', signInError.message);
+      console.log('Execute: node criar-usuario-teste.mjs');
+      return false;
+    }
+
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('tenant_id')
+      .eq('id', authData.user.id)
+      .single();
+
+    if (profileError || !profile?.tenant_id) {
+      console.error('ƒ?O Nenhum tenant_id encontrado');
+      if (profileError) console.error('   Erro:', profileError.message);
+      return false;
+    }
 
     // ========================================
     // TESTE 1: Buscar agente
@@ -47,6 +73,7 @@ async function testar() {
       .from('agentes_ia')
       .select('*')
       .eq('ativo', true)
+      .eq('tenant_id', profile.tenant_id)
       .limit(1);
 
     if (agenteError || !agentes || agentes.length === 0) {
@@ -75,11 +102,18 @@ async function testar() {
 
     startTime = Date.now();
 
-    const { data: response, error: execError } = await supabase.functions.invoke('agentes-ia-api', {
+    const systemPrompt = [
+      agente.script_saudacao,
+      agente.objetivo ? `Objetivo: ${agente.objetivo}` : null
+    ].filter(Boolean).join('\n');
+
+    const { data: response, error: execError } = await supabase.functions.invoke('ai-agent-processor', {
       body: {
-        agente_id: agente.id,
-        input_usuario: inputUsuario,
-        use_n8n: false  // Usar OpenAI diretamente
+        agentName: agente.nome,
+        agentSpecialization: agente.area_juridica,
+        systemPrompt,
+        userPrompt: inputUsuario,
+        tenantId: profile.tenant_id
       }
     });
 
@@ -120,7 +154,7 @@ async function testar() {
     console.log();
 
     // Verificar se tem resposta do agente
-    const temResposta = response.resultado || response.output_agente || response.message;
+    const temResposta = response.result || response.message;
 
     if (!temResposta) {
       console.error('❌ Resposta não contém output do agente\n');
@@ -139,10 +173,10 @@ async function testar() {
     // Aguardar 2s para log ser inserido
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    const { data: logs, error: logError } = await supabaseAdmin
-      .from('logs_execucao_agentes')
+    const { data: logs, error: logError } = await supabase
+      .from('agent_ai_logs')
       .select('*')
-      .eq('agente_id', agente.id)
+      .eq('agent_name', agente.nome)
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -156,7 +190,7 @@ async function testar() {
       const log = logs[0];
       console.log('✅ Log criado com sucesso!');
       console.log(`   Status: ${log.status}`);
-      console.log(`   Tempo: ${log.tempo_execucao || 0}ms\n`);
+      console.log(`   Tokens: ${log.total_tokens || 0}\n`);
 
       resultados.push({ teste: 'Verificar logs', status: 'OK' });
     }

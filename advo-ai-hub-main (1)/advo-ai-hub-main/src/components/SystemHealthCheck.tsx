@@ -1,17 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { 
-  Shield, 
-  Database, 
-  Server, 
-  Lock, 
-  CheckCircle, 
-  XCircle, 
+import {
+  Shield,
+  Server,
+  CheckCircle,
+  XCircle,
   AlertTriangle,
   RefreshCw,
   Activity
@@ -26,7 +23,8 @@ interface HealthCheck {
 }
 
 const SystemHealthCheck = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [overallScore, setOverallScore] = useState(0);
@@ -37,73 +35,75 @@ const SystemHealthCheck = () => {
     let score = 0;
 
     try {
-      // 1. Database Connection Check
       try {
-        const { error } = await supabase.from('profiles').select('count').limit(1);
+        const { error } = await supabase
+          .from('profiles')
+          .select('count')
+          .eq('tenant_id', tenantId)
+          .limit(1);
+
         if (!error) {
           checks.push({
             id: 'database',
-            name: 'Conexão com Banco de Dados',
+            name: 'Conexao com Banco de Dados',
             status: 'healthy',
-            message: 'Conexão estabelecida com sucesso',
+            message: 'Conexao estabelecida com sucesso',
             lastCheck: new Date().toISOString()
           });
           score += 20;
         } else {
           throw error;
         }
-      } catch (error) {
+      } catch {
         checks.push({
           id: 'database',
-          name: 'Conexão com Banco de Dados',
+          name: 'Conexao com Banco de Dados',
           status: 'critical',
-          message: 'Falha na conexão com o banco de dados',
+          message: 'Falha na conexao com o banco de dados',
           lastCheck: new Date().toISOString()
         });
       }
 
-      // 2. Authentication System Check
       try {
         const { data: session } = await supabase.auth.getSession();
         if (session) {
           checks.push({
             id: 'auth',
-            name: 'Sistema de Autenticação',
+            name: 'Sistema de Autenticacao',
             status: 'healthy',
-            message: 'Sistema de autenticação funcionando',
+            message: 'Sistema de autenticacao funcionando',
             lastCheck: new Date().toISOString()
           });
           score += 20;
         } else {
           checks.push({
             id: 'auth',
-            name: 'Sistema de Autenticação',
+            name: 'Sistema de Autenticacao',
             status: 'warning',
-            message: 'Usuário não autenticado',
+            message: 'Usuario nao autenticado',
             lastCheck: new Date().toISOString()
           });
           score += 10;
         }
-      } catch (error) {
+      } catch {
         checks.push({
           id: 'auth',
-          name: 'Sistema de Autenticação',
+          name: 'Sistema de Autenticacao',
           status: 'critical',
-          message: 'Falha no sistema de autenticação',
+          message: 'Falha no sistema de autenticacao',
           lastCheck: new Date().toISOString()
         });
       }
 
-      // 3. RLS (Row Level Security) Check
       try {
-        // Verificar se o usuário pode acessar apenas seus próprios dados
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('profiles')
           .select('id')
+          .eq('tenant_id', tenantId)
           .eq('id', user?.id || '')
           .limit(1);
 
-        if (!error || error.code === 'PGRST116') { // PGRST116 = no rows returned
+        if (!error || error.code === 'PGRST116') {
           checks.push({
             id: 'rls',
             name: 'Row Level Security (RLS)',
@@ -115,29 +115,29 @@ const SystemHealthCheck = () => {
         } else {
           throw error;
         }
-      } catch (error) {
+      } catch {
         checks.push({
           id: 'rls',
           name: 'Row Level Security (RLS)',
           status: 'warning',
-          message: 'RLS pode não estar configurado corretamente',
+          message: 'RLS pode nao estar configurado corretamente',
           lastCheck: new Date().toISOString()
         });
         score += 10;
       }
 
-      // 4. N8N Integration Check
       try {
         const { data: workflows } = await supabase
           .from('n8n_workflows')
-          .select('*')
+          .select('id')
+          .eq('tenant_id', tenantId)
           .eq('ativo', true)
           .limit(1);
 
         if (workflows && workflows.length > 0) {
           checks.push({
             id: 'n8n',
-            name: 'Integração N8N',
+            name: 'Integracao N8N',
             status: 'healthy',
             message: `${workflows.length} workflow(s) ativo(s) encontrado(s)`,
             lastCheck: new Date().toISOString()
@@ -146,28 +146,28 @@ const SystemHealthCheck = () => {
         } else {
           checks.push({
             id: 'n8n',
-            name: 'Integração N8N',
+            name: 'Integracao N8N',
             status: 'warning',
             message: 'Nenhum workflow N8N ativo encontrado',
             lastCheck: new Date().toISOString()
           });
           score += 5;
         }
-      } catch (error) {
+      } catch {
         checks.push({
           id: 'n8n',
-          name: 'Integração N8N',
+          name: 'Integracao N8N',
           status: 'critical',
-          message: 'Falha ao verificar integração N8N',
+          message: 'Falha ao verificar integracao N8N',
           lastCheck: new Date().toISOString()
         });
       }
 
-      // 5. Logs System Check
       try {
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('logs_atividades')
           .select('count')
+          .eq('tenant_id', tenantId)
           .limit(1);
 
         if (!error) {
@@ -182,18 +182,17 @@ const SystemHealthCheck = () => {
         } else {
           throw error;
         }
-      } catch (error) {
+      } catch {
         checks.push({
           id: 'logs',
           name: 'Sistema de Logs',
           status: 'critical',
-          message: 'Sistema de logs não acessível',
+          message: 'Sistema de logs nao acessivel',
           lastCheck: new Date().toISOString()
         });
       }
-
     } catch (error) {
-      console.error('Erro durante health check:', error);
+      console.error('[SystemHealthCheck] erro durante health check:', error);
     }
 
     setHealthChecks(checks);
@@ -203,7 +202,7 @@ const SystemHealthCheck = () => {
 
   useEffect(() => {
     performHealthCheck();
-  }, [user]);
+  }, [user, tenantId]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -228,7 +227,7 @@ const SystemHealthCheck = () => {
     if (score >= 80) return 'Excelente';
     if (score >= 60) return 'Bom';
     if (score >= 40) return 'Regular';
-    return 'Crítico';
+    return 'Critico';
   };
 
   return (
@@ -238,9 +237,9 @@ const SystemHealthCheck = () => {
           <div className="flex items-center space-x-2">
             <Shield className="h-6 w-6 text-blue-600" />
             <div>
-              <CardTitle>Verificação de Saúde do Sistema</CardTitle>
+              <CardTitle>Verificacao de Saude do Sistema</CardTitle>
               <CardDescription>
-                Monitoramento em tempo real dos componentes críticos
+                Monitoramento em tempo real dos componentes criticos
               </CardDescription>
             </div>
           </div>
@@ -253,7 +252,7 @@ const SystemHealthCheck = () => {
             </div>
           </div>
         </div>
-        <Button 
+        <Button
           onClick={performHealthCheck}
           disabled={isLoading}
           variant="outline"
@@ -268,7 +267,7 @@ const SystemHealthCheck = () => {
           Verificar Novamente
         </Button>
       </CardHeader>
-      
+
       <CardContent>
         <div className="space-y-4">
           {healthChecks.map((check) => (
@@ -285,8 +284,8 @@ const SystemHealthCheck = () => {
                   check.status === 'healthy' ? 'default' :
                   check.status === 'warning' ? 'secondary' : 'destructive'
                 }>
-                  {check.status === 'healthy' ? 'Saudável' :
-                   check.status === 'warning' ? 'Atenção' : 'Crítico'}
+                  {check.status === 'healthy' ? 'Saudavel' :
+                   check.status === 'warning' ? 'Atencao' : 'Critico'}
                 </Badge>
                 <p className="text-xs text-gray-500 mt-1">
                   {new Date(check.lastCheck).toLocaleTimeString('pt-BR')}
@@ -299,7 +298,7 @@ const SystemHealthCheck = () => {
         {healthChecks.length === 0 && !isLoading && (
           <div className="text-center py-8 text-gray-500">
             <Server className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Nenhuma verificação realizada ainda</p>
+            <p>Nenhuma verificacao realizada ainda</p>
           </div>
         )}
       </CardContent>

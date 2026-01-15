@@ -1,11 +1,9 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Download, Upload, AlertTriangle } from 'lucide-react';
+import { Download, Upload } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,12 +12,12 @@ const BackupRestore = () => {
   const [loading, setLoading] = useState(false);
   const [backupData, setBackupData] = useState('');
   const { toast } = useToast();
-  const { user } = useAuth(); // Removido hasRole
+  const { user, profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
 
-  // Lista de tabelas para backup (apenas as necessárias)
   const BACKUP_TABLES = [
     'system_settings',
-    'notification_templates', 
+    'notification_templates',
     'agentes_ia',
     'api_keys',
     'google_calendar_settings',
@@ -27,12 +25,11 @@ const BackupRestore = () => {
   ];
 
   const exportConfigurations = async () => {
-    // ACESSO LIBERADO: Qualquer usuário autenticado pode fazer backup
-    if (!user) {
+    if (!user || !tenantId) {
       toast({
-        title: "Acesso negado",
-        description: "Você precisa estar logado para exportar configurações.",
-        variant: "destructive"
+        title: 'Acesso negado',
+        description: 'Voce precisa estar logado para exportar configuracoes.',
+        variant: 'destructive'
       });
       return;
     }
@@ -40,25 +37,23 @@ const BackupRestore = () => {
     setLoading(true);
     try {
       const backupObj: any = {
-        version: "1.0",
+        version: '1.0',
         exported_at: new Date().toISOString(),
+        tenant_id: tenantId,
         data: {}
       };
 
-      // Exportar cada tabela
       for (const table of BACKUP_TABLES) {
-        console.log(`Exportando tabela: ${table}`);
-        
         const { data, error } = await supabase
           .from(table as any)
-          .select('*');
+          .select('*')
+          .eq('tenant_id', tenantId);
 
         if (error) {
           console.error(`Erro ao exportar ${table}:`, error);
           continue;
         }
 
-        // Para system_settings, filtrar dados sensíveis
         if (table === 'system_settings') {
           backupObj.data[table] = data?.filter((item: any) => !item.is_sensitive) || [];
         } else {
@@ -69,7 +64,6 @@ const BackupRestore = () => {
       const jsonString = JSON.stringify(backupObj, null, 2);
       setBackupData(jsonString);
 
-      // Criar download automático
       const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -81,16 +75,15 @@ const BackupRestore = () => {
       URL.revokeObjectURL(url);
 
       toast({
-        title: "Backup criado",
-        description: "Configurações exportadas com sucesso."
+        title: 'Backup criado',
+        description: 'Configuracoes exportadas com sucesso.'
       });
-
     } catch (error) {
       console.error('Erro no backup:', error);
       toast({
-        title: "Erro no backup",
-        description: "Falha ao exportar configurações.",
-        variant: "destructive"
+        title: 'Erro no backup',
+        description: 'Falha ao exportar configuracoes.',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
@@ -98,21 +91,20 @@ const BackupRestore = () => {
   };
 
   const importConfigurations = async () => {
-    // ACESSO LIBERADO: Qualquer usuário autenticado pode fazer restore
-    if (!user) {
+    if (!user || !tenantId) {
       toast({
-        title: "Acesso negado", 
-        description: "Você precisa estar logado para importar configurações.",
-        variant: "destructive"
+        title: 'Acesso negado',
+        description: 'Voce precisa estar logado para importar configuracoes.',
+        variant: 'destructive'
       });
       return;
     }
 
     if (!backupData.trim()) {
       toast({
-        title: "Dados inválidos",
-        description: "Por favor, cole o JSON de backup.",
-        variant: "destructive"
+        title: 'Dados invalidos',
+        description: 'Por favor, cole o JSON de backup.',
+        variant: 'destructive'
       });
       return;
     }
@@ -120,35 +112,38 @@ const BackupRestore = () => {
     setLoading(true);
     try {
       const parsedData = JSON.parse(backupData);
-      
+
       if (!parsedData.data) {
-        throw new Error('Formato de backup inválido');
+        throw new Error('Formato de backup invalido');
       }
 
-      // Confirmar antes de importar
       const confirmed = window.confirm(
-        'ATENÇÃO: Esta ação irá sobrescrever as configurações atuais. Tem certeza?'
+        'ATENCAO: Esta acao vai sobrescrever as configuracoes atuais. Tem certeza?'
       );
-      
+
       if (!confirmed) {
         setLoading(false);
         return;
       }
 
-      // Importar cada tabela
       for (const table of BACKUP_TABLES) {
         if (parsedData.data[table] && Array.isArray(parsedData.data[table])) {
-          console.log(`Importando tabela: ${table}`);
-          
-          // Limpar tabela atual (exceto dados críticos)
           if (table !== 'api_keys') {
-            await supabase.from(table as any).delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            await supabase
+              .from(table as any)
+              .delete()
+              .eq('tenant_id', tenantId)
+              .neq('id', '00000000-0000-0000-0000-000000000000');
           }
-          
-          // Inserir novos dados
+
+          const payload = parsedData.data[table].map((item: any) => ({
+            ...item,
+            tenant_id: tenantId
+          }));
+
           const { error } = await supabase
             .from(table as any)
-            .insert(parsedData.data[table]);
+            .insert(payload);
 
           if (error) {
             console.error(`Erro ao importar ${table}:`, error);
@@ -157,40 +152,38 @@ const BackupRestore = () => {
       }
 
       toast({
-        title: "Importação concluída",
-        description: "Configurações restauradas com sucesso."
+        title: 'Importacao concluida',
+        description: 'Configuracoes restauradas com sucesso.'
       });
 
       setBackupData('');
-
     } catch (error) {
-      console.error('Erro na importação:', error);
+      console.error('Erro na importacao:', error);
       toast({
-        title: "Erro na importação",
-        description: "Falha ao importar configurações. Verifique o formato do JSON.",
-        variant: "destructive"
+        title: 'Erro na importacao',
+        description: 'Falha ao importar configuracoes. Verifique o JSON.',
+        variant: 'destructive'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  // ACESSO LIBERADO: Qualquer usuário pode acessar backup/restore
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Exportar Configurações
+            Exportar Configuracoes
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-600">
-            Exporte todas as configurações do sistema para backup.
+            Exporte todas as configuracoes do sistema para backup.
           </p>
-          <Button 
-            onClick={exportConfigurations} 
+          <Button
+            onClick={exportConfigurations}
             disabled={loading}
             className="w-full"
           >
@@ -203,7 +196,7 @@ const BackupRestore = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Importar Configurações
+            Importar Configuracoes
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -217,26 +210,13 @@ const BackupRestore = () => {
               rows={10}
             />
           </div>
-          
-          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-            <div className="flex items-start">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5 mr-3" />
-              <div>
-                <h4 className="text-sm font-medium text-yellow-800">Atenção</h4>
-                <p className="text-sm text-yellow-700 mt-1">
-                  A importação irá sobrescrever as configurações atuais. Certifique-se de ter um backup antes de prosseguir.
-                </p>
-              </div>
-            </div>
-          </div>
 
-          <Button 
-            onClick={importConfigurations} 
-            disabled={loading || !backupData.trim()}
+          <Button
+            onClick={importConfigurations}
+            disabled={loading}
             className="w-full"
-            variant="destructive"
           >
-            {loading ? 'Importando...' : 'Restaurar Configurações'}
+            {loading ? 'Importando...' : 'Restaurar Backup'}
           </Button>
         </CardContent>
       </Card>

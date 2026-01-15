@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -15,24 +14,37 @@ interface ExportDataButtonProps {
 const ExportDataButton = ({ table, filename, className }: ExportDataButtonProps) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { hasPermission } = useAuth();
+  const { hasPermission, profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
 
   const exportToCSV = async () => {
     if (!hasPermission('usuarios', 'read')) {
       toast({
-        title: "Sem permissão",
-        description: "Você não tem permissão para exportar dados.",
-        variant: "destructive",
+        title: 'Sem permissao',
+        description: 'Voce nao tem permissao para exportar dados.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!tenantId) {
+      toast({
+        title: 'Tenant nao encontrado',
+        description: 'Refaca o login para continuar.',
+        variant: 'destructive',
       });
       return;
     }
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const query = supabase
         .from(table)
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Erro na consulta:', error);
@@ -41,29 +53,26 @@ const ExportDataButton = ({ table, filename, className }: ExportDataButtonProps)
 
       if (!data || data.length === 0) {
         toast({
-          title: "Nenhum dado encontrado",
-          description: "Não há dados para exportar nesta tabela.",
+          title: 'Nenhum dado encontrado',
+          description: 'Nao ha dados para exportar nesta tabela.',
         });
         return;
       }
 
-      // Converter para CSV
       const headers = Object.keys(data[0]);
       const csvContent = [
         headers.join(','),
-        ...data.map(row => 
+        ...data.map(row =>
           headers.map(header => {
-            const value = row[header];
-            // Escapar aspas e quebras de linha
+            const value = (row as any)[header];
             if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
               return `"${value.replace(/"/g, '""')}"`;
             }
-            return value || '';
+            return value ?? '';
           }).join(',')
         )
       ].join('\n');
 
-      // Download do arquivo
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       const url = URL.createObjectURL(blob);
@@ -75,15 +84,15 @@ const ExportDataButton = ({ table, filename, className }: ExportDataButtonProps)
       document.body.removeChild(link);
 
       toast({
-        title: "Exportação concluída",
+        title: 'Exportacao concluida',
         description: `${data.length} registros exportados com sucesso.`,
       });
     } catch (error) {
-      console.error('Erro na exportação:', error);
+      console.error('Erro na exportacao:', error);
       toast({
-        title: "Erro na exportação",
-        description: "Não foi possível exportar os dados.",
-        variant: "destructive",
+        title: 'Erro na exportacao',
+        description: 'Nao foi possivel exportar os dados.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);

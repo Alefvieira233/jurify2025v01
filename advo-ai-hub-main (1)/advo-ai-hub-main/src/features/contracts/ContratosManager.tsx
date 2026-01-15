@@ -7,12 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useContratos } from '@/hooks/useContratos';
 import UploadContratos from '@/components/UploadContratos';
+import { NovoContratoForm } from '@/components/NovoContratoForm';
+import { DetalhesContrato } from '@/components/DetalhesContrato';
 
 const ContratosManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [isNovoContratoOpen, setIsNovoContratoOpen] = useState(false);
+  const [isDetalhesOpen, setIsDetalhesOpen] = useState(false);
+  const [selectedContrato, setSelectedContrato] = useState<any | null>(null);
   const { contratos, loading, error, isEmpty, fetchContratos } = useContratos();
 
   const filteredContratos = contratos.filter(contrato => {
@@ -42,7 +48,18 @@ const ContratosManager = () => {
   };
 
   const handleRetry = () => {
-    console.log('🔄 Tentando recarregar contratos...');
+    console.log('[Contratos] Tentando recarregar contratos...');
+    fetchContratos();
+  };
+
+  const handleOpenDetails = (contrato: any) => {
+    setSelectedContrato(contrato);
+    setIsDetalhesOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetalhesOpen(false);
+    setSelectedContrato(null);
     fetchContratos();
   };
 
@@ -102,7 +119,7 @@ const ContratosManager = () => {
                 <CardTitle className="text-2xl">Gestão de Contratos</CardTitle>
                 <p className="text-gray-600">Gerencie contratos e assinaturas digitais</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoContratoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Contrato
               </Button>
@@ -150,7 +167,7 @@ const ContratosManager = () => {
                 <CardTitle className="text-2xl">Gestão de Contratos</CardTitle>
                 <p className="text-gray-600">Gerencie contratos e assinaturas digitais</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoContratoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Contrato
               </Button>
@@ -164,7 +181,7 @@ const ContratosManager = () => {
               <FileSignature className="h-16 w-16 text-blue-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum contrato cadastrado</h3>
               <p className="text-blue-700 mb-6">Comece criando seu primeiro contrato para gerenciar assinaturas digitais.</p>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoContratoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Criar primeiro contrato
               </Button>
@@ -215,6 +232,7 @@ const ContratosManager = () => {
 
             {/* Novo Contrato Button Premium */}
             <Button
+              onClick={() => setIsNovoContratoOpen(true)}
               className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
@@ -227,7 +245,7 @@ const ContratosManager = () => {
 
         {/* Subtitle */}
         <p className="text-[hsl(var(--muted-foreground))] mt-3 text-base" style={{ fontFamily: "'Inter', sans-serif" }}>
-          Gerencie contratos e assinaturas digitais • <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{contratos.length}</span> contratos no total
+          Gerencie contratos e assinaturas digitais - <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{contratos.length}</span> contratos no total
         </p>
       </div>
 
@@ -321,19 +339,19 @@ const ContratosManager = () => {
                     </div>
 
                     <div className="flex gap-2 ml-4">
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenDetails(contrato)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                      <Button variant="outline" size="sm">
+                      <Button variant="outline" size="sm" onClick={() => handleOpenDetails(contrato)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       {contrato.status === 'rascunho' && (
-                        <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
+                        <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700" onClick={() => handleOpenDetails(contrato)}>
                           <Send className="h-4 w-4" />
                         </Button>
                       )}
                       {contrato.link_assinatura_zapsign && (
-                        <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700">
+                        <Button variant="outline" size="sm" className="text-green-600 hover:text-green-700" onClick={() => handleOpenDetails(contrato)}>
                           <FileSignature className="h-4 w-4" />
                         </Button>
                       )}
@@ -362,14 +380,39 @@ const ContratosManager = () => {
         <TabsContent value="upload">
           <UploadContratos 
             onUploadComplete={(arquivos) => {
-              console.log('✅ Upload concluído:', arquivos);
+              console.log('Upload concluido:', arquivos);
               fetchContratos(); // Recarregar lista de contratos
             }}
           />
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isNovoContratoOpen} onOpenChange={setIsNovoContratoOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Novo Contrato</DialogTitle>
+          </DialogHeader>
+          <NovoContratoForm onClose={() => {
+            setIsNovoContratoOpen(false);
+            fetchContratos();
+          }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDetalhesOpen} onOpenChange={setIsDetalhesOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Contrato</DialogTitle>
+          </DialogHeader>
+          {selectedContrato && (
+            <DetalhesContrato contrato={selectedContrato} onClose={handleCloseDetails} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default ContratosManager;
+
+

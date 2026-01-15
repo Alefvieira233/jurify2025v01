@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LogExecucao {
   id: string;
@@ -29,8 +29,12 @@ export const useLogsExecucao = () => {
     tempoMedio: 0,
   });
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
 
   const fetchLogs = async (limite = 50) => {
+    if (!tenantId) return;
+
     try {
       const { data, error } = await supabase
         .from('logs_execucao_agentes')
@@ -41,35 +45,34 @@ export const useLogsExecucao = () => {
             tipo_agente
           )
         `)
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(limite);
 
       if (error) throw error;
-      
-      // Transform the data to match our interface
+
       const transformedData: LogExecucao[] = (data || []).map(log => ({
         ...log,
         status: log.status as 'success' | 'error' | 'processing'
       }));
-      
+
       setLogs(transformedData);
 
-      // Calcular estatísticas
       const total = transformedData.length;
       const sucessos = transformedData.filter(log => log.status === 'success').length;
       const erros = transformedData.filter(log => log.status === 'error').length;
       const temposValidos = transformedData.filter(log => log.tempo_execucao).map(log => log.tempo_execucao!) || [];
-      const tempoMedio = temposValidos.length > 0 
-        ? temposValidos.reduce((acc, tempo) => acc + tempo, 0) / temposValidos.length 
+      const tempoMedio = temposValidos.length > 0
+        ? temposValidos.reduce((acc, tempo) => acc + tempo, 0) / temposValidos.length
         : 0;
 
       setStats({ total, sucessos, erros, tempoMedio });
     } catch (error) {
       console.error('Erro ao buscar logs:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os logs de execução",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel carregar os logs de execucao',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -77,6 +80,8 @@ export const useLogsExecucao = () => {
   };
 
   const buscarLogsPorAgente = async (agenteId: string) => {
+    if (!tenantId) return [];
+
     try {
       const { data, error } = await supabase
         .from('logs_execucao_agentes')
@@ -87,56 +92,60 @@ export const useLogsExecucao = () => {
             tipo_agente
           )
         `)
+        .eq('tenant_id', tenantId)
         .eq('agente_id', agenteId)
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (error) throw error;
-      
+
       const transformedData: LogExecucao[] = (data || []).map(log => ({
         ...log,
         status: log.status as 'success' | 'error' | 'processing'
       }));
-      
+
       return transformedData;
     } catch (error) {
       console.error('Erro ao buscar logs por agente:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar os logs do agente",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel carregar os logs do agente',
+        variant: 'destructive',
       });
       return [];
     }
   };
 
   const limparLogs = async () => {
+    if (!tenantId) return;
+
     try {
       const { error } = await supabase
         .from('logs_execucao_agentes')
         .delete()
-        .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Logs mais antigos que 30 dias
+        .eq('tenant_id', tenantId)
+        .lt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
 
       if (error) throw error;
 
       await fetchLogs();
       toast({
-        title: "Sucesso",
-        description: "Logs antigos removidos com sucesso",
+        title: 'Sucesso',
+        description: 'Logs antigos removidos com sucesso',
       });
     } catch (error) {
       console.error('Erro ao limpar logs:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível limpar os logs",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel limpar os logs',
+        variant: 'destructive',
       });
     }
   };
 
   useEffect(() => {
     fetchLogs();
-  }, []);
+  }, [tenantId]);
 
   return {
     logs,

@@ -102,12 +102,11 @@ export const useZapSignIntegration = (): UseZapSignIntegrationReturn => {
     setIsLoading(true);
     try {
       const result = await retryWithBackoff(async () => {
-        const { data, error } = await supabase.functions.invoke('whatsapp-contract', {
+        const messageText = `Ola ${nomeCliente}, segue o link para assinatura do contrato ${contratoId}: ${linkAssinatura}`;
+        const { data, error } = await supabase.functions.invoke('send-whatsapp-message', {
           body: {
-            contratoId,
-            telefone,
-            nomeCliente,
-            linkAssinatura
+            to: telefone,
+            text: messageText
           }
         });
 

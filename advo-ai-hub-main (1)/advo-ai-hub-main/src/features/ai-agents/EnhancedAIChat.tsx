@@ -7,6 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import ThinkingIndicator from '@/components/ui/thinking-indicator';
 import TypingText from '@/components/ui/typing-text';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
     id: string;
@@ -33,6 +34,7 @@ const EnhancedAIChat: React.FC<EnhancedAIChatProps> = ({
     const [error, setError] = useState<string | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const { toast } = useToast();
+    const { user, profile } = useAuth();
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -60,11 +62,20 @@ const EnhancedAIChat: React.FC<EnhancedAIChatProps> = ({
         const startTime = Date.now();
 
         try {
-            const { data, error: functionError } = await supabase.functions.invoke('agentes-ia-api', {
+            if (!user || !profile?.tenant_id) {
+                throw new Error('Usuario nao autenticado');
+            }
+
+            const systemPrompt = `Voce e ${agentName}, especialista em ${agentArea || 'direito'}. Responda de forma objetiva e profissional.`;
+
+            const { data, error: functionError } = await supabase.functions.invoke('ai-agent-processor', {
                 body: {
-                    agente_id: agentId,
-                    input_usuario: userMessage.content,
-                    use_n8n: true
+                    agentName,
+                    agentSpecialization: agentArea || 'Direito',
+                    systemPrompt,
+                    userPrompt: userMessage.content,
+                    tenantId: profile.tenant_id,
+                    userId: user.id
                 }
             });
 
@@ -74,14 +85,14 @@ const EnhancedAIChat: React.FC<EnhancedAIChatProps> = ({
                 throw new Error(functionError.message);
             }
 
-            if (!data || !data.success) {
+            if (!data || !data.result) {
                 throw new Error(data?.error || 'Erro ao processar resposta');
             }
 
             const assistantMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: data.response || 'Desculpe, não consegui gerar uma resposta.',
+                content: data.result || 'Desculpe, não consegui gerar uma resposta.',
                 timestamp: new Date(),
                 isTyping: true,
             };

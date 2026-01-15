@@ -6,11 +6,11 @@
  */
 
 import { BaseAgent } from '../core/BaseAgent';
-import { AgentMessage, MessageType, TaskRequestPayload } from '../types';
+import { AgentMessage, MessageType, TaskRequestPayload, AGENT_CONFIG } from '../types';
 
 export class CustomerSuccessAgent extends BaseAgent {
   constructor() {
-    super('CustomerSuccess', 'Sucesso do cliente e acompanhamento pós-venda');
+    super(AGENT_CONFIG.NAMES.CUSTOMER_SUCCESS, 'Sucesso do Cliente', AGENT_CONFIG.IDS.CUSTOMER_SUCCESS);
   }
 
   protected getSystemPrompt(): string {

@@ -1,5 +1,3 @@
-
-import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -12,60 +10,68 @@ interface SystemSetting {
   category: string;
   description: string;
   is_sensitive: boolean;
+  tenant_id?: string;
 }
 
 export const useSystemSettings = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
 
+  const tenantId = profile?.tenant_id ?? null;
+
   const { data: settings = [], isLoading } = useQuery({
-    queryKey: ['system-settings'],
+    queryKey: ['system-settings', tenantId],
+    enabled: !!tenantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('system_settings')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('category', { ascending: true });
 
       if (error) throw error;
       return data as SystemSetting[];
-    }
+    },
   });
 
   const updateSettingMutation = useMutation({
     mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      if (!tenantId) throw new Error('Tenant nao encontrado');
+
       const { data, error } = await supabase.rpc('update_system_setting', {
         _key: key,
         _value: value,
-        _user_id: user?.id
+        _user_id: user?.id,
+        _tenant_id: tenantId,
       });
 
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-settings'] });
+      queryClient.invalidateQueries({ queryKey: ['system-settings', tenantId] });
       toast({
-        title: "Configuração atualizada",
-        description: "A configuração foi salva com sucesso.",
+        title: 'Configuracao atualizada',
+        description: 'A configuracao foi salva com sucesso.',
       });
     },
     onError: (error) => {
       toast({
-        title: "Erro",
-        description: "Erro ao salvar configuração.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao salvar configuracao.',
+        variant: 'destructive',
       });
-      console.error('Erro ao atualizar configuração:', error);
-    }
+      console.error('Failed to update system setting:', error);
+    },
   });
 
   const getSettingsByCategory = (category: string) => {
-    return settings.filter(setting => setting.category === category);
+    return settings.filter((setting) => setting.category === category);
   };
 
   const getSettingValue = (key: string) => {
-    const setting = settings.find(s => s.key === key);
+    const setting = settings.find((s) => s.key === key);
     return setting?.value || '';
   };
 
@@ -75,6 +81,6 @@ export const useSystemSettings = () => {
     updateSetting: updateSettingMutation.mutate,
     isUpdating: updateSettingMutation.isPending,
     getSettingsByCategory,
-    getSettingValue
+    getSettingValue,
   };
 };

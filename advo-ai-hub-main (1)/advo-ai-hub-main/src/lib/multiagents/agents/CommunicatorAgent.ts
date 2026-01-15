@@ -11,7 +11,7 @@ import { AgentMessage, MessageType, Priority, AGENT_CONFIG } from '../types';
 
 export class CommunicatorAgent extends BaseAgent {
   constructor() {
-    super(AGENT_CONFIG.NAMES.COMMUNICATOR, AGENT_CONFIG.IDS.COMMUNICATOR);
+    super(AGENT_CONFIG.NAMES.COMMUNICATOR, 'Comunicacao', AGENT_CONFIG.IDS.COMMUNICATOR);
   }
 
   protected getSystemPrompt(): string {
@@ -34,9 +34,14 @@ export class CommunicatorAgent extends BaseAgent {
     // Salva no banco
     await supabase.from('lead_interactions').insert({
       lead_id: payload.leadId,
-      agent_id: this.agentId,
       message: 'Proposta enviada',
-      response: formatted
+      response: formatted,
+      tipo: 'message',
+      metadata: {
+        agent_id: this.agentId,
+        agent_name: this.name,
+        stage: 'proposal_sent',
+      },
     });
 
     this.updateContext(payload.leadId, { 

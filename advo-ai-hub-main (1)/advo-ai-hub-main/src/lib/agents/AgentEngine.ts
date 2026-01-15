@@ -311,7 +311,7 @@ PERSONALIDADE: ${agent.personality}
 ESPECIALIZAÇÃO: ${agent.specialization.join(', ')}
 
 DADOS DO LEAD:
-- Nome: ${lead?.nome_completo || 'Não informado'}
+- Nome: ${lead?.nome || lead?.nome_completo || 'Não informado'}
 - Área de interesse: ${lead?.area_juridica || 'Não informado'}
 - Origem: ${lead?.origem || 'Não informado'}
 - Status atual: ${lead?.status || 'novo_lead'}
@@ -494,12 +494,15 @@ AÇÕES:
       .from('lead_interactions')
       .insert({
         lead_id: leadId,
-        agent_id: agentId,
         message,
         response,
         sentiment: await this.analyzeSentiment(message),
-        confidence: 0.8, // Implementar análise de confiança
-        next_action: 'continue_conversation',
+        tipo: 'message',
+        metadata: {
+          agent_id: agentId,
+          confidence: 0.8,
+          next_action: 'continue_conversation',
+        },
         created_at: new Date().toISOString()
       });
   }

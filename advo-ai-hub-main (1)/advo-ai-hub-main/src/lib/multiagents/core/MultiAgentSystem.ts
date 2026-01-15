@@ -138,6 +138,7 @@ export class MultiAgentSystem implements IMessageRouter {
     console.log('🎯 Sistema Multiagentes processando lead...');
 
     // Cria contexto compartilhado
+    const tenantId = (leadData as any)?.tenantId || (leadData as any)?.tenant_id;
     const context: SharedContext = {
       leadId: leadData.id || `lead_${Date.now()}`,
       conversationHistory: [],
@@ -147,9 +148,12 @@ export class MultiAgentSystem implements IMessageRouter {
       metadata: {
         channel,
         timestamp: new Date(),
-        tenantId: leadData.tenantId,
+        tenantId,
       }
     };
+
+    // Compartilha contexto com todos os agentes
+    this.agents.forEach((agent) => agent.setContext(context));
 
     // Busca agente coordenador
     const coordinator = this.agents.get('Coordenador');

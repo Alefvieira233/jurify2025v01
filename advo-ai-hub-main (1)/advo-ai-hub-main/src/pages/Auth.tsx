@@ -40,7 +40,7 @@ const Auth = () => {
           });
         }
       } else {
-        const { error } = await signUp(email, password, nomeCompleto);
+        const { error } = await signUp(email, password, { full_name: nomeCompleto });
         if (error) {
           toast({
             title: "Erro no cadastro",

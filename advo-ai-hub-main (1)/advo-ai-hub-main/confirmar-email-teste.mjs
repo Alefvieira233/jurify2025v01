@@ -17,14 +17,22 @@ function loadEnv() {
     const value = valueParts.join('=').trim();
     if (key && value) env[key.trim()] = value;
   });
+  Object.entries(process.env).forEach(([key, value]) => {
+    if (value) env[key] = value;
+  });
   return env;
 }
 
 const env = loadEnv();
 
 // Usar SERVICE ROLE KEY para ter privilégios de admin
-// Chave fornecida pelo usuário: sb_secret_fLfBA6I3NbiCQv1VmYiBeQ_4wQgMyF-
-const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmeGduY2JvcHZuc2x0anFldHh3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczNDM2MjI1OSwiZXhwIjoyMDQ5OTM4MjU5fQ.WfaO9HM30SILaDjpXitkTSRwzwbYzd_LJRQRoJOdsBk';
+const SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SERVICE_ROLE_KEY) {
+  console.error('SUPABASE_SERVICE_ROLE_KEY not found in env.');
+  console.error('Set it temporarily to confirm the test user email.');
+  process.exit(1);
+}
 
 const supabaseAdmin = createClient(
   env.VITE_SUPABASE_URL,

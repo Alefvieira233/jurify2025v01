@@ -1,5 +1,5 @@
-/**
- * 🚀 MISSION CONTROL - REALTIME AGENTS HOOK
+﻿/**
+ * ðŸš€ MISSION CONTROL - REALTIME AGENTS HOOK
  *
  * Hook para monitoramento em tempo real dos agentes via Supabase Realtime.
  * Conecta ao banco de dados e recebe updates ao vivo.
@@ -71,6 +71,7 @@ export function useRealtimeAgents(tenantId?: string) {
   const [recentLogs, setRecentLogs] = useState<AgentLog[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastRealtimeEventAt, setLastRealtimeEventAt] = useState<number | null>(null);
 
   // Inicializar status dos agentes
   useEffect(() => {
@@ -92,12 +93,12 @@ export function useRealtimeAgents(tenantId?: string) {
     setAgentStatuses(initialStatuses);
   }, []);
 
-  // Buscar métricas iniciais
+  // Buscar mÃ©tricas iniciais
   const fetchInitialMetrics = useCallback(async () => {
     if (!tenantId) return;
 
     try {
-      // Buscar métricas dos últimos 7 dias
+      // Buscar mÃ©tricas dos Ãºltimos 7 dias
       const { data: metrics, error: metricsError } = await supabase
         .from('agent_ai_logs')
         .select('agent_name, status, latency_ms, total_tokens')
@@ -106,7 +107,7 @@ export function useRealtimeAgents(tenantId?: string) {
 
       if (metricsError) throw metricsError;
 
-      // Agregar métricas por agente
+      // Agregar mÃ©tricas por agente
       const aggregated = new Map<string, AgentStatus>();
 
       AGENT_NAMES.forEach(name => {
@@ -133,7 +134,7 @@ export function useRealtimeAgents(tenantId?: string) {
 
       setAgentStatuses(aggregated);
 
-      // Buscar execuções ativas
+      // Buscar execuÃ§Ãµes ativas
       const { data: executions, error: execError } = await supabase
         .from('agent_executions')
         .select('*')
@@ -143,16 +144,46 @@ export function useRealtimeAgents(tenantId?: string) {
         .limit(10);
 
       if (execError) {
-        console.error('❌ [Mission Control] Erro ao buscar execuções:', execError.message);
-        setError(`Erro ao carregar execuções: ${execError.message}`);
+        console.error('âŒ [Mission Control] Erro ao buscar execuÃ§Ãµes:', execError.message);
+        setError(`Erro ao carregar execuÃ§Ãµes: ${execError.message}`);
         return;
       }
 
       setActiveExecutions(executions || []);
 
     } catch (err: any) {
-      console.error('❌ [Mission Control] Error fetching initial metrics:', err);
+      console.error('âŒ [Mission Control] Error fetching initial metrics:', err);
       setError(err.message || 'Erro ao conectar com banco de dados');
+    }
+  }, [tenantId]);
+
+  const fetchRealtimeFallback = useCallback(async () => {
+    if (!tenantId) return;
+
+    try {
+      const { data: executions, error: execError } = await supabase
+        .from('agent_executions')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .in('status', ['pending', 'processing'])
+        .order('started_at', { ascending: false })
+        .limit(10);
+
+      if (execError) throw execError;
+      setActiveExecutions(executions || []);
+
+      const { data: logs, error: logsError } = await supabase
+        .from('agent_ai_logs')
+        .select('*')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (logsError) throw logsError;
+      setRecentLogs(logs || []);
+    } catch (err: any) {
+      console.error('Æ’?O [Mission Control] Fallback polling error:', err);
+      setError(err.message || 'Erro ao atualizar dados do Mission Control');
     }
   }, [tenantId]);
 
@@ -178,7 +209,8 @@ export function useRealtimeAgents(tenantId?: string) {
           filter: `tenant_id=eq.${tenantId}`
         },
         (payload) => {
-          console.log('📡 Execution update:', payload);
+          console.log('ðŸ“¡ Execution update:', payload);
+          setLastRealtimeEventAt(Date.now());
 
           if (payload.eventType === 'INSERT') {
             setActiveExecutions(prev => [payload.new as AgentExecution, ...prev].slice(0, 10));
@@ -243,7 +275,7 @@ export function useRealtimeAgents(tenantId?: string) {
                       lastActivity: new Date()
                     });
 
-                    // Voltar para idle após 2 segundos
+                    // Voltar para idle apÃ³s 2 segundos
                     setTimeout(() => {
                       setAgentStatuses(current => {
                         const resetMap = new Map(current);
@@ -269,10 +301,10 @@ export function useRealtimeAgents(tenantId?: string) {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Subscribed to executions');
+          console.log('âœ… Subscribed to executions');
           setIsConnected(true);
         } else if (status === 'CLOSED') {
-          console.log('❌ Executions subscription closed');
+          console.log('âŒ Executions subscription closed');
           setIsConnected(false);
         }
       });
@@ -291,11 +323,12 @@ export function useRealtimeAgents(tenantId?: string) {
           filter: `tenant_id=eq.${tenantId}`
         },
         (payload) => {
-          console.log('📡 New log:', payload);
+          console.log('ðŸ“¡ New log:', payload);
+          setLastRealtimeEventAt(Date.now());
 
           const log = payload.new as AgentLog;
 
-          // Adicionar ao histórico de logs
+          // Adicionar ao histÃ³rico de logs
           setRecentLogs(prev => [log, ...prev].slice(0, 50));
 
           // Atualizar status do agente
@@ -316,7 +349,7 @@ export function useRealtimeAgents(tenantId?: string) {
                 }
               });
 
-              // Voltar para idle após 1.5 segundos se completou
+              // Voltar para idle apÃ³s 1.5 segundos se completou
               if (log.status === 'completed' || log.status === 'failed') {
                 setTimeout(() => {
                   setAgentStatuses(current => {
@@ -339,7 +372,7 @@ export function useRealtimeAgents(tenantId?: string) {
       )
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') {
-          console.log('✅ Subscribed to logs');
+          console.log('âœ… Subscribed to logs');
         }
       });
 
@@ -347,13 +380,27 @@ export function useRealtimeAgents(tenantId?: string) {
 
     // Cleanup
     return () => {
-      console.log('🔌 Unsubscribing from realtime channels');
+      console.log('ðŸ”Œ Unsubscribing from realtime channels');
       channels.forEach(channel => {
         supabase.removeChannel(channel);
       });
       setIsConnected(false);
     };
   }, [tenantId]);
+  useEffect(() => {
+    if (!tenantId) return;
+
+    const interval = setInterval(() => {
+      const stale =
+        !lastRealtimeEventAt || Date.now() - lastRealtimeEventAt > 15000;
+      if (stale) {
+        fetchRealtimeFallback();
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [tenantId, lastRealtimeEventAt, fetchRealtimeFallback]);
+
 
   return {
     agentStatuses: Array.from(agentStatuses.values()),
@@ -364,3 +411,7 @@ export function useRealtimeAgents(tenantId?: string) {
     refresh: fetchInitialMetrics
   };
 }
+
+
+
+

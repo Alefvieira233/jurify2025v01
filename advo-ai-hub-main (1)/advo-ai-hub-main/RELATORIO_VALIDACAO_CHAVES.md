@@ -1,6 +1,6 @@
 # Relatório de Validação de Chaves Supabase
 
-**Data:** 16/12/2025, 21:32:52
+**Data:** 14/01/2026, 11:55:02
 
 ## Resultados
 
@@ -15,8 +15,8 @@
 
 
 ### 3. SUPABASE_SERVICE_ROLE_KEY
-- **Status:** OK
-
+- **Status:** FALHOU
+- **Erro:** Não encontrada
 
 
 ### 4. Conexão Supabase
@@ -27,8 +27,10 @@
 
 ## Resumo
 - Total de testes: 4
-- Testes OK: 4
-- Testes falhados: 0
-- Taxa de sucesso: 100%
+- Testes OK: 3
+- Testes falhados: 1
+- Taxa de sucesso: 75%
 
-## ✅ Resultado: TODAS AS CHAVES VÁLIDAS!
+## ⚠️ Resultado: CORREÇÕES NECESSÁRIAS
+
+Siga as instruções exibidas no console para corrigir as chaves.

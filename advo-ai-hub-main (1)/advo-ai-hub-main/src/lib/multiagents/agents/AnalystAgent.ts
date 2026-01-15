@@ -7,11 +7,11 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { BaseAgent } from '../core/BaseAgent';
-import { AgentMessage, MessageType, TaskRequestPayload } from '../types';
+import { AgentMessage, MessageType, TaskRequestPayload, AGENT_CONFIG } from '../types';
 
 export class AnalystAgent extends BaseAgent {
   constructor() {
-    super('Analista', 'Análise de dados, métricas e insights de negócio');
+    super(AGENT_CONFIG.NAMES.ANALYST, 'Dados e Insights', AGENT_CONFIG.IDS.ANALYST);
   }
 
   protected getSystemPrompt(): string {

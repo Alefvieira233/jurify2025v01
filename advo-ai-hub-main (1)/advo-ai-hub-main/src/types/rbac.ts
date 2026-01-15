@@ -1,9 +1,8 @@
 /**
- * RBAC (Role-Based Access Control) Types
- * Sistema de controle de acesso baseado em roles
+ * RBAC (Role-Based Access Control) types.
  */
 
-// Roles disponíveis no sistema
+// Roles disponiveis no sistema
 export type UserRole = 'admin' | 'manager' | 'user' | 'viewer';
 
 // Recursos do sistema
@@ -15,23 +14,23 @@ export type Resource =
   | 'configuracoes'
   | 'relatorios'
   | 'logs'
-  | 'integrações'
+  | 'integracoes'
   | 'whatsapp'
   | 'agendamentos'
   | 'pipeline';
 
-// Ações possíveis
+// Acoes possiveis
 export type Action = 'create' | 'read' | 'update' | 'delete' | 'execute' | 'manage';
 
-// Permissão individual
+// Permissao individual
 export interface Permission {
   resource: Resource;
   actions: Action[];
 }
 
-// Matriz de permissões por role
+// Matriz de permissoes por role
 export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
-  // Admin: Acesso total
+  // Admin: acesso total
   admin: [
     { resource: 'leads', actions: ['create', 'read', 'update', 'delete'] },
     { resource: 'contratos', actions: ['create', 'read', 'update', 'delete'] },
@@ -40,13 +39,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { resource: 'configuracoes', actions: ['read', 'update', 'manage'] },
     { resource: 'relatorios', actions: ['read', 'create'] },
     { resource: 'logs', actions: ['read'] },
-    { resource: 'integrações', actions: ['read', 'update', 'manage'] },
+    { resource: 'integracoes', actions: ['read', 'update', 'manage'] },
     { resource: 'whatsapp', actions: ['read', 'create', 'update'] },
     { resource: 'agendamentos', actions: ['create', 'read', 'update', 'delete'] },
     { resource: 'pipeline', actions: ['read', 'update'] },
   ],
 
-  // Manager: Pode gerenciar operações mas não usuários/configs
+  // Manager: gerencia operacoes, sem usuarios/configuracoes
   manager: [
     { resource: 'leads', actions: ['create', 'read', 'update', 'delete'] },
     { resource: 'contratos', actions: ['create', 'read', 'update'] },
@@ -55,13 +54,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { resource: 'configuracoes', actions: ['read'] },
     { resource: 'relatorios', actions: ['read', 'create'] },
     { resource: 'logs', actions: ['read'] },
-    { resource: 'integrações', actions: ['read'] },
+    { resource: 'integracoes', actions: ['read'] },
     { resource: 'whatsapp', actions: ['read', 'create'] },
     { resource: 'agendamentos', actions: ['create', 'read', 'update', 'delete'] },
     { resource: 'pipeline', actions: ['read', 'update'] },
   ],
 
-  // User: Operações básicas
+  // User: operacoes basicas
   user: [
     { resource: 'leads', actions: ['create', 'read', 'update'] },
     { resource: 'contratos', actions: ['read'] },
@@ -70,13 +69,13 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { resource: 'configuracoes', actions: ['read'] },
     { resource: 'relatorios', actions: ['read'] },
     { resource: 'logs', actions: [] },
-    { resource: 'integrações', actions: [] },
+    { resource: 'integracoes', actions: [] },
     { resource: 'whatsapp', actions: ['read'] },
     { resource: 'agendamentos', actions: ['create', 'read', 'update'] },
     { resource: 'pipeline', actions: ['read'] },
   ],
 
-  // Viewer: Somente leitura
+  // Viewer: somente leitura
   viewer: [
     { resource: 'leads', actions: ['read'] },
     { resource: 'contratos', actions: ['read'] },
@@ -85,25 +84,25 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { resource: 'configuracoes', actions: [] },
     { resource: 'relatorios', actions: ['read'] },
     { resource: 'logs', actions: [] },
-    { resource: 'integrações', actions: [] },
+    { resource: 'integracoes', actions: [] },
     { resource: 'whatsapp', actions: ['read'] },
     { resource: 'agendamentos', actions: ['read'] },
     { resource: 'pipeline', actions: ['read'] },
   ],
 };
 
-// Labels amigáveis para roles
+// Labels amigaveis para roles
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: 'Administrador',
   manager: 'Gerente',
-  user: 'Usuário',
+  user: 'Usuario',
   viewer: 'Visualizador',
 };
 
-// Descrições dos roles
+// Descricoes dos roles
 export const ROLE_DESCRIPTIONS: Record<UserRole, string> = {
-  admin: 'Acesso total ao sistema, incluindo gerenciamento de usuários e configurações',
-  manager: 'Pode gerenciar operações e leads, mas não usuários ou configurações',
-  user: 'Acesso às funcionalidades básicas de leads e agentes',
+  admin: 'Acesso total ao sistema, incluindo gerenciamento de usuarios e configuracoes',
+  manager: 'Pode gerenciar operacoes e leads, mas nao usuarios ou configuracoes',
+  user: 'Acesso as funcionalidades basicas de leads e agentes',
   viewer: 'Acesso somente leitura ao sistema',
 };

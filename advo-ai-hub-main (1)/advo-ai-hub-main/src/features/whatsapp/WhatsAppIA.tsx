@@ -192,7 +192,10 @@ const WhatsAppIA = () => {
               {isActive ? <Play className="h-4 w-4 mr-2" /> : <Pause className="h-4 w-4 mr-2" />}
               {isActive ? 'Ativo' : 'Pausado'}
             </Button>
-            <Button className="bg-amber-500 hover:bg-amber-600">
+            <Button
+              onClick={() => setShowSetup(true)}
+              className="bg-amber-500 hover:bg-amber-600"
+            >
               <Settings className="h-4 w-4 mr-2" />
               Configurar IA
             </Button>
@@ -260,6 +263,7 @@ const WhatsAppIA = () => {
           <div className="flex gap-3">
             {/* Settings Button Premium */}
             <Button
+              onClick={() => setShowSetup(true)}
               className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />

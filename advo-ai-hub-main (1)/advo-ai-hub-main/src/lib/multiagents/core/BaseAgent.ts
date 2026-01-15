@@ -23,6 +23,7 @@ import type {
 export abstract class BaseAgent implements IAgent {
   protected readonly name: string;
   protected readonly specialization: string;
+  protected readonly agentId: string;
   protected messageQueue: AgentMessage[] = [];
   protected context: SharedContext | null = null;
   protected isProcessing = false;
@@ -32,9 +33,10 @@ export abstract class BaseAgent implements IAgent {
   protected temperature: number = 0.7;
   protected maxTokens: number = 1500;
 
-  constructor(name: string, specialization: string) {
+  constructor(name: string, specialization: string, agentId?: string) {
     this.name = name;
     this.specialization = specialization;
+    this.agentId = agentId || specialization;
   }
 
   // 🏷️ Getters públicos
@@ -44,6 +46,10 @@ export abstract class BaseAgent implements IAgent {
 
   public getSpecialization(): string {
     return this.specialization;
+  }
+
+  public getAgentId(): string {
+    return this.agentId;
   }
 
   // 📨 Recebe mensagem de outro agente
@@ -156,6 +162,26 @@ export abstract class BaseAgent implements IAgent {
       }
 
       console.log(`✅ ${this.name} recebeu resposta da IA (${data.usage?.total_tokens || 0} tokens)`);
+
+      if (this.context?.leadId) {
+        supabase
+          .from('lead_interactions')
+          .insert({
+            lead_id: this.context.leadId,
+            message: prompt,
+            response: data.result,
+            tenant_id: this.context.metadata?.tenantId || null,
+            channel: this.context.metadata?.channel || 'chat',
+            tipo: 'message',
+            metadata: {
+              agent_id: this.agentId,
+              agent_name: this.name,
+            },
+          })
+          .catch((error) => {
+            console.warn('Failed to log lead interaction:', error);
+          });
+      }
 
       return data.result;
 

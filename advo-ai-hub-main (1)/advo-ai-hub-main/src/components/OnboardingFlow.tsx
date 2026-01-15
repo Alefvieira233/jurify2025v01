@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,10 +19,10 @@ interface OnboardingStep {
 
 const OnboardingFlow = () => {
   const [showOnboarding, setShowOnboarding] = useState(false);
-  const [currentStep, setCurrentStep] = useState(0);
   const [steps, setSteps] = useState<OnboardingStep[]>([]);
   const { user, profile, hasRole } = useAuth();
   const { toast } = useToast();
+  const tenantId = profile?.tenant_id || null;
 
   useEffect(() => {
     if (user && profile && hasRole('administrador')) {
@@ -32,49 +31,50 @@ const OnboardingFlow = () => {
   }, [user, profile]);
 
   const checkOnboardingStatus = async () => {
+    if (!tenantId) return;
+
     try {
-      // Verificar se o onboarding já foi concluído
       const { data: setting } = await supabase
         .from('system_settings')
         .select('value')
+        .eq('tenant_id', tenantId)
         .eq('key', 'onboarding_completed')
         .single();
 
       if (setting?.value === 'true') {
-        return; // Onboarding já foi concluído
+        return;
       }
 
-      // Verificar status de cada etapa
       const [
         { data: googleSettings },
         { data: apiKeys },
         { data: agentes },
         { data: usuarios }
       ] = await Promise.all([
-        supabase.from('google_calendar_settings').select('*').limit(1),
-        supabase.from('api_keys').select('*').limit(1),
-        supabase.from('agentes_ia').select('*').limit(1),
-        supabase.from('user_roles').select('*').gt('created_at', new Date(Date.now() - 24*60*60*1000).toISOString())
+        supabase.from('google_calendar_settings').select('id').eq('tenant_id', tenantId).limit(1),
+        supabase.from('api_keys').select('id').eq('tenant_id', tenantId).limit(1),
+        supabase.from('agentes_ia').select('id').eq('tenant_id', tenantId).limit(1),
+        supabase.from('user_roles').select('id').eq('tenant_id', tenantId).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       ]);
 
       const onboardingSteps: OnboardingStep[] = [
         {
           id: 'welcome',
           title: 'Bem-vindo ao Jurify',
-          description: 'Configure seu sistema de automação jurídica',
+          description: 'Configure seu sistema de automacao juridica',
           completed: true
         },
         {
           id: 'google_calendar',
-          title: 'Integração Google Calendar',
-          description: 'Configure a sincronização de agendamentos',
+          title: 'Integracao Google Calendar',
+          description: 'Configure a sincronizacao de agendamentos',
           completed: (googleSettings && googleSettings.length > 0) || false,
           link: '/?tab=configuracoes'
         },
         {
           id: 'api_keys',
           title: 'Configurar API Keys',
-          description: 'Configure chaves para integrações externas',
+          description: 'Configure chaves para integracoes externas',
           completed: (apiKeys && apiKeys.length > 0) || false,
           link: '/?tab=configuracoes'
         },
@@ -87,7 +87,7 @@ const OnboardingFlow = () => {
         },
         {
           id: 'usuarios',
-          title: 'Gerenciar Usuários',
+          title: 'Gerenciar Usuarios',
           description: 'Convide sua equipe para o sistema',
           completed: (usuarios && usuarios.length > 1) || false,
           link: '/?tab=usuarios'
@@ -95,36 +95,36 @@ const OnboardingFlow = () => {
       ];
 
       setSteps(onboardingSteps);
-      
-      // Mostrar onboarding se ainda há etapas pendentes
+
       const hasIncompleteSteps = onboardingSteps.some(step => !step.completed);
       if (hasIncompleteSteps) {
         setShowOnboarding(true);
       }
-
     } catch (error) {
       console.error('Erro ao verificar onboarding:', error);
     }
   };
 
   const completeOnboarding = async () => {
+    if (!tenantId) return;
+
     try {
       await supabase
         .from('system_settings')
         .upsert({
+          tenant_id: tenantId,
           key: 'onboarding_completed',
           value: 'true',
           category: 'sistema',
-          description: 'Onboarding do administrador foi concluído'
+          description: 'Onboarding do administrador foi concluido'
         });
 
       setShowOnboarding(false);
-      
-      toast({
-        title: "Configuração concluída!",
-        description: "Seu sistema Jurify está pronto para uso."
-      });
 
+      toast({
+        title: 'Configuracao concluida!',
+        description: 'Seu sistema Jurify esta pronto para uso.'
+      });
     } catch (error) {
       console.error('Erro ao concluir onboarding:', error);
     }
@@ -143,7 +143,7 @@ const OnboardingFlow = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl">
-              🎉 Configuração Inicial - Jurify
+              Configuracao Inicial - Jurify
             </CardTitle>
             <Button
               variant="ghost"
@@ -155,7 +155,7 @@ const OnboardingFlow = () => {
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">
-              <span>{completedSteps} de {steps.length} etapas concluídas</span>
+              <span>{completedSteps} de {steps.length} etapas concluidas</span>
               <span>{Math.round(progress)}%</span>
             </div>
             <Progress value={progress} className="w-full" />
@@ -163,12 +163,12 @@ const OnboardingFlow = () => {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {steps.map((step, index) => (
+          {steps.map((step) => (
             <div
               key={step.id}
               className={`p-4 rounded-lg border transition-colors ${
-                step.completed 
-                  ? 'bg-green-50 border-green-200' 
+                step.completed
+                  ? 'bg-green-50 border-green-200'
                   : 'bg-gray-50 border-gray-200'
               }`}
             >
@@ -180,18 +180,18 @@ const OnboardingFlow = () => {
                     <Circle className="h-5 w-5 text-gray-400" />
                   )}
                 </div>
-                
+
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-medium">{step.title}</h3>
                     <Badge variant="outline">
-                      {step.completed ? 'Concluído' : 'Pendente'}
+                      {step.completed ? 'Concluido' : 'Pendente'}
                     </Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-3">
                     {step.description}
                   </p>
-                  
+
                   {!step.completed && step.link && (
                     <Button
                       variant="outline"
@@ -213,7 +213,7 @@ const OnboardingFlow = () => {
           <div className="pt-6 border-t">
             <div className="flex items-center justify-between">
               <div>
-                <h4 className="font-medium mb-1">🚀 Tutorial em Vídeo</h4>
+                <h4 className="font-medium mb-1">Tutorial em Video</h4>
                 <p className="text-sm text-gray-600">
                   Assista ao guia completo do sistema
                 </p>
@@ -226,16 +226,16 @@ const OnboardingFlow = () => {
           </div>
 
           <div className="flex justify-between pt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowOnboarding(false)}
             >
               Fazer Depois
             </Button>
-            
+
             {progress === 100 && (
               <Button onClick={completeOnboarding}>
-                Finalizar Configuração
+                Finalizar Configuracao
               </Button>
             )}
           </div>

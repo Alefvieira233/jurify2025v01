@@ -14,10 +14,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useRBAC } from '@/hooks/useRBAC';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-// TODO: Criar esses componentes
-// import NovoUsuarioForm from './NovoUsuarioForm';
-// import EditarUsuarioForm from './EditarUsuarioForm';
-// import GerenciarPermissoesForm from './GerenciarPermissoesForm';
+import NovoUsuarioForm from '@/components/NovoUsuarioForm';
+import EditarUsuarioForm from '@/components/EditarUsuarioForm';
+import GerenciarPermissoesForm from '@/components/GerenciarPermissoesForm';
 
 interface Usuario {
   id: string;
@@ -35,7 +34,7 @@ interface Usuario {
 }
 
 const UsuariosManager = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,7 +68,7 @@ const UsuariosManager = () => {
   const { data: usuarios = [], isLoading } = useQuery({
     queryKey: ['usuarios'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('profiles')
         .select(`
           *,
@@ -79,6 +78,12 @@ const UsuariosManager = () => {
           )
         `)
         .order('nome_completo');
+
+      if (profile?.tenant_id) {
+        query = query.eq('tenant_id', profile.tenant_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data as Usuario[];
@@ -163,10 +168,7 @@ const UsuariosManager = () => {
               <DialogHeader>
                 <DialogTitle>Novo Usuário</DialogTitle>
               </DialogHeader>
-              <div className="p-4 text-center">
-                <p className="text-gray-600">Formulário em construção</p>
-              </div>
-              {/* <NovoUsuarioForm onClose={() => setIsNovoUsuarioOpen(false)} /> */}
+              <NovoUsuarioForm onClose={() => setIsNovoUsuarioOpen(false)} />
             </DialogContent>
           </Dialog>
         )}
@@ -293,15 +295,12 @@ const UsuariosManager = () => {
           <DialogHeader>
             <DialogTitle>Editar Usuário</DialogTitle>
           </DialogHeader>
-          <div className="p-4 text-center">
-            <p className="text-gray-600">Formulário em construção</p>
-          </div>
-          {/* {selectedUser && (
+          {selectedUser && (
             <EditarUsuarioForm
               usuario={selectedUser}
               onClose={() => setIsEditarUsuarioOpen(false)}
             />
-          )} */}
+          )}
         </DialogContent>
       </Dialog>
 
@@ -310,15 +309,12 @@ const UsuariosManager = () => {
           <DialogHeader>
             <DialogTitle>Gerenciar Permissões</DialogTitle>
           </DialogHeader>
-          <div className="p-4 text-center">
-            <p className="text-gray-600">Formulário em construção</p>
-          </div>
-          {/* {selectedUser && (
+          {selectedUser && (
             <GerenciarPermissoesForm
               usuario={selectedUser}
               onClose={() => setIsPermissoesOpen(false)}
             />
-          )} */}
+          )}
         </DialogContent>
       </Dialog>
     </div>

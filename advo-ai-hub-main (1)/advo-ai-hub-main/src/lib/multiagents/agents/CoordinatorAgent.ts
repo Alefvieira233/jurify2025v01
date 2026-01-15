@@ -3,7 +3,7 @@ import { AgentMessage, MessageType, Priority, AGENT_CONFIG } from '../types';
 
 export class CoordinatorAgent extends BaseAgent {
   constructor() {
-    super(AGENT_CONFIG.NAMES.COORDINATOR, AGENT_CONFIG.IDS.COORDINATOR);
+    super(AGENT_CONFIG.NAMES.COORDINATOR, 'Orquestracao', AGENT_CONFIG.IDS.COORDINATOR);
   }
 
   protected getSystemPrompt(): string {

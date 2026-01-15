@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,33 +28,43 @@ interface NovoAgendamentoFormProps {
 }
 
 export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
+  const { profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
   const [selectedDate, setSelectedDate] = React.useState<Date>();
   const [selectedTime, setSelectedTime] = React.useState('');
   const queryClient = useQueryClient();
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<NovoAgendamentoFormData>();
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm<NovoAgendamentoFormData>({
+    defaultValues: {
+      lead_id: '',
+      area_juridica: '',
+      data_hora: '',
+      responsavel: '',
+      observacoes: ''
+    }
+  });
 
-  // Fetch leads para o dropdown
   const { data: leads = [] } = useQuery({
-    queryKey: ['leads'],
+    queryKey: ['leads', tenantId],
     queryFn: async () => {
+      if (!tenantId) return [];
       const { data, error } = await supabase
         .from('leads')
-        .select('id, nome_completo, area_juridica')
-        .order('nome_completo');
-      
+        .select('id, nome, area_juridica')
+        .eq('tenant_id', tenantId)
+        .order('nome');
+
       if (error) throw error;
       return data;
     }
   });
 
-  // Mutation para criar agendamento
   const createAgendamentoMutation = useMutation({
     mutationFn: async (data: NovoAgendamentoFormData) => {
       const { error } = await supabase
         .from('agendamentos')
-        .insert([data]);
-      
+        .insert([{ ...data, tenant_id: tenantId }]);
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -69,6 +78,11 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
   });
 
   const onSubmit = (data: NovoAgendamentoFormData) => {
+    if (!tenantId) {
+      toast.error('Tenant não encontrado. Refaça o login.');
+      return;
+    }
+
     if (!selectedDate || !selectedTime) {
       toast.error('Por favor, selecione data e horário');
       return;
@@ -76,7 +90,7 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
 
     const [hour, minute] = selectedTime.split(':');
     const dateTime = new Date(selectedDate);
-    dateTime.setHours(parseInt(hour), parseInt(minute), 0, 0);
+    dateTime.setHours(parseInt(hour, 10), parseInt(minute, 10), 0, 0);
 
     const agendamentoData = {
       ...data,
@@ -113,16 +127,20 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <input type="hidden" {...register('lead_id', { required: true })} />
+      <input type="hidden" {...register('area_juridica', { required: true })} />
+      <input type="hidden" {...register('responsavel', { required: true })} />
+
       <div className="space-y-2">
         <Label htmlFor="lead_id">Cliente</Label>
-        <Select onValueChange={(value) => setValue('lead_id', value)}>
+        <Select onValueChange={(value) => setValue('lead_id', value, { shouldValidate: true })}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione um cliente" />
           </SelectTrigger>
           <SelectContent>
             {leads.map((lead) => (
               <SelectItem key={lead.id} value={lead.id}>
-                {lead.nome_completo}
+                {lead.nome}
               </SelectItem>
             ))}
           </SelectContent>
@@ -132,7 +150,7 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
 
       <div className="space-y-2">
         <Label htmlFor="area_juridica">Área Jurídica</Label>
-        <Select onValueChange={(value) => setValue('area_juridica', value)}>
+        <Select onValueChange={(value) => setValue('area_juridica', value, { shouldValidate: true })}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione a área jurídica" />
           </SelectTrigger>
@@ -155,12 +173,12 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
               <Button
                 variant="outline"
                 className={cn(
-                  "w-full justify-start text-left font-normal",
-                  !selectedDate && "text-muted-foreground"
+                  'w-full justify-start text-left font-normal',
+                  !selectedDate && 'text-muted-foreground'
                 )}
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "dd/MM/yyyy", { locale: ptBR }) : "Selecione a data"}
+                {selectedDate ? format(selectedDate, 'dd/MM/yyyy', { locale: ptBR }) : 'Selecione a data'}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0">
@@ -194,7 +212,7 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
 
       <div className="space-y-2">
         <Label htmlFor="responsavel">Advogado Responsável</Label>
-        <Select onValueChange={(value) => setValue('responsavel', value)}>
+        <Select onValueChange={(value) => setValue('responsavel', value, { shouldValidate: true })}>
           <SelectTrigger>
             <SelectValue placeholder="Selecione o responsável" />
           </SelectTrigger>
@@ -218,16 +236,12 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
         />
       </div>
 
-      <div className="flex justify-end space-x-2 pt-4">
+      <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button 
-          type="submit" 
-          className="bg-amber-500 hover:bg-amber-600"
-          disabled={createAgendamentoMutation.isPending}
-        >
-          {createAgendamentoMutation.isPending ? 'Criando...' : 'Agendar Reunião'}
+        <Button type="submit" className="bg-amber-500 hover:bg-amber-600">
+          Agendar
         </Button>
       </div>
     </form>

@@ -10,7 +10,7 @@ import { AgentMessage, MessageType, Priority, AGENT_CONFIG } from '../types';
 
 export class LegalAgent extends BaseAgent {
   constructor() {
-    super(AGENT_CONFIG.NAMES.LEGAL, AGENT_CONFIG.IDS.LEGAL);
+    super(AGENT_CONFIG.NAMES.LEGAL, 'Analise Legal', AGENT_CONFIG.IDS.LEGAL);
   }
 
   protected getSystemPrompt(): string {

@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 
 interface Lead {
   id: string;
-  nome_completo: string;
+  nome: string;
   area_juridica: string;
   valor_causa?: number;
 }
@@ -21,6 +21,9 @@ interface NovoContratoFormProps {
 }
 
 export const NovoContratoForm = ({ onClose }: NovoContratoFormProps) => {
+  const { profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
+
   const [selectedLeadId, setSelectedLeadId] = useState('');
   const [nomeCliente, setNomeCliente] = useState('');
   const [areaJuridica, setAreaJuridica] = useState('');
@@ -62,27 +65,27 @@ _____________________          _____________________
 
   const queryClient = useQueryClient();
 
-  // Fetch leads
   const { data: leads = [] } = useQuery({
-    queryKey: ['leads-contratos'],
+    queryKey: ['leads-contratos', tenantId],
     queryFn: async () => {
+      if (!tenantId) return [] as Lead[];
       const { data, error } = await supabase
         .from('leads')
-        .select('id, nome_completo, area_juridica, valor_causa')
-        .order('nome_completo');
-      
+        .select('id, nome, area_juridica, valor_causa')
+        .eq('tenant_id', tenantId)
+        .order('nome');
+
       if (error) throw error;
       return data as Lead[];
     }
   });
 
-  // Mutation para criar contrato
   const createContratoMutation = useMutation({
     mutationFn: async (contratoData: any) => {
       const { error } = await supabase
         .from('contratos')
         .insert([contratoData]);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -99,16 +102,16 @@ _____________________          _____________________
     setSelectedLeadId(leadId);
     const lead = leads.find(l => l.id === leadId);
     if (lead) {
-      setNomeCliente(lead.nome_completo);
+      setNomeCliente(lead.nome);
       setAreaJuridica(lead.area_juridica);
       setValorCausa(lead.valor_causa?.toString() || '');
     }
   };
 
   const gerarTextoFinal = () => {
-    const valorCausaNum = parseFloat(valorCausa) || 0;
+    const valorCausaNum = Number.parseFloat(valorCausa) || 0;
     const valorHonorarios = valorCausaNum * 0.3;
-    
+
     return textoContrato
       .replace(/{nome_cliente}/g, nomeCliente)
       .replace(/{area_juridica}/g, areaJuridica)
@@ -117,23 +120,24 @@ _____________________          _____________________
       .replace(/{responsavel}/g, responsavel);
   };
 
-  // 🔒 VALIDAÇÃO SEGURA DE ENTRADA
   const validateInput = (value: string, type: 'text' | 'email' | 'number' | 'currency') => {
-    // Sanitização básica
     const sanitized = value.trim().replace(/<script[^>]*>.*?<\/script>/gi, '').replace(/<[^>]*>/g, '');
-    
+
     switch (type) {
       case 'text':
         return sanitized.length >= 2 && sanitized.length <= 200;
-      case 'email':
+      case 'email': {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(sanitized);
-      case 'number':
-        const num = parseFloat(sanitized);
-        return !isNaN(num) && num >= 0 && num <= 999999999;
-      case 'currency':
-        const currency = parseFloat(sanitized);
-        return !isNaN(currency) && currency >= 0 && currency <= 999999999;
+      }
+      case 'number': {
+        const num = Number.parseFloat(sanitized);
+        return Number.isFinite(num) && num >= 0 && num <= 999999999;
+      }
+      case 'currency': {
+        const currency = Number.parseFloat(sanitized);
+        return Number.isFinite(currency) && currency >= 0 && currency <= 999999999;
+      }
       default:
         return false;
     }
@@ -141,57 +145,62 @@ _____________________          _____________________
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Validação rigorosa de entrada
+
+    if (!tenantId) {
+      toast.error('Tenant não encontrado. Refaça o login.');
+      return;
+    }
+
     const validationErrors: string[] = [];
-    
+
     if (!nomeCliente || !validateInput(nomeCliente, 'text')) {
       validationErrors.push('Nome do cliente deve ter entre 2 e 200 caracteres');
     }
-    
+
     if (!areaJuridica || areaJuridica.length < 2) {
       validationErrors.push('Área jurídica é obrigatória');
     }
-    
+
     if (!valorCausa || !validateInput(valorCausa, 'currency')) {
       validationErrors.push('Valor da causa deve ser um número válido');
     }
-    
+
     if (!responsavel || responsavel.length < 2) {
       validationErrors.push('Responsável é obrigatório');
     }
-    
+
     if (textoContrato.length < 50) {
       validationErrors.push('Texto do contrato deve ter pelo menos 50 caracteres');
     }
-    
-    // Validação de XSS no texto do contrato
+
     const dangerousPatterns = [
       /<script[^>]*>.*?<\/script>/gi,
       /javascript:/gi,
       /on\w+\s*=/gi,
       /<iframe[^>]*>/gi
     ];
-    
-    const hasDangerousContent = dangerousPatterns.some(pattern => 
+
+    const hasDangerousContent = dangerousPatterns.some(pattern =>
       pattern.test(textoContrato) || pattern.test(clausulasCustomizadas)
     );
-    
+
     if (hasDangerousContent) {
       validationErrors.push('Conteúdo contém elementos não permitidos por segurança');
     }
-    
+
     if (validationErrors.length > 0) {
       toast.error(`Erros de validação:\n${validationErrors.join('\n')}`);
       return;
     }
 
-    // Sanitizar dados antes de enviar
+    const valorCausaParsed = Number.parseFloat(valorCausa);
+
     const contratoData = {
+      tenant_id: tenantId,
       lead_id: selectedLeadId || null,
       nome_cliente: nomeCliente.trim().substring(0, 200),
       area_juridica: areaJuridica.trim(),
-      valor_causa: Math.max(0, Math.min(999999999, parseFloat(valorCausa))),
+      valor_causa: Number.isFinite(valorCausaParsed) ? Math.max(0, Math.min(999999999, valorCausaParsed)) : 0,
       responsavel: responsavel.trim(),
       texto_contrato: textoContrato.trim().substring(0, 10000),
       clausulas_customizadas: clausulasCustomizadas?.trim().substring(0, 5000) || null,
@@ -204,7 +213,6 @@ _____________________          _____________________
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Seleção de Lead */}
       <div className="space-y-2">
         <Label>Lead Existente (Opcional)</Label>
         <Select value={selectedLeadId} onValueChange={handleLeadSelect}>
@@ -214,122 +222,68 @@ _____________________          _____________________
           <SelectContent>
             {leads.map(lead => (
               <SelectItem key={lead.id} value={lead.id}>
-                {lead.nome_completo} - {lead.area_juridica}
+                {lead.nome} - {lead.area_juridica}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Dados do Cliente */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="nome-cliente">Nome Completo do Cliente *</Label>
-          <Input
-            id="nome-cliente"
-            value={nomeCliente}
-            onChange={(e) => setNomeCliente(e.target.value)}
-            placeholder="Digite o nome completo"
-            required
-          />
+          <Label>Nome do Cliente</Label>
+          <Input value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} required />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="area-juridica">Área Jurídica *</Label>
-          <Select value={areaJuridica} onValueChange={setAreaJuridica}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione a área jurídica" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Direito Trabalhista">Direito Trabalhista</SelectItem>
-              <SelectItem value="Direito de Família">Direito de Família</SelectItem>
-              <SelectItem value="Direito Previdenciário">Direito Previdenciário</SelectItem>
-              <SelectItem value="Direito Civil">Direito Civil</SelectItem>
-              <SelectItem value="Direito Criminal">Direito Criminal</SelectItem>
-              <SelectItem value="Direito Empresarial">Direito Empresarial</SelectItem>
-              <SelectItem value="Direito Imobiliário">Direito Imobiliário</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>Área Jurídica</Label>
+          <Input value={areaJuridica} onChange={(e) => setAreaJuridica(e.target.value)} required />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="valor-causa">Valor da Causa (R$) *</Label>
+          <Label>Valor da Causa (R$)</Label>
           <Input
-            id="valor-causa"
             type="number"
-            step="0.01"
             value={valorCausa}
             onChange={(e) => setValorCausa(e.target.value)}
-            placeholder="0,00"
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="responsavel">Responsável *</Label>
-          <Select value={responsavel} onValueChange={setResponsavel}>
-            <SelectTrigger>
-              <SelectValue placeholder="Selecione o responsável" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Dr. Silva">Dr. Silva</SelectItem>
-              <SelectItem value="Dra. Oliveira">Dra. Oliveira</SelectItem>
-              <SelectItem value="Dr. Santos">Dr. Santos</SelectItem>
-              <SelectItem value="Dra. Costa">Dra. Costa</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label>Responsável</Label>
+          <Input value={responsavel} onChange={(e) => setResponsavel(e.target.value)} required />
         </div>
       </div>
 
-      {/* Texto do Contrato */}
       <div className="space-y-2">
-        <Label htmlFor="texto-contrato">Texto Base do Contrato</Label>
+        <Label>Texto do Contrato</Label>
         <Textarea
-          id="texto-contrato"
           value={textoContrato}
           onChange={(e) => setTextoContrato(e.target.value)}
-          rows={15}
-          className="font-mono text-sm"
-          placeholder="Digite o texto base do contrato..."
+          rows={12}
+          required
         />
-        <p className="text-sm text-gray-600">
-          Use os placeholders: {'{nome_cliente}'}, {'{area_juridica}'}, {'{valor_causa}'}, {'{valor_honorarios}'}, {'{responsavel}'}
-        </p>
       </div>
 
-      {/* Cláusulas Customizadas */}
       <div className="space-y-2">
-        <Label htmlFor="clausulas-customizadas">Cláusulas Customizadas (Opcional)</Label>
+        <Label>Cláusulas Customizadas (Opcional)</Label>
         <Textarea
-          id="clausulas-customizadas"
           value={clausulasCustomizadas}
           onChange={(e) => setClausulasCustomizadas(e.target.value)}
           rows={4}
-          placeholder="Digite cláusulas adicionais específicas para este contrato..."
         />
       </div>
 
-      {/* Preview do Contrato */}
-      <div className="space-y-2">
-        <Label>Preview do Contrato Gerado</Label>
-        <div className="border rounded-lg p-4 bg-gray-50 max-h-40 overflow-y-auto">
-          <pre className="text-sm whitespace-pre-wrap">{gerarTextoFinal()}</pre>
-        </div>
-      </div>
-
-      {/* Botões */}
-      <div className="flex justify-end space-x-4">
+      <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button 
-          type="submit" 
-          className="bg-amber-500 hover:bg-amber-600"
-          disabled={createContratoMutation.isPending}
-        >
-          {createContratoMutation.isPending ? 'Criando...' : 'Criar Contrato'}
+        <Button type="submit" className="bg-amber-500 hover:bg-amber-600">
+          Salvar Contrato
+        </Button>
+        <Button type="button" variant="outline" onClick={() => setTextoContrato(gerarTextoFinal())}>
+          Atualizar Texto
         </Button>
       </div>
     </form>

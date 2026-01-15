@@ -1,16 +1,9 @@
-/**
- * 🚀 HOOK DE INTEGRAÇÃO MULTIAGENTES - SPACEX ENTERPRISE
- * 
- * Hook React para integração frontend com o sistema multiagentes.
- * Fornece interface limpa para interação com os 7 agentes especializados.
- */
-
 import { useState, useEffect, useCallback } from 'react';
 import { multiAgentSystem } from '@/lib/multiagents/MultiAgentSystem';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-// 🎯 TIPOS DE DADOS
 export interface LeadData {
   id?: string;
   name: string;
@@ -40,226 +33,229 @@ export interface SystemMetrics {
   agents_performance: AgentStats[];
 }
 
-// 🚀 HOOK PRINCIPAL
 export const useMultiAgentSystem = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [systemStats, setSystemStats] = useState<any>(null);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
   const { toast } = useToast();
+  const { profile, user } = useAuth();
 
-  // 📊 Carrega estatísticas do sistema
+  const tenantId = profile?.tenant_id ?? null;
+
   const loadSystemStats = useCallback(async () => {
+    if (!tenantId) return;
+
     try {
       const stats = multiAgentSystem.getSystemStats();
       setSystemStats(stats);
 
-      // Busca atividade recente do banco
       const { data: activity } = await supabase
         .from('lead_interactions')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false })
         .limit(10);
 
       setRecentActivity(activity || []);
-
     } catch (error) {
-      console.error('❌ Erro ao carregar stats:', error);
+      console.error('Failed to load stats:', error);
       toast({
-        title: "Erro",
-        description: "Falha ao carregar estatísticas do sistema",
-        variant: "destructive"
+        title: 'Erro',
+        description: 'Falha ao carregar estatisticas do sistema.',
+        variant: 'destructive',
       });
     }
-  }, [toast]);
+  }, [toast, tenantId]);
 
-  // 📈 Carrega métricas detalhadas
   const loadMetrics = useCallback(async () => {
+    if (!tenantId) return;
+
     try {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
       const { data: leads } = await supabase
         .from('leads')
         .select('*')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        .eq('tenant_id', tenantId)
+        .gte('created_at', since);
 
       const { data: interactions } = await supabase
         .from('lead_interactions')
         .select('*')
-        .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString());
+        .eq('tenant_id', tenantId)
+        .gte('created_at', since);
 
-      // Calcula métricas
       const totalLeads = leads?.length || 0;
-      const convertedLeads = leads?.filter(l => l.status === 'converted').length || 0;
+      const convertedLeads = leads?.filter((l) => l.status === 'contrato_assinado').length || 0;
       const conversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
 
       const agentsPerformance: AgentStats[] = [
         {
           name: 'Coordenador',
-          specialization: 'Orquestração',
-          messages_processed: interactions?.filter(i => i.agent_id === 'coordenador').length || 0,
+          specialization: 'Orquestracao',
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'coordenador').length || 0,
           success_rate: 95,
           avg_response_time: 1.2,
-          current_status: 'active'
+          current_status: 'active',
         },
         {
           name: 'Qualificador',
-          specialization: 'Qualificação de Leads',
-          messages_processed: interactions?.filter(i => i.agent_id === 'qualificador').length || 0,
+          specialization: 'Qualificacao de Leads',
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'qualificador').length || 0,
           success_rate: 88,
           avg_response_time: 2.1,
-          current_status: 'active'
+          current_status: 'active',
         },
         {
-          name: 'Jurídico',
-          specialization: 'Análise Legal',
-          messages_processed: interactions?.filter(i => i.agent_id === 'juridico').length || 0,
+          name: 'Juridico',
+          specialization: 'Analise Legal',
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'juridico').length || 0,
           success_rate: 92,
           avg_response_time: 3.5,
-          current_status: 'active'
+          current_status: 'active',
         },
         {
           name: 'Comercial',
           specialization: 'Vendas',
-          messages_processed: interactions?.filter(i => i.agent_id === 'comercial').length || 0,
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'comercial').length || 0,
           success_rate: 75,
           avg_response_time: 2.8,
-          current_status: 'active'
+          current_status: 'active',
         },
         {
           name: 'Analista',
           specialization: 'Dados e Insights',
-          messages_processed: interactions?.filter(i => i.agent_id === 'analista').length || 0,
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'analista').length || 0,
           success_rate: 98,
           avg_response_time: 4.2,
-          current_status: 'idle'
+          current_status: 'idle',
         },
         {
           name: 'Comunicador',
-          specialization: 'Comunicação',
-          messages_processed: interactions?.filter(i => i.agent_id === 'comunicador').length || 0,
+          specialization: 'Comunicacao',
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'comunicador').length || 0,
           success_rate: 94,
           avg_response_time: 1.8,
-          current_status: 'active'
+          current_status: 'active',
         },
         {
           name: 'Customer Success',
           specialization: 'Sucesso do Cliente',
-          messages_processed: interactions?.filter(i => i.agent_id === 'customer_success').length || 0,
+          messages_processed: interactions?.filter((i) => i.metadata?.agent_id === 'customer_success').length || 0,
           success_rate: 91,
           avg_response_time: 2.5,
-          current_status: 'active'
-        }
+          current_status: 'active',
+        },
       ];
 
       setMetrics({
         total_leads_processed: totalLeads,
         conversion_rate: conversionRate,
         avg_qualification_time: 4.2,
-        active_conversations: leads?.filter(l => l.status === 'in_progress').length || 0,
-        agents_performance: agentsPerformance
+        active_conversations: leads?.filter((l) => l.status === 'em_atendimento').length || 0,
+        agents_performance: agentsPerformance,
       });
-
     } catch (error) {
-      console.error('❌ Erro ao carregar métricas:', error);
+      console.error('Failed to load metrics:', error);
     }
-  }, []);
+  }, [tenantId]);
 
-  // 🎯 Processa novo lead
-  const processLead = useCallback(async (leadData: LeadData): Promise<boolean> => {
-    setIsProcessing(true);
+  const processLead = useCallback(
+    async (leadData: LeadData): Promise<boolean> => {
+      if (!tenantId) return false;
 
-    try {
-      console.log('🚀 Processando lead via multiagentes:', leadData);
+      setIsProcessing(true);
 
-      // Salva lead no banco
-      const { data: savedLead, error } = await supabase
-        .from('leads')
-        .insert({
-          name: leadData.name,
-          email: leadData.email,
-          phone: leadData.phone,
-          message: leadData.message,
-          legal_area: leadData.legal_area,
-          urgency: leadData.urgency || 'medium',
-          source: leadData.source,
-          status: 'new',
-          metadata: leadData.metadata || {},
-          created_at: new Date().toISOString()
-        })
-        .select()
-        .single();
+      try {
+        console.log('[multiagent] Processing lead:', leadData);
 
-      if (error) throw error;
+        const { data: savedLead, error } = await supabase
+          .from('leads')
+          .insert({
+            nome: leadData.name,
+            email: leadData.email || null,
+            telefone: leadData.phone || null,
+            area_juridica: leadData.legal_area || 'Nao informado',
+            origem: leadData.source,
+            status: 'novo_lead',
+            responsavel_id: user?.id || null,
+            descricao: leadData.message,
+            metadata: {
+              ...(leadData.metadata || {}),
+              responsavel_nome: user?.email || 'Sistema',
+            },
+            tenant_id: tenantId,
+            created_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
 
-      // Processa via sistema multiagentes
-      await multiAgentSystem.processLead(savedLead, leadData.message, leadData.source);
+        if (error) throw error;
 
-      toast({
-        title: "✅ Lead Processado",
-        description: `Lead ${leadData.name} foi enviado para o sistema multiagentes`,
-        variant: "default"
-      });
+        await multiAgentSystem.processLead(savedLead, leadData.message, leadData.source);
 
-      // Recarrega stats
-      await loadSystemStats();
-      await loadMetrics();
+        toast({
+          title: 'Lead processado',
+          description: `Lead ${leadData.name} enviado ao sistema multiagentes.`,
+        });
 
-      return true;
+        await loadSystemStats();
+        await loadMetrics();
 
-    } catch (error) {
-      console.error('❌ Erro ao processar lead:', error);
-      toast({
-        title: "Erro",
-        description: "Falha ao processar lead no sistema multiagentes",
-        variant: "destructive"
-      });
-      return false;
+        return true;
+      } catch (error) {
+        console.error('Failed to process lead:', error);
+        toast({
+          title: 'Erro',
+          description: 'Falha ao processar lead no sistema multiagentes.',
+          variant: 'destructive',
+        });
+        return false;
+      } finally {
+        setIsProcessing(false);
+      }
+    },
+    [loadMetrics, loadSystemStats, tenantId, toast]
+  );
 
-    } finally {
-      setIsProcessing(false);
-    }
-  }, [toast, loadSystemStats, loadMetrics]);
-
-  // 🧪 Testa sistema multiagentes
   const testSystem = useCallback(async (): Promise<boolean> => {
     setIsProcessing(true);
 
     try {
       const testLead: LeadData = {
-        name: 'João Silva (TESTE)',
+        name: 'Joao Silva (TESTE)',
         email: 'teste@jurify.com',
         phone: '+5511999999999',
-        message: 'Preciso de ajuda com um processo trabalhista. Fui demitido sem justa causa e não recebi todas as verbas rescisórias.',
+        message:
+          'Preciso de ajuda com um processo trabalhista. Fui demitido sem justa causa e nao recebi todas as verbas rescisorias.',
         legal_area: 'trabalhista',
         urgency: 'medium',
         source: 'chat',
-        metadata: { test: true }
+        metadata: { test: true },
       };
 
       const success = await processLead(testLead);
 
       if (success) {
         toast({
-          title: "🧪 Teste Concluído",
-          description: "Sistema multiagentes funcionando corretamente!",
-          variant: "default"
+          title: 'Teste concluido',
+          description: 'Sistema multiagentes funcionando corretamente.',
         });
       }
 
       return success;
-
     } catch (error) {
-      console.error('❌ Erro no teste:', error);
+      console.error('Test failed:', error);
       return false;
     } finally {
       setIsProcessing(false);
     }
   }, [processLead, toast]);
 
-  // 📊 Força análise de performance
   const triggerAnalysis = useCallback(async () => {
     try {
-      // Envia tarefa para Agente Analista
-      const analystAgent = multiAgentSystem['agents']?.get('Analista');
+      const analystAgent = (multiAgentSystem as any)['agents']?.get('Analista');
       if (analystAgent) {
         await analystAgent.receiveMessage({
           id: `analysis_${Date.now()}`,
@@ -269,27 +265,23 @@ export const useMultiAgentSystem = () => {
           payload: { task: 'analyze_performance' },
           timestamp: new Date(),
           priority: 'medium',
-          requires_response: false
+          requires_response: false,
         });
 
         toast({
-          title: "📊 Análise Iniciada",
-          description: "Agente Analista está processando dados de performance",
-          variant: "default"
+          title: 'Analise iniciada',
+          description: 'Agente Analista esta processando dados de performance.',
         });
       }
-
     } catch (error) {
-      console.error('❌ Erro ao iniciar análise:', error);
+      console.error('Failed to start analysis:', error);
     }
   }, [toast]);
 
-  // 🔄 Carrega dados iniciais
   useEffect(() => {
     loadSystemStats();
     loadMetrics();
 
-    // Atualiza a cada 30 segundos
     const interval = setInterval(() => {
       loadSystemStats();
       loadMetrics();
@@ -299,17 +291,14 @@ export const useMultiAgentSystem = () => {
   }, [loadSystemStats, loadMetrics]);
 
   return {
-    // Estado
     isProcessing,
     systemStats,
     recentActivity,
     metrics,
-
-    // Ações
     processLead,
     testSystem,
     triggerAnalysis,
     loadSystemStats,
-    loadMetrics
+    loadMetrics,
   };
 };

@@ -10,16 +10,22 @@ export type Contrato = Database['public']['Tables']['contratos']['Row'];
 export type CreateContratoData = Database['public']['Tables']['contratos']['Insert'];
 
 export const useContratos = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const fetchContratosQuery = useCallback(async () => {
     console.log('🔍 [useContratos] Buscando contratos...');
     
-    const { data, error } = await supabase
+    let query = supabase
       .from('contratos')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (profile?.tenant_id) {
+      query = query.eq('tenant_id', profile.tenant_id);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('❌ [useContratos] Erro ao buscar contratos:', error);
@@ -28,7 +34,7 @@ export const useContratos = () => {
     }
 
     return { data, error };
-  }, []);
+  }, [profile?.tenant_id]);
 
   const {
     data: contratos,
@@ -63,9 +69,10 @@ export const useContratos = () => {
       if (error) throw error;
 
       console.log('✅ [useContratos] Contrato criado com sucesso:', newContrato.id);
-      
-      setContratos([newContrato, ...contratos]);
-      
+
+      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      setContratos(prev => [newContrato, ...prev]);
+
       toast({
         title: 'Sucesso',
         description: 'Contrato criado com sucesso!',
@@ -81,7 +88,7 @@ export const useContratos = () => {
       });
       return false;
     }
-  }, [user, toast, setContratos, contratos]);
+  }, [user, toast, setContratos]);
 
   const updateContrato = useCallback(async (id: string, updateData: Partial<Contrato>): Promise<boolean> => {
     if (!user) return false;
@@ -98,8 +105,9 @@ export const useContratos = () => {
       if (error) throw error;
 
       console.log('✅ [useContratos] Contrato atualizado com sucesso');
-      
-      setContratos(contratos.map(contrato => 
+
+      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      setContratos(prev => prev.map(contrato =>
         contrato.id === id ? { ...contrato, ...updatedContrato } : contrato
       ));
 
@@ -118,7 +126,7 @@ export const useContratos = () => {
       });
       return false;
     }
-  }, [user, toast, contratos, setContratos]);
+  }, [user, toast, setContratos]);
 
   return {
     contratos,

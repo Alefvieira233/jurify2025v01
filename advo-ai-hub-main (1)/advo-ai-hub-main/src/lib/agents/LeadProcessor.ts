@@ -267,15 +267,24 @@ export class LeadProcessor {
    * 🔍 Encontra ou cria lead a partir da mensagem
    */
   private async findOrCreateLeadFromMessage(message: IncomingMessage): Promise<string> {
-    // Busca lead existente por telefone/email
-    const { data: existingLead } = await supabase
-      .from('leads')
-      .select('id')
-      .or(`telefone.eq.${message.from},email.eq.${message.from}`)
-      .single();
+    // ✅ CORREÇÃO: Busca segura + tratamento de erro do .single()
+    try {
+      const { data: existingLead, error } = await supabase
+        .from('leads')
+        .select('id')
+        .or(`telefone.eq."${message.from}",email.eq."${message.from}"`)
+        .maybeSingle(); // ✅ CORREÇÃO: maybeSingle() não lança erro se não encontrar
 
-    if (existingLead) {
-      return existingLead.id;
+      if (error) {
+        console.error('❌ [LeadProcessor] Erro ao buscar lead:', error);
+      }
+
+      if (existingLead) {
+        return existingLead.id;
+      }
+    } catch (err) {
+      console.error('❌ [LeadProcessor] Erro na busca de lead:', err);
+      // Continua para criar novo lead
     }
 
     // Cria novo lead
@@ -466,14 +475,25 @@ export class LeadProcessor {
     }
   }
 
+  // ✅ CORREÇÃO: Busca segura + tratamento de erro
   private async findExistingLead(leadData: LeadData): Promise<any> {
-    const { data } = await supabase
-      .from('leads')
-      .select('id')
-      .or(`telefone.eq.${leadData.telefone},email.eq.${leadData.email}`)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id')
+        .or(`telefone.eq."${leadData.telefone}",email.eq."${leadData.email}"`)
+        .maybeSingle(); // ✅ CORREÇÃO: maybeSingle() não lança erro se não encontrar
 
-    return data;
+      if (error) {
+        console.error('❌ [LeadProcessor] Erro ao buscar lead existente:', error);
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.error('❌ [LeadProcessor] Erro na busca de lead:', err);
+      return null;
+    }
   }
 
   private generateWelcomeMessage(leadData: LeadData): string {

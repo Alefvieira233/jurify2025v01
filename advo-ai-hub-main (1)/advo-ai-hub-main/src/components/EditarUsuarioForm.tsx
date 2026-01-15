@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Usuario {
   id: string;
@@ -25,6 +25,8 @@ interface EditarUsuarioFormProps {
 
 const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
   const { toast } = useToast();
+  const { profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     nome_completo: usuario.nome_completo,
@@ -37,9 +39,11 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      if (!tenantId) throw new Error('Tenant nao encontrado');
       const { error } = await supabase
         .from('profiles')
         .update(data)
+        .eq('tenant_id', tenantId)
         .eq('id', usuario.id);
 
       if (error) throw error;
@@ -47,18 +51,18 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       toast({
-        title: "Usuário atualizado",
-        description: "Os dados do usuário foram atualizados com sucesso.",
+        title: 'Usuario atualizado',
+        description: 'Os dados do usuario foram atualizados com sucesso.'
       });
       onClose();
     },
     onError: (error) => {
       toast({
-        title: "Erro",
-        description: "Erro ao atualizar usuário.",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Erro ao atualizar usuario.',
+        variant: 'destructive',
       });
-      console.error('Erro ao atualizar usuário:', error);
+      console.error('Erro ao atualizar usuario:', error);
     }
   });
 
@@ -75,7 +79,7 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
           <Input
             id="nome_completo"
             value={formData.nome_completo}
-            onChange={(e) => setFormData({...formData, nome_completo: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
             required
           />
         </div>
@@ -85,7 +89,7 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
             id="email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
           />
         </div>
@@ -97,7 +101,7 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
           <Input
             id="telefone"
             value={formData.telefone}
-            onChange={(e) => setFormData({...formData, telefone: e.target.value})}
+            onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
             placeholder="(11) 99999-9999"
           />
         </div>
@@ -106,8 +110,8 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
           <Input
             id="cargo"
             value={formData.cargo}
-            onChange={(e) => setFormData({...formData, cargo: e.target.value})}
-            placeholder="Ex: Advogado Sênior"
+            onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
+            placeholder="Ex: Advogado Senior"
           />
         </div>
       </div>
@@ -117,8 +121,8 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
         <Input
           id="departamento"
           value={formData.departamento}
-          onChange={(e) => setFormData({...formData, departamento: e.target.value})}
-          placeholder="Ex: Jurídico"
+          onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
+          placeholder="Ex: Juridico"
         />
       </div>
 
@@ -126,21 +130,21 @@ const EditarUsuarioForm = ({ usuario, onClose }: EditarUsuarioFormProps) => {
         <Switch
           id="ativo"
           checked={formData.ativo}
-          onCheckedChange={(checked) => setFormData({...formData, ativo: checked})}
+          onCheckedChange={(checked) => setFormData({ ...formData, ativo: checked })}
         />
-        <Label htmlFor="ativo">Usuário ativo</Label>
+        <Label htmlFor="ativo">Usuario ativo</Label>
       </div>
 
       <div className="flex justify-end space-x-2 pt-4">
         <Button type="button" variant="outline" onClick={onClose}>
           Cancelar
         </Button>
-        <Button 
-          type="submit" 
+        <Button
+          type="submit"
           className="bg-amber-500 hover:bg-amber-600"
           disabled={updateMutation.isPending}
         >
-          {updateMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+          {updateMutation.isPending ? 'Salvando...' : 'Salvar Alteracoes'}
         </Button>
       </div>
     </form>

@@ -1,8 +1,6 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
 
 interface DashboardMetrics {
   totalLeads: number;
@@ -58,8 +56,7 @@ export const useDashboardMetrics = () => {
   const [metrics, setMetrics] = useState<DashboardMetrics>(DEFAULT_METRICS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
-  const { toast } = useToast();
+  const { user, profile } = useAuth();
 
   const fetchMetrics = useCallback(async () => {
     if (!user) {
@@ -69,7 +66,7 @@ export const useDashboardMetrics = () => {
     }
 
     try {
-      console.log('📊 [useDashboardMetrics] Carregando métricas do dashboard...');
+      console.log('[useDashboardMetrics] Carregando metricas do dashboard...');
       setLoading(true);
       setError(null);
 
@@ -77,86 +74,117 @@ export const useDashboardMetrics = () => {
       const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
       const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
 
-      // Buscar todas as métricas em paralelo com timeouts
+      const tenantId = profile?.tenant_id;
+
+      let leadsQuery = supabase
+        .from('leads')
+        .select('id, status, created_at, area_juridica');
+
+      let contratosQuery = supabase
+        .from('contratos')
+        .select('id, status_assinatura, created_at');
+
+      let agendamentosQuery = supabase
+        .from('agendamentos')
+        .select('id, data_hora, created_at');
+
+      let agentesQuery = supabase
+        .from('agentes_ia')
+        .select('id, status, created_at');
+
+      let execucoesQuery = supabase
+        .from('agent_executions')
+        .select('id, created_at, status, current_agent, agents_involved');
+
+      let execucoesLegacyQuery = supabase
+        .from('logs_execucao_agentes')
+        .select('id, created_at, status, agentes_ia:agente_id(nome)');
+
+      if (tenantId) {
+        leadsQuery = leadsQuery.eq('tenant_id', tenantId);
+        contratosQuery = contratosQuery.eq('tenant_id', tenantId);
+        agendamentosQuery = agendamentosQuery.eq('tenant_id', tenantId);
+        agentesQuery = agentesQuery.eq('tenant_id', tenantId);
+        execucoesQuery = execucoesQuery.eq('tenant_id', tenantId);
+        execucoesLegacyQuery = execucoesLegacyQuery.eq('tenant_id', tenantId);
+      }
+
       const [
         leadsResult,
         contratosResult,
         agendamentosResult,
         agentesResult,
-        execucoesResult
+        execucoesResult,
+        execucoesLegacyResult
       ] = await Promise.allSettled([
         Promise.race([
-          supabase.from('leads').select('*'),
+          leadsQuery,
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]),
         Promise.race([
-          supabase.from('contratos').select('*'),
+          contratosQuery,
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]),
         Promise.race([
-          supabase.from('agendamentos').select('*'),
+          agendamentosQuery,
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]),
         Promise.race([
-          supabase.from('agentes_ia').select('*'),
+          agentesQuery,
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]),
-        // Tentar buscar da tabela nova (Mission Control)
         Promise.race([
-          supabase.from('agent_executions').select('*'),
+          execucoesQuery,
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
         ]),
-        // Manter fallback para tabela antiga se necessário (opcional)
         Promise.race([
-          supabase.from('logs_execucao_agentes').select('*, agentes_ia(nome)'),
+          execucoesLegacyQuery,
           new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 1000))
         ]),
       ]);
 
-      // Processar resultados com type safety
-      const leads = leadsResult.status === 'fulfilled' && 
-                   leadsResult.value && 
-                   typeof leadsResult.value === 'object' && 
-                   'data' in leadsResult.value && 
+      const leads = leadsResult.status === 'fulfilled' &&
+                   leadsResult.value &&
+                   typeof leadsResult.value === 'object' &&
+                   'data' in leadsResult.value &&
                    Array.isArray(leadsResult.value.data) ? leadsResult.value.data : [];
 
-      const contratos = contratosResult.status === 'fulfilled' && 
-                       contratosResult.value && 
-                       typeof contratosResult.value === 'object' && 
-                       'data' in contratosResult.value && 
+      const contratos = contratosResult.status === 'fulfilled' &&
+                       contratosResult.value &&
+                       typeof contratosResult.value === 'object' &&
+                       'data' in contratosResult.value &&
                        Array.isArray(contratosResult.value.data) ? contratosResult.value.data : [];
 
-      const agendamentos = agendamentosResult.status === 'fulfilled' && 
-                          agendamentosResult.value && 
-                          typeof agendamentosResult.value === 'object' && 
-                          'data' in agendamentosResult.value && 
+      const agendamentos = agendamentosResult.status === 'fulfilled' &&
+                          agendamentosResult.value &&
+                          typeof agendamentosResult.value === 'object' &&
+                          'data' in agendamentosResult.value &&
                           Array.isArray(agendamentosResult.value.data) ? agendamentosResult.value.data : [];
 
-      const agentes = agentesResult.status === 'fulfilled' && 
-                     agentesResult.value && 
-                     typeof agentesResult.value === 'object' && 
-                     'data' in agentesResult.value && 
+      const agentes = agentesResult.status === 'fulfilled' &&
+                     agentesResult.value &&
+                     typeof agentesResult.value === 'object' &&
+                     'data' in agentesResult.value &&
                      Array.isArray(agentesResult.value.data) ? agentesResult.value.data : [];
 
-      // Priorizar tabela nova (index 4), fallback para antiga (index 5)
-      const execucoesNovas = execucoesResult.status === 'fulfilled' && 
-                       execucoesResult.value && 
-                       typeof execucoesResult.value === 'object' && 
-                       'data' in execucoesResult.value && 
+      const execucoesNovas = execucoesResult.status === 'fulfilled' &&
+                       execucoesResult.value &&
+                       typeof execucoesResult.value === 'object' &&
+                       'data' in execucoesResult.value &&
                        Array.isArray(execucoesResult.value.data) ? execucoesResult.value.data : [];
-                       
-      // Logica para usar a antiga se a nova estiver vazia e a antiga não
-      // Mas para simplificar, vamos focar na nova se ela existir.
-      // Se execucoesNovas tiver erro (tabela não existe), ele será array vazio.
-      
-      const execucoes = execucoesNovas; 
 
-      // Calcular métricas de leads
-      const leadsNovoMes = leads.filter(lead => 
+      const execucoesLegacy = execucoesLegacyResult.status === 'fulfilled' &&
+                       execucoesLegacyResult.value &&
+                       typeof execucoesLegacyResult.value === 'object' &&
+                       'data' in execucoesLegacyResult.value &&
+                       Array.isArray(execucoesLegacyResult.value.data) ? execucoesLegacyResult.value.data : [];
+
+      const execucoes = execucoesNovas.length > 0 ? execucoesNovas : execucoesLegacy;
+
+      const leadsNovoMes = leads.filter(lead =>
         new Date(lead.created_at) >= inicioMes
       ).length;
 
-      // Calcular leads por status
       const leadsPorStatus = {
         novo_lead: leads.filter(l => l.status === 'novo_lead').length,
         em_qualificacao: leads.filter(l => l.status === 'em_qualificacao').length,
@@ -166,10 +194,9 @@ export const useDashboardMetrics = () => {
         lead_perdido: leads.filter(l => l.status === 'lead_perdido').length,
       };
 
-      // Calcular leads por área
       const areasMap = new Map<string, number>();
       leads.forEach(lead => {
-        const area = lead.area_juridica || 'Não informado';
+        const area = lead.area_juridica || 'Nao informado';
         areasMap.set(area, (areasMap.get(area) || 0) + 1);
       });
       const leadsPorArea = Array.from(areasMap.entries()).map(([area, total]) => ({
@@ -177,53 +204,50 @@ export const useDashboardMetrics = () => {
         total
       })).slice(0, 10);
 
-      // Calcular métricas de contratos
-      const contratosAssinados = contratos.filter(contrato => 
+      const contratosAssinados = contratos.filter(contrato =>
         contrato.status_assinatura === 'assinado'
       ).length;
 
-      // Calcular agendamentos
       const agendamentosHoje = agendamentos.filter(agendamento => {
         const dataAgendamento = new Date(agendamento.data_hora);
         return dataAgendamento >= inicioHoje && dataAgendamento < new Date(inicioHoje.getTime() + 24 * 60 * 60 * 1000);
       }).length;
 
-      // Calcular agentes ativos
       const agentesAtivos = agentes.filter(agente => agente.status === 'ativo').length;
 
-      // Calcular execuções de hoje
       const execucoesAgentesHoje = execucoes.filter(execucao => {
         const dataExecucao = new Date(execucao.created_at);
         return dataExecucao >= inicioHoje;
       }).length;
 
-      // Calcular execuções recentes por agente
       const execucoesPorAgente = new Map<string, { agente_nome: string; total_execucoes: number; sucesso: number; erro: number }>();
-      
+
       execucoes.forEach(execucao => {
-        // Suporte para schema antigo (agentes_ia.nome) e novo (current_agent / agents_involved)
         let nomeAgente = 'Agente Desconhecido';
-        
+
         if (execucao.agentes_ia && typeof execucao.agentes_ia === 'object' && 'nome' in execucao.agentes_ia) {
-            nomeAgente = execucao.agentes_ia.nome;
+          nomeAgente = execucao.agentes_ia.nome;
         } else if (execucao.current_agent) {
-            nomeAgente = execucao.current_agent;
+          nomeAgente = execucao.current_agent;
         } else if (execucao.agents_involved && Array.isArray(execucao.agents_involved) && execucao.agents_involved.length > 0) {
-            nomeAgente = execucao.agents_involved[0];
+          nomeAgente = execucao.agents_involved[0];
         }
 
-        const current = execucoesPorAgente.get(nomeAgente) || { 
-          agente_nome: nomeAgente, 
-          total_execucoes: 0, 
-          sucesso: 0, 
-          erro: 0 
+        const current = execucoesPorAgente.get(nomeAgente) || {
+          agente_nome: nomeAgente,
+          total_execucoes: 0,
+          sucesso: 0,
+          erro: 0
         };
-        
+
         current.total_execucoes++;
-        // Schema antigo: 'success'/'error'. Novo: 'completed'/'failed'
-        if (execucao.status === 'success' || execucao.status === 'completed') current.sucesso++;
-        if (execucao.status === 'error' || execucao.status === 'failed') current.erro++;
-        
+        if (execucao.status === 'success' || execucao.status === 'completed' || execucao.status === 'sucesso') {
+          current.sucesso++;
+        }
+        if (execucao.status === 'error' || execucao.status === 'failed' || execucao.status === 'erro') {
+          current.erro++;
+        }
+
         execucoesPorAgente.set(nomeAgente, current);
       });
 
@@ -246,17 +270,15 @@ export const useDashboardMetrics = () => {
       };
 
       setMetrics(finalMetrics);
-      console.log(`✅ [useDashboardMetrics] Métricas carregadas:`, finalMetrics);
-
+      console.log('[useDashboardMetrics] Metricas carregadas:', finalMetrics);
     } catch (error: any) {
-      console.error('❌ [useDashboardMetrics] Erro ao carregar métricas:', error);
+      console.error('[useDashboardMetrics] Erro ao carregar metricas:', error);
       setError(error.message || 'Erro ao conectar com banco de dados');
-      setMetrics(DEFAULT_METRICS); 
-      
+      setMetrics(DEFAULT_METRICS);
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user, profile?.tenant_id]);
 
   const refetch = useCallback(() => {
     fetchMetrics();
@@ -264,10 +286,9 @@ export const useDashboardMetrics = () => {
 
   useEffect(() => {
     fetchMetrics();
-    
-    // Atualizar métricas a cada 5 minutos
+
     const interval = setInterval(fetchMetrics, 300000);
-    
+
     return () => clearInterval(interval);
   }, [fetchMetrics]);
 

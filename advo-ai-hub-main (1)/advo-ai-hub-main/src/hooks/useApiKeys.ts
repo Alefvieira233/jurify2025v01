@@ -1,7 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ApiKey {
   id: string;
@@ -11,28 +11,35 @@ interface ApiKey {
   criado_por: string;
   created_at: string;
   updated_at: string;
+  tenant_id?: string;
 }
 
 export const useApiKeys = () => {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { user, profile } = useAuth();
+
+  const tenantId = profile?.tenant_id ?? null;
 
   const fetchApiKeys = async () => {
+    if (!tenantId) return;
+
     try {
       const { data, error } = await supabase
         .from('api_keys')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setApiKeys(data || []);
     } catch (error) {
-      console.error('Erro ao buscar API keys:', error);
+      console.error('Failed to load API keys:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível carregar as API keys",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel carregar as API keys.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -40,16 +47,24 @@ export const useApiKeys = () => {
   };
 
   const criarApiKey = async (nome: string) => {
+    if (!tenantId) {
+      throw new Error('Tenant nao encontrado');
+    }
+
     try {
-      // Gerar uma API key aleatória
-      const keyValue = 'jf_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
+      const keyValue =
+        'jf_' +
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15);
+
       const { data, error } = await supabase
         .from('api_keys')
         .insert({
           nome,
           key_value: keyValue,
-          ativo: true
+          ativo: true,
+          criado_por: user?.id,
+          tenant_id: tenantId,
         })
         .select()
         .single();
@@ -58,73 +73,79 @@ export const useApiKeys = () => {
 
       await fetchApiKeys();
       toast({
-        title: "Sucesso",
-        description: "API key criada com sucesso",
+        title: 'Sucesso',
+        description: 'API key criada com sucesso.',
       });
 
       return data;
     } catch (error) {
-      console.error('Erro ao criar API key:', error);
+      console.error('Failed to create API key:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível criar a API key",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel criar a API key.',
+        variant: 'destructive',
       });
       throw error;
     }
   };
 
   const toggleApiKey = async (id: string, ativo: boolean) => {
+    if (!tenantId) return;
+
     try {
       const { error } = await supabase
         .from('api_keys')
         .update({ ativo: !ativo })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
       await fetchApiKeys();
       toast({
-        title: "Sucesso",
-        description: `API key ${!ativo ? 'ativada' : 'desativada'} com sucesso`,
+        title: 'Sucesso',
+        description: `API key ${!ativo ? 'ativada' : 'desativada'} com sucesso.`,
       });
     } catch (error) {
-      console.error('Erro ao alterar status da API key:', error);
+      console.error('Failed to toggle API key:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível alterar o status da API key",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel alterar o status da API key.',
+        variant: 'destructive',
       });
     }
   };
 
   const deletarApiKey = async (id: string) => {
+    if (!tenantId) return;
+
     try {
       const { error } = await supabase
         .from('api_keys')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
       await fetchApiKeys();
       toast({
-        title: "Sucesso",
-        description: "API key excluída com sucesso",
+        title: 'Sucesso',
+        description: 'API key excluida com sucesso.',
       });
     } catch (error) {
-      console.error('Erro ao excluir API key:', error);
+      console.error('Failed to delete API key:', error);
       toast({
-        title: "Erro",
-        description: "Não foi possível excluir a API key",
-        variant: "destructive",
+        title: 'Erro',
+        description: 'Nao foi possivel excluir a API key.',
+        variant: 'destructive',
       });
     }
   };
 
   useEffect(() => {
     fetchApiKeys();
-  }, []);
+  }, [tenantId]);
 
   return {
     apiKeys,

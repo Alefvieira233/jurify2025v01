@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -52,7 +52,7 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   // Fetch conversas
@@ -68,10 +68,16 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabase
+      let query = supabase
         .from('whatsapp_conversations')
         .select('*')
         .order('last_message_at', { ascending: false });
+
+      if (profile?.tenant_id) {
+        query = query.eq('tenant_id', profile.tenant_id);
+      }
+
+      const { data, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
 
@@ -88,7 +94,7 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user, profile?.tenant_id, toast]);
 
   // Fetch mensagens de uma conversa específica
   const fetchMessages = useCallback(async (conversationId: string) => {
@@ -219,17 +225,33 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
       );
     } catch (err: any) {
       console.error('❌ [useWhatsAppConversations] Erro ao marcar como lido:', err);
+      // ✅ CORREÇÃO: Adicionar toast de erro
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível marcar mensagens como lidas.',
+        variant: 'destructive',
+      });
     }
-  }, []);
+  }, [toast]);
 
-  // Realtime subscriptions
+  // ✅ CORREÇÃO: Realtime subscriptions com cleanup adequado e filtros
   useEffect(() => {
     if (!user) return;
 
-    let conversationsChannel: RealtimeChannel;
-    let messagesChannel: RealtimeChannel;
+    let conversationsChannel: RealtimeChannel | null = null;
+    let messagesChannel: RealtimeChannel | null = null;
 
-    const setupRealtime = () => {
+    const setupRealtime = async () => {
+      // ✅ CORREÇÃO: Limpar channels anteriores para evitar memory leak
+      if (conversationsChannel) {
+        await conversationsChannel.unsubscribe();
+        conversationsChannel = null;
+      }
+      if (messagesChannel) {
+        await messagesChannel.unsubscribe();
+        messagesChannel = null;
+      }
+
       // Subscribe a mudanças em conversas
       conversationsChannel = supabase
         .channel('whatsapp_conversations_changes')
@@ -260,35 +282,45 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
         )
         .subscribe();
 
-      // Subscribe a mudanças em mensagens
-      messagesChannel = supabase
-        .channel('whatsapp_messages_changes')
-        .on(
-          'postgres_changes',
-          {
-            event: '*',
-            schema: 'public',
-            table: 'whatsapp_messages',
-          },
-          (payload) => {
-            console.log('🔄 [useWhatsAppConversations] Nova mensagem:', payload);
+      // ✅ CORREÇÃO: Subscribe a mudanças em mensagens COM FILTRO
+      // Só recebe mensagens da conversa selecionada
+      if (selectedConversation) {
+        messagesChannel = supabase
+          .channel(`whatsapp_messages_${selectedConversation.id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'whatsapp_messages',
+              filter: `conversation_id=eq.${selectedConversation.id}`, // ✅ FILTRO adicionado
+            },
+            (payload) => {
+              console.log('🔄 [useWhatsAppConversations] Nova mensagem:', payload);
 
-            if (payload.eventType === 'INSERT') {
-              const newMessage = payload.new as WhatsAppMessage;
-              if (selectedConversation && newMessage.conversation_id === selectedConversation.id) {
+              if (payload.eventType === 'INSERT') {
+                const newMessage = payload.new as WhatsAppMessage;
                 setMessages(prev => [...prev, newMessage]);
               }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe();
+      }
     };
 
     setupRealtime();
 
     return () => {
-      conversationsChannel?.unsubscribe();
-      messagesChannel?.unsubscribe();
+      // ✅ CORREÇÃO: Cleanup assíncrono adequado
+      const cleanup = async () => {
+        if (conversationsChannel) {
+          await conversationsChannel.unsubscribe();
+        }
+        if (messagesChannel) {
+          await messagesChannel.unsubscribe();
+        }
+      };
+      cleanup();
     };
   }, [user, selectedConversation]);
 
@@ -297,10 +329,12 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
     fetchConversations();
   }, [fetchConversations]);
 
-  // Auto-select first conversation
+  // ✅ CORREÇÃO: Auto-select first conversation (evitar race condition)
+  const hasAutoSelectedRef = useRef(false);
   useEffect(() => {
-    if (conversations.length > 0 && !selectedConversation) {
+    if (conversations.length > 0 && !selectedConversation && !hasAutoSelectedRef.current) {
       selectConversation(conversations[0].id);
+      hasAutoSelectedRef.current = true;
     }
   }, [conversations, selectedConversation, selectConversation]);
 

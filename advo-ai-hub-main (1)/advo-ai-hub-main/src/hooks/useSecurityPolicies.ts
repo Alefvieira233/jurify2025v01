@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -33,58 +32,58 @@ export const useSecurityPolicies = () => {
     lastScan: new Date().toISOString()
   });
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
   const { toast } = useToast();
 
   const runSecurityScan = async () => {
-    if (!user) return;
+    if (!user || !tenantId) return;
 
     setLoading(true);
     const scanResults: SecurityCheck[] = [];
 
     try {
-      // 1. Verificar autenticação
       try {
         const { data: session } = await supabase.auth.getSession();
         scanResults.push({
           id: 'auth-session',
-          name: 'Sessão de Autenticação',
+          name: 'Sessao de Autenticacao',
           status: session ? 'pass' : 'fail',
-          message: session ? 'Usuário autenticado corretamente' : 'Sessão inválida ou expirada',
+          message: session ? 'Usuario autenticado corretamente' : 'Sessao invalida ou expirada',
           severity: session ? 'low' : 'critical',
           category: 'authentication'
         });
-      } catch (error) {
+      } catch {
         scanResults.push({
           id: 'auth-error',
-          name: 'Sistema de Autenticação',
+          name: 'Sistema de Autenticacao',
           status: 'fail',
-          message: 'Erro ao verificar sistema de autenticação',
+          message: 'Erro ao verificar sistema de autenticacao',
           severity: 'critical',
           category: 'authentication'
         });
       }
 
-      // 2. Verificar RLS nas tabelas críticas
       const criticalTables: ('profiles' | 'agentes_ia' | 'api_keys' | 'logs_atividades')[] = ['profiles', 'agentes_ia', 'api_keys', 'logs_atividades'];
       for (const table of criticalTables) {
         try {
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from(table)
             .select('id')
+            .eq('tenant_id', tenantId)
             .limit(1);
 
           scanResults.push({
             id: `rls-${table}`,
             name: `RLS da tabela ${table}`,
             status: error && error.code === 'PGRST301' ? 'pass' : 'warning',
-            message: error && error.code === 'PGRST301' 
-              ? 'RLS ativo e funcionando' 
-              : 'RLS pode não estar configurado adequadamente',
+            message: error && error.code === 'PGRST301'
+              ? 'RLS ativo e funcionando'
+              : 'RLS pode nao estar configurado adequadamente',
             severity: 'medium',
             category: 'database'
           });
-        } catch (error) {
+        } catch {
           scanResults.push({
             id: `rls-error-${table}`,
             name: `RLS da tabela ${table}`,
@@ -96,11 +95,11 @@ export const useSecurityPolicies = () => {
         }
       }
 
-      // 3. Verificar API Keys ativas
       try {
         const { data: apiKeys, error } = await supabase
           .from('api_keys')
           .select('id, ativo')
+          .eq('tenant_id', tenantId)
           .eq('ativo', true);
 
         if (!error) {
@@ -114,10 +113,10 @@ export const useSecurityPolicies = () => {
             category: 'api'
           });
         }
-      } catch (error) {
+      } catch {
         scanResults.push({
           id: 'api-keys-error',
-          name: 'Verificação de API Keys',
+          name: 'Verificacao de API Keys',
           status: 'fail',
           message: 'Erro ao verificar API keys',
           severity: 'medium',
@@ -125,11 +124,11 @@ export const useSecurityPolicies = () => {
         });
       }
 
-      // 4. Verificar logs de atividade
       try {
-        const { data: recentLogs, error } = await supabase
+        const { error } = await supabase
           .from('logs_atividades')
           .select('id')
+          .eq('tenant_id', tenantId)
           .gte('data_hora', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
           .limit(1);
 
@@ -143,7 +142,7 @@ export const useSecurityPolicies = () => {
             category: 'permissions'
           });
         }
-      } catch (error) {
+      } catch {
         scanResults.push({
           id: 'logs-error',
           name: 'Sistema de Auditoria',
@@ -154,11 +153,11 @@ export const useSecurityPolicies = () => {
         });
       }
 
-      // 5. Verificar conectividade N8N
       try {
         const { data: workflows, error } = await supabase
           .from('n8n_workflows')
           .select('id, ativo')
+          .eq('tenant_id', tenantId)
           .eq('ativo', true)
           .limit(1);
 
@@ -173,7 +172,7 @@ export const useSecurityPolicies = () => {
             category: 'network'
           });
         }
-      } catch (error) {
+      } catch {
         scanResults.push({
           id: 'n8n-error',
           name: 'Conectividade N8N',
@@ -184,12 +183,11 @@ export const useSecurityPolicies = () => {
         });
       }
 
-      // Calcular métricas
       const totalChecks = scanResults.length;
       const passedChecks = scanResults.filter(c => c.status === 'pass').length;
       const failedChecks = scanResults.filter(c => c.status === 'fail').length;
       const warningChecks = scanResults.filter(c => c.status === 'warning').length;
-      const securityScore = Math.round((passedChecks / totalChecks) * 100);
+      const securityScore = totalChecks > 0 ? Math.round((passedChecks / totalChecks) * 100) : 0;
 
       setChecks(scanResults);
       setMetrics({
@@ -200,14 +198,11 @@ export const useSecurityPolicies = () => {
         securityScore,
         lastScan: new Date().toISOString()
       });
-
-      console.log(`🔒 [Security] Scan completo: ${securityScore}% (${passedChecks}/${totalChecks})`);
-
     } catch (error) {
-      console.error('❌ [Security] Erro no scan de segurança:', error);
+      console.error('[Security] erro no scan de seguranca:', error);
       toast({
-        title: 'Erro no scan de segurança',
-        description: 'Não foi possível completar a verificação de segurança',
+        title: 'Erro no scan de seguranca',
+        description: 'Nao foi possivel completar a verificacao de seguranca',
         variant: 'destructive'
       });
     } finally {
@@ -219,7 +214,7 @@ export const useSecurityPolicies = () => {
     if (user) {
       runSecurityScan();
     }
-  }, [user]);
+  }, [user, tenantId]);
 
   return {
     checks,

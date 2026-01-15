@@ -5,11 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Settings, Plug, Users, Bell, Server, TestTube, ShieldAlert } from 'lucide-react';
 import { useRBAC } from '@/hooks/useRBAC';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-// TODO: Criar esses componentes
-// import IntegracoesSection from './configuracoes/IntegracoesSection';
-// import UsuariosPermissoesSection from './configuracoes/UsuariosPermissoesSection';
-// import NotificacoesSection from './configuracoes/NotificacoesSection';
-// import SistemaSection from './configuracoes/SistemaSection';
+import IntegracoesSection from '@/components/configuracoes/IntegracoesSection';
+import UsuariosPermissoesSection from '@/components/configuracoes/UsuariosPermissoesSection';
+import NotificacoesSection from '@/components/configuracoes/NotificacoesSection';
+import SistemaSection from '@/components/configuracoes/SistemaSection';
 
 const ConfiguracoesGerais = () => {
   // ✅ RBAC: Verificação de permissões
@@ -65,43 +64,19 @@ const ConfiguracoesGerais = () => {
         </TabsList>
 
         <TabsContent value="integracoes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Integrações</CardTitle>
-              <CardDescription>Configurações de integrações em construção</CardDescription>
-            </CardHeader>
-          </Card>
-          {/* <IntegracoesSection /> */}
+          <IntegracoesSection />
         </TabsContent>
 
         <TabsContent value="usuarios">
-          <Card>
-            <CardHeader>
-              <CardTitle>Usuários & Permissões</CardTitle>
-              <CardDescription>Configurações em construção</CardDescription>
-            </CardHeader>
-          </Card>
-          {/* <UsuariosPermissoesSection /> */}
+          <UsuariosPermissoesSection />
         </TabsContent>
 
         <TabsContent value="notificacoes">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notificações</CardTitle>
-              <CardDescription>Configurações em construção</CardDescription>
-            </CardHeader>
-          </Card>
-          {/* <NotificacoesSection /> */}
+          <NotificacoesSection />
         </TabsContent>
 
         <TabsContent value="sistema">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sistema</CardTitle>
-              <CardDescription>Configurações em construção</CardDescription>
-            </CardHeader>
-          </Card>
-          {/* <SistemaSection /> */}
+          <SistemaSection />
         </TabsContent>
 
         <TabsContent value="teste-n8n">

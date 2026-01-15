@@ -3,7 +3,7 @@ import { AgentMessage, MessageType, Priority, AGENT_CONFIG } from '../types';
 
 export class QualifierAgent extends BaseAgent {
   constructor() {
-    super(AGENT_CONFIG.NAMES.QUALIFIER, AGENT_CONFIG.IDS.QUALIFIER);
+    super(AGENT_CONFIG.NAMES.QUALIFIER, 'Qualificacao de Leads', AGENT_CONFIG.IDS.QUALIFIER);
   }
 
   protected getSystemPrompt(): string {

@@ -10,7 +10,7 @@ import { AgentMessage, MessageType, Priority, AGENT_CONFIG } from '../types';
 
 export class CommercialAgent extends BaseAgent {
   constructor() {
-    super(AGENT_CONFIG.NAMES.COMMERCIAL, AGENT_CONFIG.IDS.COMMERCIAL);
+    super(AGENT_CONFIG.NAMES.COMMERCIAL, 'Vendas', AGENT_CONFIG.IDS.COMMERCIAL);
   }
 
   protected getSystemPrompt(): string {

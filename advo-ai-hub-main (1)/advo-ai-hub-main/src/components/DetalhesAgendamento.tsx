@@ -18,7 +18,8 @@ interface AgendamentoDetalhes {
   created_at: string;
   updated_at: string;
   lead?: {
-    nome_completo: string;
+    nome_completo?: string;
+    nome?: string;
     telefone?: string;
     email?: string;
   };
@@ -68,7 +69,7 @@ export const DetalhesAgendamento = ({ agendamento, onClose }: DetalhesAgendament
       const endDate = new Date(startDate.getTime() + 60 * 60 * 1000);
 
       const eventData = {
-        summary: `Reunião - ${agendamento.lead?.nome_completo || 'Cliente'}`,
+        summary: `Reunião - ${agendamento.lead?.nome_completo || agendamento.lead?.nome || 'Cliente'}`,
         description: `
 Área Jurídica: ${agendamento.area_juridica}
 Responsável: ${agendamento.responsavel}
@@ -105,7 +106,7 @@ Agendamento criado via Jurify
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-gray-900">
-          Reunião - {agendamento.lead?.nome_completo}
+          Reunião - {agendamento.lead?.nome_completo || agendamento.lead?.nome}
         </h2>
         {getStatusBadge(agendamento.status)}
       </div>
@@ -119,7 +120,7 @@ Agendamento criado via Jurify
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-gray-600">Nome Completo</p>
-            <p className="font-medium">{agendamento.lead?.nome_completo}</p>
+            <p className="font-medium">{agendamento.lead?.nome_completo || agendamento.lead?.nome}</p>
           </div>
           {agendamento.lead?.telefone && (
             <div>

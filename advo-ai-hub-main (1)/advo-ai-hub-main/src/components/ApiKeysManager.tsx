@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Plus, Key, Eye, EyeOff, Power, PowerOff, Trash2, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRBAC } from '@/hooks/useRBAC';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 interface ApiKey {
@@ -21,23 +21,28 @@ interface ApiKey {
   created_at: string;
   updated_at: string;
   criado_por?: string;
+  tenant_id?: string;
 }
 
 const ApiKeysManager = () => {
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false);
   const [newKeyName, setNewKeyName] = useState('');
   const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const { isAdmin } = useRBAC();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Buscar API Keys
+  const tenantId = profile?.tenant_id ?? null;
+
   const { data: apiKeys, isLoading } = useQuery({
-    queryKey: ['api_keys'],
+    queryKey: ['api_keys', tenantId],
+    enabled: !!tenantId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('api_keys')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -45,20 +50,26 @@ const ApiKeysManager = () => {
     },
   });
 
-  // Mutação para criar nova API Key
   const createKeyMutation = useMutation({
     mutationFn: async (nome: string) => {
-      // Gerar uma chave aleatória
-      const keyValue = 'jurify_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-      
+      if (!tenantId) throw new Error('Tenant nao encontrado');
+
+      const keyValue =
+        'jurify_' +
+        Math.random().toString(36).substring(2, 15) +
+        Math.random().toString(36).substring(2, 15);
+
       const { data, error } = await supabase
         .from('api_keys')
-        .insert([{
-          nome,
-          key_value: keyValue,
-          criado_por: user?.id,
-          ativo: true
-        }])
+        .insert([
+          {
+            nome,
+            key_value: keyValue,
+            criado_por: user?.id,
+            ativo: true,
+            tenant_id: tenantId,
+          },
+        ])
         .select()
         .single();
 
@@ -66,73 +77,77 @@ const ApiKeysManager = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api_keys'] });
+      queryClient.invalidateQueries({ queryKey: ['api_keys', tenantId] });
       setShowNewKeyDialog(false);
       setNewKeyName('');
       toast({
         title: 'Sucesso',
-        description: 'Nova API key criada com sucesso!',
+        description: 'Nova API key criada com sucesso.',
       });
     },
     onError: (error) => {
-      console.error('Erro ao criar API key:', error);
+      console.error('Failed to create API key:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível criar a API key.',
+        description: 'Nao foi possivel criar a API key.',
         variant: 'destructive',
       });
     },
   });
 
-  // Mutação para alternar status
   const toggleStatusMutation = useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
+      if (!tenantId) throw new Error('Tenant nao encontrado');
+
       const { error } = await supabase
         .from('api_keys')
         .update({ ativo: !ativo })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api_keys'] });
+      queryClient.invalidateQueries({ queryKey: ['api_keys', tenantId] });
       toast({
         title: 'Sucesso',
-        description: 'Status da API key atualizado com sucesso!',
+        description: 'Status da API key atualizado com sucesso.',
       });
     },
     onError: (error) => {
-      console.error('Erro ao alterar status:', error);
+      console.error('Failed to update status:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível alterar o status da API key.',
+        description: 'Nao foi possivel alterar o status da API key.',
         variant: 'destructive',
       });
     },
   });
 
-  // Mutação para deletar API Key
   const deleteKeyMutation = useMutation({
     mutationFn: async (id: string) => {
+      if (!tenantId) throw new Error('Tenant nao encontrado');
+
       const { error } = await supabase
         .from('api_keys')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['api_keys'] });
+      queryClient.invalidateQueries({ queryKey: ['api_keys', tenantId] });
       toast({
         title: 'Sucesso',
-        description: 'API key removida com sucesso!',
+        description: 'API key removida com sucesso.',
       });
     },
     onError: (error) => {
-      console.error('Erro ao remover API key:', error);
+      console.error('Failed to remove API key:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível remover a API key.',
+        description: 'Nao foi possivel remover a API key.',
         variant: 'destructive',
       });
     },
@@ -163,15 +178,26 @@ const ApiKeysManager = () => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast({
-      title: 'Copiado!',
-      description: 'API key copiada para a área de transferência.',
+      title: 'Copiado',
+      description: 'API key copiada para a area de transferencia.',
     });
   };
 
   const maskKey = (key: string) => {
     if (key.length <= 10) return key;
-    return key.substring(0, 10) + '•'.repeat(key.length - 10);
+    return key.substring(0, 10) + '*'.repeat(key.length - 10);
   };
+
+  if (!isAdmin) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Gerenciamento de API Keys</CardTitle>
+          <CardDescription>Voce nao tem permissao para acessar esta area.</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -186,13 +212,12 @@ const ApiKeysManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">Gerenciamento de API Keys</h2>
-          <p className="text-gray-600">Gerencie as chaves de API para integração com agentes IA</p>
+          <p className="text-gray-600">Gerencie as chaves de API para integracao com agentes IA</p>
         </div>
-        
+
         <Dialog open={showNewKeyDialog} onOpenChange={setShowNewKeyDialog}>
           <DialogTrigger asChild>
             <Button className="bg-blue-600 hover:bg-blue-700">
@@ -204,7 +229,7 @@ const ApiKeysManager = () => {
             <DialogHeader>
               <DialogTitle>Criar Nova API Key</DialogTitle>
               <DialogDescription>
-                Crie uma nova chave de API para integração com agentes IA.
+                Crie uma nova chave de API para integracao com agentes IA.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
@@ -230,7 +255,6 @@ const ApiKeysManager = () => {
         </Dialog>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -240,36 +264,35 @@ const ApiKeysManager = () => {
             <div className="text-2xl font-bold">{apiKeys?.length || 0}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Keys Ativas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {apiKeys?.filter(key => key.ativo).length || 0}
+              {apiKeys?.filter((key) => key.ativo).length || 0}
             </div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600">Keys Inativas</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {apiKeys?.filter(key => !key.ativo).length || 0}
+              {apiKeys?.filter((key) => !key.ativo).length || 0}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabela de API Keys */}
       {!apiKeys || apiKeys.length === 0 ? (
         <div className="text-center py-8">
           <Key className="h-12 w-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma API key encontrada</h3>
-          <p className="text-gray-600 mb-4">Crie sua primeira API key para começar a usar os agentes IA.</p>
+          <p className="text-gray-600 mb-4">Crie sua primeira API key para comecar a usar os agentes IA.</p>
           <Button onClick={() => setShowNewKeyDialog(true)} className="bg-blue-600 hover:bg-blue-700">
             <Plus className="h-4 w-4 mr-2" />
             Criar primeira API key
@@ -284,7 +307,7 @@ const ApiKeysManager = () => {
                 <TableHead>API Key</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Criado em</TableHead>
-                <TableHead>Ações</TableHead>
+                <TableHead>Acoes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -301,28 +324,20 @@ const ApiKeysManager = () => {
                       <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
                         {visibleKeys.has(key.id) ? key.key_value : maskKey(key.key_value)}
                       </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleKeyVisibility(key.id)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => toggleKeyVisibility(key.id)}>
                         {visibleKeys.has(key.id) ? (
                           <EyeOff className="h-4 w-4" />
                         ) : (
                           <Eye className="h-4 w-4" />
                         )}
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(key.key_value)}
-                      >
+                      <Button variant="ghost" size="sm" onClick={() => copyToClipboard(key.key_value)}>
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge 
+                    <Badge
                       variant={key.ativo ? 'default' : 'secondary'}
                       className={key.ativo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
                     >

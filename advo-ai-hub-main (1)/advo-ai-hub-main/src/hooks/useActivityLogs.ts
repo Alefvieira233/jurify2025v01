@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,14 +28,15 @@ export const useActivityLogs = () => {
   const [loading, setLoading] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
   const { user, profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
   const { toast } = useToast();
 
   const fetchLogs = async (
-    limite = 50, 
-    offset = 0, 
+    limite = 50,
+    offset = 0,
     filtros: FiltrosLog = {}
   ) => {
-    if (!user) return;
+    if (!user || !tenantId) return;
 
     setLoading(true);
     try {
@@ -44,7 +44,7 @@ export const useActivityLogs = () => {
         _limite: limite,
         _offset: offset,
         _usuario_id: filtros.usuario_id || null,
-        _tipo_acao: filtros.tipo_acao as 'criacao' | 'edicao' | 'exclusao' | 'login' | 'logout' | 'erro' | 'outro' || null,
+        _tipo_acao: (filtros.tipo_acao as 'criacao' | 'edicao' | 'exclusao' | 'login' | 'logout' | 'erro' | 'outro') || null,
         _modulo: filtros.modulo || null,
         _data_inicio: filtros.data_inicio ? new Date(filtros.data_inicio).toISOString() : null,
         _data_fim: filtros.data_fim ? new Date(filtros.data_fim).toISOString() : null
@@ -63,7 +63,7 @@ export const useActivityLogs = () => {
       console.error('Erro ao buscar logs:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar os logs de atividade.',
+        description: 'Nao foi possivel carregar os logs de atividade.',
         variant: 'destructive',
       });
     } finally {
@@ -77,12 +77,12 @@ export const useActivityLogs = () => {
     descricao: string,
     detalhes_adicionais?: any
   ) => {
-    if (!user) return;
+    if (!user || !tenantId) return;
 
     try {
       const { error } = await supabase.rpc('registrar_log_atividade', {
         _usuario_id: user.id,
-        _nome_usuario: profile?.nome_completo || user.email || 'Usuário',
+        _nome_usuario: profile?.nome_completo || user.email || 'Usuario',
         _tipo_acao: tipo_acao,
         _modulo: modulo,
         _descricao: descricao,
@@ -91,14 +91,13 @@ export const useActivityLogs = () => {
       });
 
       if (error) throw error;
-      console.log(`Log registrado: ${tipo_acao} em ${modulo} - ${descricao}`);
     } catch (error) {
       console.error('Erro ao registrar log:', error);
     }
   };
 
   const clearOldLogs = async (diasAntigos = 90) => {
-    if (!user) return false;
+    if (!user || !tenantId) return false;
 
     try {
       const dataCorte = new Date();
@@ -107,6 +106,7 @@ export const useActivityLogs = () => {
       const { error } = await supabase
         .from('logs_atividades')
         .delete()
+        .eq('tenant_id', tenantId)
         .lt('data_hora', dataCorte.toISOString());
 
       if (error) throw error;
@@ -122,7 +122,7 @@ export const useActivityLogs = () => {
       console.error('Erro ao limpar logs:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível limpar os logs antigos.',
+        description: 'Nao foi possivel limpar os logs antigos.',
         variant: 'destructive',
       });
       return false;
@@ -130,14 +130,14 @@ export const useActivityLogs = () => {
   };
 
   const exportLogs = async (filtros: FiltrosLog = {}) => {
-    if (!user) return;
+    if (!user || !tenantId) return;
 
     try {
       const { data, error } = await supabase.rpc('buscar_logs_atividades', {
         _limite: 10000,
         _offset: 0,
         _usuario_id: filtros.usuario_id || null,
-        _tipo_acao: filtros.tipo_acao as 'criacao' | 'edicao' | 'exclusao' | 'login' | 'logout' | 'erro' | 'outro' || null,
+        _tipo_acao: (filtros.tipo_acao as 'criacao' | 'edicao' | 'exclusao' | 'login' | 'logout' | 'erro' | 'outro') || null,
         _modulo: filtros.modulo || null,
         _data_inicio: filtros.data_inicio ? new Date(filtros.data_inicio).toISOString() : null,
         _data_fim: filtros.data_fim ? new Date(filtros.data_fim).toISOString() : null
@@ -145,7 +145,7 @@ export const useActivityLogs = () => {
 
       if (error) throw error;
 
-      const headers = ['Data/Hora', 'Usuário', 'Tipo Ação', 'Módulo', 'Descrição', 'IP'];
+      const headers = ['Data/Hora', 'Usuario', 'Tipo Acao', 'Modulo', 'Descricao', 'IP'];
       const csvContent = [
         headers.join(','),
         ...data.map(log => [
@@ -172,7 +172,7 @@ export const useActivityLogs = () => {
       console.error('Erro ao exportar logs:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível exportar os logs.',
+        description: 'Nao foi possivel exportar os logs.',
         variant: 'destructive',
       });
     }
@@ -182,7 +182,7 @@ export const useActivityLogs = () => {
     if (user) {
       fetchLogs();
     }
-  }, [user]);
+  }, [user, tenantId]);
 
   return {
     logs,

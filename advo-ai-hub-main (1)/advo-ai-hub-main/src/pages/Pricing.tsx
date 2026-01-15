@@ -102,6 +102,7 @@ const Pricing = () => {
       // 2. Chama Edge Function para criar sessão de checkout
       const { data, error } = await supabase.functions.invoke('create-checkout-session', {
         body: {
+          planId,
           priceId,
           successUrl: `${window.location.origin}/dashboard?checkout=success&plan=${planId}`,
           cancelUrl: `${window.location.origin}/planos?checkout=cancel`,

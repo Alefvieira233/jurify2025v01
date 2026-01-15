@@ -9,17 +9,23 @@ export type Agendamento = Database['public']['Tables']['agendamentos']['Row'];
 export type CreateAgendamentoData = Database['public']['Tables']['agendamentos']['Insert'];
 
 export const useAgendamentos = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const fetchAgendamentosQuery = useCallback(async () => {
     console.log('🔍 [useAgendamentos] Buscando agendamentos...');
     
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('agendamentos')
         .select('*')
         .order('data_hora', { ascending: true });
+
+      if (profile?.tenant_id) {
+        query = query.eq('tenant_id', profile.tenant_id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('❌ [useAgendamentos] Erro ao buscar agendamentos:', error);
@@ -32,7 +38,7 @@ export const useAgendamentos = () => {
       console.error('❌ [useAgendamentos] Erro na consulta:', error);
       return { data: null, error };
     }
-  }, []);
+  }, [profile?.tenant_id]);
 
   const {
     data: agendamentos,
@@ -67,11 +73,12 @@ export const useAgendamentos = () => {
       if (error) throw error;
 
       console.log('✅ [useAgendamentos] Agendamento criado com sucesso:', newAgendamento.id);
-      
-      setAgendamentos([...agendamentos, newAgendamento].sort((a, b) => 
+
+      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      setAgendamentos(prev => [...prev, newAgendamento].sort((a, b) =>
         new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
       ));
-      
+
       toast({
         title: 'Sucesso',
         description: 'Agendamento criado com sucesso!',
@@ -87,7 +94,7 @@ export const useAgendamentos = () => {
       });
       return false;
     }
-  }, [user, toast, setAgendamentos, agendamentos]);
+  }, [user, toast, setAgendamentos]);
 
   const updateAgendamento = useCallback(async (id: string, updateData: Partial<Agendamento>): Promise<boolean> => {
     if (!user) return false;
@@ -104,10 +111,11 @@ export const useAgendamentos = () => {
       if (error) throw error;
 
       console.log('✅ [useAgendamentos] Agendamento atualizado com sucesso');
-      
-      setAgendamentos(agendamentos.map(agendamento => 
+
+      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      setAgendamentos(prev => prev.map(agendamento =>
         agendamento.id === id ? { ...agendamento, ...updatedAgendamento } : agendamento
-      ).sort((a, b) => 
+      ).sort((a, b) =>
         new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
       ));
 
@@ -126,7 +134,42 @@ export const useAgendamentos = () => {
       });
       return false;
     }
-  }, [user, toast, agendamentos, setAgendamentos]);
+  }, [user, toast, setAgendamentos]);
+
+  // ✅ NOVO: Implementar deleteAgendamento (estava faltando)
+  const deleteAgendamento = useCallback(async (id: string): Promise<boolean> => {
+    if (!user) return false;
+
+    try {
+      console.log(`🔄 [useAgendamentos] Deletando agendamento ${id}...`);
+      const { error } = await supabase
+        .from('agendamentos')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      console.log('✅ [useAgendamentos] Agendamento deletado com sucesso');
+
+      // ✅ Usar setter callback
+      setAgendamentos(prev => prev.filter(agendamento => agendamento.id !== id));
+
+      toast({
+        title: 'Sucesso',
+        description: 'Agendamento deletado com sucesso!',
+      });
+
+      return true;
+    } catch (error: any) {
+      console.error('❌ [useAgendamentos] Erro ao deletar agendamento:', error);
+      toast({
+        title: 'Erro',
+        description: error.message || 'Não foi possível deletar o agendamento.',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [user, toast, setAgendamentos]);
 
   return {
     agendamentos,
@@ -136,5 +179,6 @@ export const useAgendamentos = () => {
     fetchAgendamentos,
     createAgendamento,
     updateAgendamento,
+    deleteAgendamento, // ✅ NOVO: Exportar deleteAgendamento
   };
 };

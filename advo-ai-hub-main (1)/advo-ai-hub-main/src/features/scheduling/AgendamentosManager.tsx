@@ -7,10 +7,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAgendamentos } from '@/hooks/useAgendamentos';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { NovoAgendamentoForm } from '@/components/NovoAgendamentoForm';
+import { DetalhesAgendamento } from '@/components/DetalhesAgendamento';
 
 const AgendamentosManager = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [isNovoAgendamentoOpen, setIsNovoAgendamentoOpen] = useState(false);
+  const [isDetalhesOpen, setIsDetalhesOpen] = useState(false);
+  const [selectedAgendamento, setSelectedAgendamento] = useState<any | null>(null);
   const { agendamentos, loading, error, isEmpty, fetchAgendamentos } = useAgendamentos();
 
   const filteredAgendamentos = agendamentos.filter(agendamento => {
@@ -42,7 +48,18 @@ const AgendamentosManager = () => {
   };
 
   const handleRetry = () => {
-    console.log('🔄 Tentando recarregar agendamentos...');
+    console.log('[Agendamentos] Tentando recarregar agendamentos...');
+    fetchAgendamentos();
+  };
+
+  const handleOpenDetails = (agendamento: any) => {
+    setSelectedAgendamento(agendamento);
+    setIsDetalhesOpen(true);
+  };
+
+  const handleCloseDetails = () => {
+    setIsDetalhesOpen(false);
+    setSelectedAgendamento(null);
     fetchAgendamentos();
   };
 
@@ -102,7 +119,7 @@ const AgendamentosManager = () => {
                 <CardTitle className="text-2xl">Gestão de Agendamentos</CardTitle>
                 <p className="text-gray-600">Gerencie reuniões e compromissos</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoAgendamentoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Agendamento
               </Button>
@@ -150,7 +167,7 @@ const AgendamentosManager = () => {
                 <CardTitle className="text-2xl">Gestão de Agendamentos</CardTitle>
                 <p className="text-gray-600">Gerencie reuniões e compromissos</p>
               </div>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoAgendamentoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Agendamento
               </Button>
@@ -164,7 +181,7 @@ const AgendamentosManager = () => {
               <Calendar className="h-16 w-16 text-blue-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-blue-900 mb-2">Nenhum agendamento cadastrado</h3>
               <p className="text-blue-700 mb-6">Comece criando seu primeiro agendamento para organizar suas reuniões.</p>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoAgendamentoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Criar primeiro agendamento
               </Button>
@@ -185,7 +202,7 @@ const AgendamentosManager = () => {
             <div>
               <CardTitle className="text-2xl">Gestão de Agendamentos</CardTitle>
               <p className="text-gray-600">
-                Gerencie reuniões e compromissos • {agendamentos.length} agendamentos no total
+                Gerencie reuniões e compromissos - {agendamentos.length} agendamentos no total
               </p>
             </div>
             <div className="flex gap-2">
@@ -197,7 +214,7 @@ const AgendamentosManager = () => {
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Atualizar
               </Button>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button onClick={() => setIsNovoAgendamentoOpen(true)} className="bg-amber-500 hover:bg-amber-600">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Agendamento
               </Button>
@@ -280,13 +297,13 @@ const AgendamentosManager = () => {
                 </div>
 
                 <div className="flex gap-2 ml-4">
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => handleOpenDetails(agendamento)}>
                     <Eye className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => handleOpenDetails(agendamento)}>
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
+                  <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700" onClick={() => handleOpenDetails(agendamento)}>
                     <Calendar className="h-4 w-4" />
                   </Button>
                 </div>
@@ -309,8 +326,34 @@ const AgendamentosManager = () => {
           </CardContent>
         </Card>
       )}
+    
+      <Dialog open={isNovoAgendamentoOpen} onOpenChange={setIsNovoAgendamentoOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Novo Agendamento</DialogTitle>
+          </DialogHeader>
+          <NovoAgendamentoForm onClose={() => {
+            setIsNovoAgendamentoOpen(false);
+            fetchAgendamentos();
+          }} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDetalhesOpen} onOpenChange={setIsDetalhesOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Detalhes do Agendamento</DialogTitle>
+          </DialogHeader>
+          {selectedAgendamento && (
+            <DetalhesAgendamento agendamento={selectedAgendamento} onClose={handleCloseDetails} />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
 export default AgendamentosManager;
+
+
+

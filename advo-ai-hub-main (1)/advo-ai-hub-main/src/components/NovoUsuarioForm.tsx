@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface NovoUsuarioFormProps {
   onClose: () => void;
@@ -15,7 +16,7 @@ const roles = [
   { value: 'administrador', label: 'Administrador' },
   { value: 'advogado', label: 'Advogado' },
   { value: 'comercial', label: 'Comercial' },
-  { value: 'pos_venda', label: 'Pós-venda' },
+  { value: 'pos_venda', label: 'PÃ³s-venda' },
   { value: 'suporte', label: 'Suporte' }
 ];
 
@@ -34,30 +35,43 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Simular criação de usuário - em produção, isso seria feito via API admin
-      toast({
-        title: "Funcionalidade em desenvolvimento",
-        description: "A criação de usuários via admin será implementada em breve.",
-        variant: "default",
+      const { data: result, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+          email: data.email,
+          password: data.password,
+          nome_completo: data.nomeCompleto,
+          telefone: data.telefone,
+          cargo: data.cargo,
+          departamento: data.departamento,
+          roles: data.selectedRoles,
+        }
       });
-      
-      return { success: true };
+
+      if (error) {
+        throw new Error(error.message || 'Erro ao criar usuario');
+      }
+
+      if (!result?.success) {
+        throw new Error(result?.error || 'Erro ao criar usuario');
+      }
+
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['usuarios'] });
       toast({
-        title: "Usuário criado",
-        description: "O usuário foi criado com sucesso.",
+        title: "UsuÃ¡rio criado",
+        description: "O usuÃ¡rio foi criado com sucesso.",
       });
       onClose();
     },
     onError: (error: any) => {
       toast({
         title: "Erro",
-        description: error.message || "Erro ao criar usuário.",
+        description: error.message || "Erro ao criar usuÃ¡rio.",
         variant: "destructive",
       });
-      console.error('Erro ao criar usuário:', error);
+      console.error('Erro ao criar usuÃ¡rio:', error);
     }
   });
 
@@ -67,7 +81,7 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
     if (formData.selectedRoles.length === 0) {
       toast({
         title: "Erro",
-        description: "Selecione pelo menos um papel para o usuário.",
+        description: "Selecione pelo menos um papel para o usuÃ¡rio.",
         variant: "destructive",
       });
       return;
@@ -117,7 +131,7 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
             type="password"
             value={formData.password}
             onChange={(e) => setFormData({...formData, password: e.target.value})}
-            placeholder="Mínimo 6 caracteres"
+            placeholder="MÃ­nimo 6 caracteres"
             required
           />
         </div>
@@ -139,7 +153,7 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
             id="cargo"
             value={formData.cargo}
             onChange={(e) => setFormData({...formData, cargo: e.target.value})}
-            placeholder="Ex: Advogado Sênior"
+            placeholder="Ex: Advogado SÃªnior"
           />
         </div>
         <div className="space-y-2">
@@ -148,13 +162,13 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
             id="departamento"
             value={formData.departamento}
             onChange={(e) => setFormData({...formData, departamento: e.target.value})}
-            placeholder="Ex: Jurídico"
+            placeholder="Ex: JurÃ­dico"
           />
         </div>
       </div>
 
       <div className="space-y-3">
-        <Label>Papéis no Sistema *</Label>
+        <Label>PapÃ©is no Sistema *</Label>
         <div className="space-y-2">
           {roles.map((role) => (
             <div key={role.value} className="flex items-center space-x-2">
@@ -180,7 +194,7 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
           className="bg-amber-500 hover:bg-amber-600"
           disabled={createMutation.isPending}
         >
-          {createMutation.isPending ? 'Criando...' : 'Criar Usuário'}
+          {createMutation.isPending ? 'Criando...' : 'Criar UsuÃ¡rio'}
         </Button>
       </div>
     </form>
@@ -188,3 +202,5 @@ const NovoUsuarioForm = ({ onClose }: NovoUsuarioFormProps) => {
 };
 
 export default NovoUsuarioForm;
+
+

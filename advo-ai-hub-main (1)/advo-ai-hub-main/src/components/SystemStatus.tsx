@@ -1,18 +1,20 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertCircle, XCircle, Database, Server, Wifi } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface SystemStatus {
+interface SystemStatusState {
   database: 'online' | 'offline' | 'checking';
   auth: 'online' | 'offline' | 'checking';
   realtime: 'online' | 'offline' | 'checking';
 }
 
 const SystemStatus = () => {
-  const [status, setStatus] = useState<SystemStatus>({
+  const { profile } = useAuth();
+  const tenantId = profile?.tenant_id || null;
+  const [status, setStatus] = useState<SystemStatusState>({
     database: 'checking',
     auth: 'checking',
     realtime: 'checking'
@@ -20,28 +22,26 @@ const SystemStatus = () => {
 
   useEffect(() => {
     checkSystemStatus();
-    const interval = setInterval(checkSystemStatus, 60000); // Check every minute
+    const interval = setInterval(checkSystemStatus, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [tenantId]);
 
   const checkSystemStatus = async () => {
-    // Check database
     try {
-      const { error } = await supabase.from('profiles').select('id').limit(1);
+      const query = supabase.from('profiles').select('id').limit(1);
+      const { error } = tenantId ? await query.eq('tenant_id', tenantId) : await query;
       setStatus(prev => ({ ...prev, database: error ? 'offline' : 'online' }));
     } catch {
       setStatus(prev => ({ ...prev, database: 'offline' }));
     }
 
-    // Check auth
     try {
-      const { data } = await supabase.auth.getSession();
+      await supabase.auth.getSession();
       setStatus(prev => ({ ...prev, auth: 'online' }));
     } catch {
       setStatus(prev => ({ ...prev, auth: 'offline' }));
     }
 
-    // Check realtime (simplified)
     setStatus(prev => ({ ...prev, realtime: 'online' }));
   };
 
@@ -87,7 +87,7 @@ const SystemStatus = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Server className="h-4 w-4 text-gray-500" />
-            <span className="text-sm">Autenticação</span>
+            <span className="text-sm">Autenticacao</span>
           </div>
           <div className="flex items-center space-x-2">
             {getStatusIcon(status.auth)}

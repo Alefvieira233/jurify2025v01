@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { applyRateLimit } from "../_shared/rate-limiter.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -16,10 +17,25 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return new Response(
+      JSON.stringify({ error: 'Authorization header required' }),
+      { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      throw new Error('Supabase environment variables not configured');
+    }
+
     const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+      supabaseUrl,
+      supabaseServiceKey,
       {
         auth: {
           autoRefreshToken: false,
@@ -27,6 +43,46 @@ serve(async (req) => {
         }
       }
     );
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('tenant_id')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile?.tenant_id) {
+      return new Response(
+        JSON.stringify({ error: 'Tenant not found for user' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const rateLimitCheck = await applyRateLimit(
+      req,
+      {
+        maxRequests: 20,
+        windowSeconds: 60,
+        namespace: 'agentes-ia-api'
+      },
+      {
+        supabase: supabaseClient,
+        user,
+        corsHeaders
+      }
+    );
+
+    if (!rateLimitCheck.allowed) {
+      return rateLimitCheck.response;
+    }
 
     // Parsear request
     const { agente_id, input_usuario, use_n8n = false } = await req.json();
@@ -46,6 +102,7 @@ serve(async (req) => {
       .select('*')
       .eq('id', agente_id)
       .eq('ativo', true)
+      .eq('tenant_id', profile.tenant_id)
       .single();
 
     if (agenteError || !agente) {
@@ -63,6 +120,7 @@ serve(async (req) => {
       .from('logs_execucao_agentes')
       .insert({
         agente_id,
+        tenant_id: profile.tenant_id,
         input_recebido: input_usuario,
         status: 'processing',
         api_key_usado: 'openai'

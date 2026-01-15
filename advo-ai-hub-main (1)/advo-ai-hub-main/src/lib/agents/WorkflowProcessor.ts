@@ -388,9 +388,13 @@ export class WorkflowProcessor {
       .from('lead_interactions')
       .insert({
         lead_id: leadId,
-        agent_id: context.agentId || 'system',
         message: 'Sistema: ' + message,
         response: '',
+        tipo: 'message',
+        metadata: {
+          agent_id: context.agentId || 'system',
+          source: 'workflow',
+        },
         created_at: new Date().toISOString()
       });
   }

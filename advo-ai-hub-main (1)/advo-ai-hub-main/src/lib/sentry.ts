@@ -1,136 +1,94 @@
 /**
- * 🔍 Sentry Configuration - Error Tracking & Performance Monitoring
- *
- * Configuração enterprise-grade para:
- * - Error tracking em produção
- * - Performance monitoring
- * - User feedback
- * - Release tracking
+ * Sentry configuration - error tracking and performance monitoring.
  */
 
 import * as Sentry from '@sentry/react';
 import type { User } from '@supabase/supabase-js';
 
 /**
- * Inicializa Sentry apenas em produção
+ * Initialize Sentry only in production.
  */
 export function initSentry() {
-  // Só inicializar em produção
   if (import.meta.env.MODE !== 'production') {
-    console.log('🔍 Sentry: Disabled in development mode');
+    console.log('[sentry] disabled in development mode');
     return;
   }
 
   const dsn = import.meta.env.VITE_SENTRY_DSN;
 
   if (!dsn) {
-    console.warn('⚠️ Sentry DSN not configured');
+    console.warn('[sentry] DSN not configured');
     return;
   }
 
   Sentry.init({
     dsn,
-
-    // Environment
     environment: import.meta.env.MODE,
     release: import.meta.env.VITE_APP_VERSION || '1.0.0',
-
-    // Integrations
     integrations: [
-      // Browser tracing para performance
       Sentry.browserTracingIntegration({
-        // Trace navegação
         tracingOrigins: [
           'localhost',
           /^\//,
-          // Adicionar domínios de produção aqui
         ],
       }),
-
-      // Replay de sessões (útil para debug)
       Sentry.replayIntegration({
         maskAllText: true,
         blockAllMedia: true,
       }),
-
-      // Feedback widget
       Sentry.feedbackIntegration({
         colorScheme: 'system',
         showBranding: false,
       }),
     ],
-
-    // Performance Monitoring
     tracesSampleRate: import.meta.env.MODE === 'production' ? 0.1 : 1.0,
-
-    // Session Replay
-    replaysSessionSampleRate: 0.1, // 10% das sessões
-    replaysOnErrorSampleRate: 1.0, // 100% quando há erro
-
-    // Filtering
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
     beforeSend(event, hint) {
-      // Não enviar erros de desenvolvimento
       if (import.meta.env.MODE === 'development') {
         return null;
       }
 
-      // Filtrar erros conhecidos e não-críticos
       const error = hint.originalException;
 
       if (error && typeof error === 'object' && 'message' in error) {
         const message = String(error.message);
 
-        // Ignorar erros de extensões do navegador
         if (message.includes('chrome-extension://')) {
           return null;
         }
 
-        // Ignorar erros de rede esperados
         if (message.includes('Network Error') || message.includes('Failed to fetch')) {
-          console.warn('Network error (not sent to Sentry):', message);
+          console.warn('[sentry] network error (not sent):', message);
           return null;
         }
       }
 
       return event;
     },
-
-    // Ignora errors comuns
     ignoreErrors: [
-      // Errors do navegador
       'Non-Error promise rejection captured',
       'ResizeObserver loop limit exceeded',
-
-      // Errors de extensões
       /chrome-extension/,
       /moz-extension/,
-
-      // Errors de ad blockers
       /adblock/i,
-
-      // Timeout esperados
       'AbortError',
       'timeout',
     ],
-
-    // Denylist de URLs (não rastrear)
     denyUrls: [
-      // Extensões do navegador
       /extensions\//i,
       /^chrome:\/\//i,
       /^moz-extension:\/\//i,
-
-      // Scripts de terceiros
       /googletagmanager\.com/i,
       /google-analytics\.com/i,
     ],
   });
 
-  console.log('✅ Sentry initialized');
+  console.log('[sentry] initialized');
 }
 
 /**
- * Configura contexto do usuário no Sentry
+ * Set user context for Sentry.
  */
 export function setSentryUser(user: User | null) {
   if (!user) {
@@ -146,14 +104,14 @@ export function setSentryUser(user: User | null) {
 }
 
 /**
- * Adiciona contexto customizado
+ * Add custom context.
  */
 export function setSentryContext(key: string, value: Record<string, any>) {
   Sentry.setContext(key, value);
 }
 
 /**
- * Adiciona breadcrumb (rastro de ações do usuário)
+ * Add breadcrumb.
  */
 export function addSentryBreadcrumb(message: string, category?: string, level?: Sentry.SeverityLevel) {
   Sentry.addBreadcrumb({
@@ -165,7 +123,7 @@ export function addSentryBreadcrumb(message: string, category?: string, level?: 
 }
 
 /**
- * Captura erro manualmente
+ * Capture an error manually.
  */
 export function captureSentryError(error: Error, context?: Record<string, any>) {
   Sentry.captureException(error, {
@@ -174,29 +132,33 @@ export function captureSentryError(error: Error, context?: Record<string, any>) 
 }
 
 /**
- * Captura mensagem (não-erro)
+ * Capture a message.
  */
 export function captureSentryMessage(message: string, level: Sentry.SeverityLevel = 'info') {
   Sentry.captureMessage(message, level);
 }
 
 /**
- * Performance monitoring - medir transações
+ * Performance transaction (legacy API). Returns null if unsupported.
  */
 export function startSentryTransaction(name: string, op: string = 'custom') {
-  return Sentry.startTransaction({
-    name,
-    op,
-  });
+  const anySentry = Sentry as any;
+  if (typeof anySentry.startTransaction === 'function') {
+    return anySentry.startTransaction({
+      name,
+      op,
+    });
+  }
+  return null;
 }
 
 /**
- * HOC para error boundary
+ * HOC for error boundary.
  */
 export const withSentryErrorBoundary = Sentry.withErrorBoundary;
 
 /**
- * Hook do React para Sentry
+ * Hook helpers for Sentry.
  */
 export const useSentry = () => {
   return {

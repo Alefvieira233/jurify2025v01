@@ -1,10 +1,10 @@
-
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ValidationResult {
   success: boolean;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 interface SystemHealth {
@@ -20,9 +20,15 @@ interface SystemHealth {
 }
 
 export class SystemValidator {
+  private tenantId: string | null;
+
+  constructor(tenantId: string | null) {
+    this.tenantId = tenantId;
+  }
+
   async runFullValidation(): Promise<SystemHealth> {
-    console.log('🔍 [SystemValidator] Iniciando validação completa do sistema...');
-    
+    console.log('[SystemValidator] Starting full system validation');
+
     const results: SystemHealth = {
       overall: 'healthy',
       tests: {
@@ -35,146 +41,158 @@ export class SystemValidator {
       timestamp: new Date().toISOString(),
     };
 
-    // Determinar status geral
-    const hasErrors = Object.values(results.tests).some(test => !test.success);
+    const hasErrors = Object.values(results.tests).some((test) => !test.success);
     if (hasErrors) {
       results.overall = 'degraded';
     }
 
-    console.log('✅ [SystemValidator] Validação completa finalizada:', results.overall);
+    console.log('[SystemValidator] Validation finished:', results.overall);
     return results;
   }
 
+  private ensureTenant(): ValidationResult | null {
+    if (this.tenantId) return null;
+
+    return {
+      success: false,
+      message: 'Tenant id not found for current session',
+      details: { code: 'missing_tenant_id' },
+    };
+  }
+
   private async testDatabase(): Promise<ValidationResult> {
+    const tenantCheck = this.ensureTenant();
+    if (tenantCheck) return tenantCheck;
+
     try {
-      console.log('🗄️ [SystemValidator] Testando conexão com database...');
-      
-      // Teste básico de conectividade
-      const { data, error } = await supabase
+      console.log('[SystemValidator] Testing database connectivity');
+
+      const { error } = await supabase
         .from('leads')
-        .select('count')
-        .limit(1);
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', this.tenantId as string);
 
       if (error) throw error;
 
-      // Teste de escrita (inserção temporária)
       const testData = {
-        nome_completo: 'Test User - Sistema Validator',
-        email: 'test@systemvalidator.com',
+        tenant_id: this.tenantId,
+        nome_completo: 'System Validator Test',
+        email: 'test@systemvalidator.local',
         telefone: '11999999999',
         area_juridica: 'Teste',
         origem: 'Sistema',
         responsavel: 'Sistema',
-        status: 'novo_lead'
+        status: 'novo_lead',
       };
 
       const { data: insertData, error: insertError } = await supabase
         .from('leads')
         .insert([testData])
-        .select()
+        .select('id')
         .single();
 
       if (insertError) throw insertError;
 
-      // Limpar dados de teste
       if (insertData?.id) {
         await supabase
           .from('leads')
           .delete()
-          .eq('id', insertData.id);
+          .eq('id', insertData.id)
+          .eq('tenant_id', this.tenantId as string);
       }
 
       return {
         success: true,
-        message: 'Database conectado e operacional',
-        details: { writeable: true, readable: true }
+        message: 'Database connected and operational',
+        details: { writable: true, readable: true },
       };
     } catch (error: any) {
       return {
         success: false,
-        message: 'Erro na conexão com database',
-        details: { error: error.message }
+        message: 'Database connection error',
+        details: { error: error?.message },
       };
     }
   }
 
   private async testAuthentication(): Promise<ValidationResult> {
     try {
-      console.log('🔐 [SystemValidator] Testando sistema de autenticação...');
-      
-      // Verificar se o usuário está autenticado
-      const { data: { user }, error } = await supabase.auth.getUser();
-      
+      console.log('[SystemValidator] Testing authentication system');
+
+      const { data, error } = await supabase.auth.getUser();
+
       if (error) throw error;
 
       return {
-        success: !!user,
-        message: user ? 'Usuário autenticado com sucesso' : 'Nenhum usuário autenticado',
-        details: { 
-          userId: user?.id,
-          email: user?.email,
-          authenticated: !!user
-        }
+        success: !!data?.user,
+        message: data?.user ? 'User authenticated successfully' : 'No authenticated user',
+        details: {
+          userId: data?.user?.id,
+          email: data?.user?.email,
+          authenticated: !!data?.user,
+        },
       };
     } catch (error: any) {
       return {
         success: false,
-        message: 'Erro no sistema de autenticação',
-        details: { error: error.message }
+        message: 'Authentication check failed',
+        details: { error: error?.message },
       };
     }
   }
 
   private async testRLS(): Promise<ValidationResult> {
+    const tenantCheck = this.ensureTenant();
+    if (tenantCheck) return tenantCheck;
+
     try {
-      console.log('🛡️ [SystemValidator] Testando Row Level Security...');
-      
-      // Testar se RLS está ativo nas tabelas críticas
+      console.log('[SystemValidator] Testing Row Level Security');
+
       const tables = ['leads', 'contratos', 'agendamentos', 'agentes_ia'] as const;
       const rlsStatus: Record<string, boolean> = {};
 
       for (const table of tables) {
         try {
-          // Tentar acessar a tabela - se RLS estiver funcionando, só retornará dados do usuário atual
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from(table)
             .select('id')
+            .eq('tenant_id', this.tenantId as string)
             .limit(1);
-          
-          // Se não houver erro, RLS está permitindo acesso (o que é esperado para usuário autenticado)
+
           rlsStatus[table] = !error;
         } catch {
           rlsStatus[table] = false;
         }
       }
 
-      const allTablesAccessible = Object.values(rlsStatus).every(status => status);
+      const allTablesAccessible = Object.values(rlsStatus).every((status) => status);
 
       return {
         success: allTablesAccessible,
-        message: allTablesAccessible ? 'RLS funcionando corretamente' : 'Problemas detectados no RLS',
-        details: rlsStatus
+        message: allTablesAccessible
+          ? 'RLS working for tenant-scoped tables'
+          : 'RLS issues detected in tenant tables',
+        details: rlsStatus,
       };
     } catch (error: any) {
       return {
         success: false,
-        message: 'Erro ao testar RLS',
-        details: { error: error.message }
+        message: 'RLS check failed',
+        details: { error: error?.message },
       };
     }
   }
 
   private async testIntegrations(): Promise<ValidationResult> {
     try {
-      console.log('🔗 [SystemValidator] Testando integrações externas...');
-      
+      console.log('[SystemValidator] Testing external integrations');
+
       const integrations = {
         healthCheck: false,
         n8n: false,
-        openai: false
+        openai: false,
       };
 
-      // Testar Health Check endpoint
       try {
         const healthResponse = await supabase.functions.invoke('health-check');
         integrations.healthCheck = healthResponse.data?.status === 'ok';
@@ -182,76 +200,75 @@ export class SystemValidator {
         integrations.healthCheck = false;
       }
 
-      // Testar N8N (através do health check)
       integrations.n8n = integrations.healthCheck;
-
-      // Testar OpenAI (através do health check)
       integrations.openai = integrations.healthCheck;
 
-      const allIntegrationsWorking = Object.values(integrations).every(status => status);
+      const allIntegrationsWorking = Object.values(integrations).every((status) => status);
 
       return {
         success: allIntegrationsWorking,
-        message: allIntegrationsWorking ? 'Todas as integrações funcionando' : 'Algumas integrações com problemas',
-        details: integrations
+        message: allIntegrationsWorking
+          ? 'All integrations responding'
+          : 'Some integrations reported issues',
+        details: integrations,
       };
     } catch (error: any) {
       return {
         success: false,
-        message: 'Erro ao testar integrações',
-        details: { error: error.message }
+        message: 'Integration check failed',
+        details: { error: error?.message },
       };
     }
   }
 
   private async testPerformance(): Promise<ValidationResult> {
+    const tenantCheck = this.ensureTenant();
+    if (tenantCheck) return tenantCheck;
+
     try {
-      console.log('⚡ [SystemValidator] Testando performance do sistema...');
-      
+      console.log('[SystemValidator] Testing system performance');
+
       const startTime = performance.now();
-      
-      // Executar várias operações para medir performance
+
       const operations = [
-        supabase.from('leads').select('count').limit(1),
-        supabase.from('contratos').select('count').limit(1),
-        supabase.from('agendamentos').select('count').limit(1),
-        supabase.from('agentes_ia').select('count').limit(1),
+        supabase.from('leads').select('id').eq('tenant_id', this.tenantId as string).limit(1),
+        supabase.from('contratos').select('id').eq('tenant_id', this.tenantId as string).limit(1),
+        supabase.from('agendamentos').select('id').eq('tenant_id', this.tenantId as string).limit(1),
+        supabase.from('agentes_ia').select('id').eq('tenant_id', this.tenantId as string).limit(1),
       ];
 
       await Promise.all(operations);
-      
+
       const endTime = performance.now();
       const responseTime = endTime - startTime;
-      
-      // Considerar performance boa se for menor que 2 segundos
       const isPerformant = responseTime < 2000;
 
       return {
         success: isPerformant,
-        message: `Tempo de resposta: ${responseTime.toFixed(2)}ms`,
+        message: `Response time: ${responseTime.toFixed(2)}ms`,
         details: {
           responseTime,
           threshold: 2000,
-          performant: isPerformant
-        }
+          performant: isPerformant,
+        },
       };
     } catch (error: any) {
       return {
         success: false,
-        message: 'Erro ao testar performance',
-        details: { error: error.message }
+        message: 'Performance check failed',
+        details: { error: error?.message },
       };
     }
   }
 }
 
-// Hook para usar o validador no React
 export const useSystemValidator = () => {
-  const validator = new SystemValidator();
-  
+  const { profile } = useAuth();
+
   const runValidation = async () => {
+    const validator = new SystemValidator(profile?.tenant_id ?? null);
     return await validator.runFullValidation();
   };
-  
+
   return { runValidation };
 };

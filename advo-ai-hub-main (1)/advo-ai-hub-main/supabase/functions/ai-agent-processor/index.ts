@@ -1,8 +1,8 @@
-/**
- * 🚀 JURIFY AI AGENT PROCESSOR - EDGE FUNCTION
+﻿/**
+ * ðŸš€ JURIFY AI AGENT PROCESSOR - EDGE FUNCTION
  *
- * Edge Function segura para processar requisições de IA dos agentes.
- * Todas as chamadas para OpenAI são feitas aqui no servidor, protegendo a API key.
+ * Edge Function segura para processar requisiÃ§Ãµes de IA dos agentes.
+ * Todas as chamadas para OpenAI sÃ£o feitas aqui no servidor, protegendo a API key.
  *
  * @version 2.0.0
  * @security Enterprise Grade
@@ -13,13 +13,13 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
 import { applyRateLimit } from "../_shared/rate-limiter.ts";
 
-// 🔒 CORS Headers
+// ðŸ”’ CORS Headers
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// 🎯 TIPOS DE REQUISIÇÃO
+// ðŸŽ¯ TIPOS DE REQUISIÃ‡ÃƒO
 interface AgentAIRequest {
   agentName: string;
   agentSpecialization: string;
@@ -46,7 +46,7 @@ interface AgentAIResponse {
   timestamp: string;
 }
 
-// 🛡️ Validação de Input
+// ðŸ›¡ï¸ ValidaÃ§Ã£o de Input
 function validateRequest(data: unknown): data is AgentAIRequest {
   const req = data as Partial<AgentAIRequest>;
 
@@ -69,7 +69,7 @@ function validateRequest(data: unknown): data is AgentAIRequest {
   return true;
 }
 
-// 🧠 Processa requisição de IA
+// ðŸ§  Processa requisiÃ§Ã£o de IA
 async function processAIRequest(
   openai: OpenAI,
   request: AgentAIRequest
@@ -85,13 +85,13 @@ async function processAIRequest(
     maxTokens = 1500,
   } = request;
 
-  console.log(`🤖 Processing AI request for agent: ${agentName}`);
+  console.log(`ðŸ¤– Processing AI request for agent: ${agentName}`);
 
   // Monta mensagens para a OpenAI
   const messages: Array<{ role: string; content: string }> = [
     {
       role: "system",
-      content: `Você é ${agentName}, especialista em ${agentSpecialization}. ${systemPrompt}`,
+      content: `VocÃª Ã© ${agentName}, especialista em ${agentSpecialization}. ${systemPrompt}`,
     },
   ];
 
@@ -116,7 +116,7 @@ async function processAIRequest(
     max_tokens: maxTokens,
   });
 
-  const result = completion.choices[0]?.message?.content || "Erro ao processar requisição";
+  const result = completion.choices[0]?.message?.content || "Erro ao processar requisiÃ§Ã£o";
 
   return {
     result,
@@ -133,43 +133,51 @@ async function processAIRequest(
   };
 }
 
-// 🆔 Gera execution_id único
+// ðŸ†” Gera execution_id Ãºnico
 function generateExecutionId(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 11);
   return `exec_${timestamp}_${random}`;
 }
 
-// 📝 Cria registro de execução no banco
+// ðŸ“ Cria registro de execuÃ§Ã£o no banco
 async function createExecution(
   supabase: ReturnType<typeof createClient>,
   executionId: string,
   request: AgentAIRequest,
-  userId: string
-): Promise<void> {
+  userId?: string | null
+): Promise<string | null> {
   try {
-    const { error } = await supabase.from("agent_executions").insert({
-      execution_id: executionId,
-      lead_id: request.leadId || null,
-      tenant_id: request.tenantId || null,
-      user_id: userId,
-      status: "processing",
-      current_agent: request.agentName,
-      agents_involved: [request.agentName],
-      started_at: new Date().toISOString(),
-    });
+    const { data, error } = await supabase
+      .from("agent_executions")
+      .insert({
+        execution_id: executionId,
+        lead_id: request.leadId || null,
+        tenant_id: request.tenantId || null,
+        user_id: userId || null,
+        status: "processing",
+        current_agent: request.agentName,
+        agents_involved: [request.agentName],
+        started_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
 
     if (error) {
-      console.error("❌ Error creating execution:", error);
+      console.error("Error creating execution:", error);
+      return null;
     } else {
-      console.log(`✅ Execution created: ${executionId}`);
+      console.log(`Execution created: ${executionId}`);
     }
+
+    return data?.id ?? null;
   } catch (error) {
-    console.error("❌ Error creating execution:", error);
+    console.error("Error creating execution:", error);
+    return null;
   }
 }
 
-// ✅ Atualiza execução com sucesso
+// âœ… Atualiza execuÃ§Ã£o com sucesso
 async function completeExecution(
   supabase: ReturnType<typeof createClient>,
   executionId: string,
@@ -185,17 +193,17 @@ async function completeExecution(
         status: "completed",
         completed_at: new Date().toISOString(),
         total_duration_ms: duration,
-        total_tokens_used: tokensUsed,
+        total_tokens: tokensUsed,
       })
       .eq("execution_id", executionId);
 
-    console.log(`✅ Execution completed: ${executionId} (${duration}ms)`);
+    console.log(`âœ… Execution completed: ${executionId} (${duration}ms)`);
   } catch (error) {
-    console.error("❌ Error completing execution:", error);
+    console.error("âŒ Error completing execution:", error);
   }
 }
 
-// ❌ Atualiza execução com erro
+// âŒ Atualiza execuÃ§Ã£o com erro
 async function failExecution(
   supabase: ReturnType<typeof createClient>,
   executionId: string,
@@ -211,23 +219,28 @@ async function failExecution(
       })
       .eq("execution_id", executionId);
 
-    console.log(`❌ Execution failed: ${executionId}`);
+    console.log(`âŒ Execution failed: ${executionId}`);
   } catch (error) {
-    console.error("❌ Error failing execution:", error);
+    console.error("âŒ Error failing execution:", error);
   }
 }
 
-// 📊 Salva log de processamento no banco
+// ðŸ“Š Salva log de processamento no banco
 async function logAIProcessing(
   supabase: ReturnType<typeof createClient>,
-  executionId: string,
+  executionRowId: string | null,
   request: AgentAIRequest,
   response: AgentAIResponse,
   userId?: string
 ): Promise<void> {
   try {
+    if (!executionRowId) {
+      console.warn("Skipping AI log insert: execution row id not available");
+      return;
+    }
+
     await supabase.from("agent_ai_logs").insert({
-      execution_id: executionId,
+      execution_id: executionRowId,
       agent_name: request.agentName,
       lead_id: request.leadId || null,
       tenant_id: request.tenantId || null,
@@ -240,14 +253,14 @@ async function logAIProcessing(
       created_at: new Date().toISOString(),
     });
 
-    console.log(`✅ AI processing logged for execution: ${executionId}`);
+    console.log(`AI processing logged for execution row: ${executionRowId}`);
   } catch (error) {
-    console.error("❌ Error logging AI processing:", error);
-    // Não interrompe o fluxo se falhar o log
+    console.error("Error logging AI processing:", error);
+    // Nao interrompe o fluxo se falhar o log
   }
 }
 
-// 🚀 HANDLER PRINCIPAL
+// ðŸš€ HANDLER PRINCIPAL
 Deno.serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -255,7 +268,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // 🔐 Verificação de autenticação
+    // ðŸ” VerificaÃ§Ã£o de autenticaÃ§Ã£o
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       throw new Error("Missing authorization header");
@@ -270,21 +283,42 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const isServiceRoleRequest = authHeader === `Bearer ${supabaseServiceKey}`;
+    let user: { id: string } | null = null;
 
-    // Verifica usuário autenticado
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
+    if (!isServiceRoleRequest) {
+      // Verifica usuario autenticado
+      const {
+        data: { user: authenticatedUser },
+        error: authError,
+      } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
 
-    if (authError || !user) {
-      throw new Error("Unauthorized: Invalid token");
+      if (authError || !authenticatedUser) {
+        throw new Error("Unauthorized: Invalid token");
+      }
+
+      user = authenticatedUser;
+      console.log("Authenticated user: " + user.id);
+    } else {
+      console.log("Internal service role request");
     }
 
-    console.log(`✅ Authenticated user: ${user.id}`);
+    // Parse e valida request
+    const requestData = await req.json();
+    validateRequest(requestData);
 
-    // 🛡️ Rate Limiting - Protege custos da OpenAI
-    // Limite: 20 requisições de IA por minuto por usuário
+    const aiRequest = requestData as AgentAIRequest;
+
+    if (!aiRequest.tenantId) {
+      throw new Error("tenantId is required");
+    }
+
+    const rateLimitUser = isServiceRoleRequest
+      ? { id: aiRequest.userId || `tenant:${aiRequest.tenantId}` }
+      : user;
+
+    // Rate Limiting - Protege custos da OpenAI
+    // Limite: 20 requisicoes de IA por minuto por usuario
     const rateLimitCheck = await applyRateLimit(
       req,
       {
@@ -294,61 +328,61 @@ Deno.serve(async (req) => {
       },
       {
         supabase,
-        user,
+        user: rateLimitUser || undefined,
         corsHeaders,
       }
     );
 
     if (!rateLimitCheck.allowed) {
       console.warn(
-        `⚠️ Rate limit exceeded for user ${user.id}:`,
+        "Rate limit exceeded for user " + (rateLimitUser?.id || "unknown") + ":",
         rateLimitCheck.result
       );
       return rateLimitCheck.response;
     }
 
     console.log(
-      `✅ Rate limit OK: ${rateLimitCheck.result.remaining}/${rateLimitCheck.result.limit} remaining`
+      "Rate limit OK: " + rateLimitCheck.result.remaining + "/" + rateLimitCheck.result.limit + " remaining"
     );
 
-    // 🔑 Verifica API Key da OpenAI
+    // Verifica API Key da OpenAI
     const openaiApiKey = Deno.env.get("OPENAI_API_KEY");
     if (!openaiApiKey) {
       throw new Error("OPENAI_API_KEY not configured");
     }
 
-    // 📥 Parse e valida request
-    const requestData = await req.json();
-    validateRequest(requestData);
-
-    const aiRequest = requestData as AgentAIRequest;
-
-    // 🆔 Gera execution_id único
     const executionId = generateExecutionId();
     const startTime = Date.now();
-
-    // 📝 Cria registro de execução
-    await createExecution(supabase, executionId, aiRequest, user.id);
+    const executionRowId = await createExecution(
+      supabase,
+      executionId,
+      aiRequest,
+      user?.id || aiRequest.userId || null
+    );
 
     try {
-      // 🤖 Inicializa OpenAI
+      // ðŸ¤– Inicializa OpenAI
       const openai = new OpenAI({
         apiKey: openaiApiKey,
       });
 
-      // 🧠 Processa requisição de IA
+      // ðŸ§  Processa requisiÃ§Ã£o de IA
       const aiResponse = await processAIRequest(openai, aiRequest);
 
-      // ✅ Atualiza execução com sucesso
+      // âœ… Atualiza execuÃ§Ã£o com sucesso
       const tokensUsed = aiResponse.usage?.total_tokens || 0;
       await completeExecution(supabase, executionId, startTime, tokensUsed);
 
-      // 📊 Salva log (não-bloqueante)
-      logAIProcessing(supabase, executionId, aiRequest, aiResponse, user.id).catch(
-        console.error
-      );
+      // ðŸ“Š Salva log (nÃ£o-bloqueante)
+      logAIProcessing(
+        supabase,
+        executionRowId,
+        aiRequest,
+        aiResponse,
+        user?.id || aiRequest.userId || null
+      ).catch(console.error);
 
-      // ✅ Retorna resposta com execution_id
+      // âœ… Retorna resposta com execution_id
       return new Response(
         JSON.stringify({
           ...aiResponse,
@@ -360,7 +394,7 @@ Deno.serve(async (req) => {
         }
       );
     } catch (processingError) {
-      // ❌ Marca execução como falha
+      // âŒ Marca execuÃ§Ã£o como falha
       const errorMsg =
         processingError instanceof Error
           ? processingError.message
@@ -370,7 +404,7 @@ Deno.serve(async (req) => {
       throw processingError;
     }
   } catch (error) {
-    console.error("❌ Error in ai-agent-processor:", error);
+    console.error("âŒ Error in ai-agent-processor:", error);
 
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     const statusCode = errorMessage.includes("Unauthorized") ? 401 : 500;
@@ -387,3 +421,9 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+
+
+
+
+

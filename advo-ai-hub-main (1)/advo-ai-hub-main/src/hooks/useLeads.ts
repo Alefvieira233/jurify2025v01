@@ -11,7 +11,7 @@ export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
 const ITEMS_PER_PAGE = 25;
 
 export const useLeads = (options?: { enablePagination?: boolean; pageSize?: number }) => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
   const enablePagination = options?.enablePagination ?? false;
@@ -27,6 +27,42 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
+  const normalizeLead = useCallback((lead: any): Lead => {
+    return {
+      ...lead,
+      nome_completo: lead?.nome_completo ?? lead?.nome ?? '',
+      responsavel: lead?.responsavel ?? lead?.metadata?.responsavel_nome ?? '',
+      observacoes: lead?.observacoes ?? lead?.descricao ?? '',
+    };
+  }, []);
+
+  const mapLeadInputToDb = useCallback((data: any) => {
+    const payload = { ...data };
+
+    if (payload.nome_completo && !payload.nome) {
+      payload.nome = payload.nome_completo;
+    }
+    delete payload.nome_completo;
+
+    if (payload.responsavel) {
+      payload.metadata = {
+        ...(payload.metadata || {}),
+        responsavel_nome: payload.responsavel,
+      };
+      if (user?.id && !payload.responsavel_id) {
+        payload.responsavel_id = user.id;
+      }
+    }
+    delete payload.responsavel;
+
+    if (payload.observacoes && !payload.descricao) {
+      payload.descricao = payload.observacoes;
+    }
+    delete payload.observacoes;
+
+    return payload;
+  }, [user?.id]);
+
   const fetchLeads = useCallback(async (page: number = 1) => {
     if (!user) return;
 
@@ -39,6 +75,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
         .from('leads')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
+
+      if (profile?.tenant_id) {
+        query = query.eq('tenant_id', profile.tenant_id);
+      }
 
       // Aplicar paginação se habilitada
       if (enablePagination) {
@@ -54,8 +94,9 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
         throw fetchError;
       }
 
-      setLeads(data || []);
-      setIsEmpty(!data || data.length === 0);
+      const normalizedLeads = (data || []).map(normalizeLead);
+      setLeads(normalizedLeads);
+      setIsEmpty(!normalizedLeads || normalizedLeads.length === 0);
 
       if (count !== null) {
         setTotalCount(count);
@@ -72,7 +113,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     } finally {
       setLoading(false);
     }
-  }, [user, enablePagination, pageSize]);
+  }, [user, profile?.tenant_id, enablePagination, pageSize, normalizeLead]);
 
   // Carregar leads na montagem
   useEffect(() => {
@@ -116,18 +157,21 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
     try {
       console.log('🔄 [useLeads] Criando novo lead...');
+      const payload = mapLeadInputToDb(data);
       const { data: newLead, error } = await supabase
         .from('leads')
-        .insert([data])
+        .insert([payload])
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('✅ [useLeads] Lead criado com sucesso:', newLead.id);
-      
-      setLeads([newLead, ...leads]);
-      
+      const normalizedLead = normalizeLead(newLead);
+      console.log('Lead criado com sucesso:', normalizedLead.id);
+
+      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      setLeads(prev => [normalizedLead, ...prev]);
+
       toast({
         title: 'Sucesso',
         description: 'Lead criado com sucesso!',
@@ -143,26 +187,29 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       });
       return false;
     }
-  }, [user, toast, setLeads, leads]);
+  }, [mapLeadInputToDb, normalizeLead, toast, user]);
 
   const updateLead = useCallback(async (id: string, updateData: Partial<Lead>): Promise<boolean> => {
     if (!user) return false;
 
     try {
       console.log(`🔄 [useLeads] Atualizando lead ${id}...`);
+      const payload = mapLeadInputToDb(updateData);
       const { data: updatedLead, error } = await supabase
         .from('leads')
-        .update({ ...updateData, updated_at: new Date().toISOString() })
+        .update({ ...payload, updated_at: new Date().toISOString() })
         .eq('id', id)
         .select()
         .single();
 
       if (error) throw error;
 
-      console.log('✅ [useLeads] Lead atualizado com sucesso');
-      
-      setLeads(leads.map(lead => 
-        lead.id === id ? { ...lead, ...updatedLead } : lead
+      const normalizedLead = normalizeLead(updatedLead);
+      console.log('Lead atualizado com sucesso');
+
+      // Atualizar estado normalizado
+      setLeads(prev => prev.map(lead =>
+        lead.id === id ? { ...lead, ...normalizedLead } : lead
       ));
 
       toast({
@@ -180,7 +227,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       });
       return false;
     }
-  }, [user, toast, leads, setLeads]);
+  }, [mapLeadInputToDb, normalizeLead, toast, user]);
 
   const deleteLead = useCallback(async (id: string): Promise<boolean> => {
     if (!user) return false;
@@ -196,7 +243,8 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       console.log('✅ [useLeads] Lead deletado com sucesso');
 
-      setLeads(leads.filter(lead => lead.id !== id));
+      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      setLeads(prev => prev.filter(lead => lead.id !== id));
 
       toast({
         title: 'Sucesso',
@@ -213,7 +261,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       });
       return false;
     }
-  }, [user, toast, leads, setLeads]);
+  }, [user, toast]);
 
   return {
     // Dados

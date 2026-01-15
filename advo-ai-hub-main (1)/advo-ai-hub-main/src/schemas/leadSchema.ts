@@ -8,21 +8,30 @@ export const leadFormSchema = z.object({
     .max(200, 'Nome muito longo')
     .regex(/^[a-zA-ZÀ-ÿ\s]+$/, 'Nome deve conter apenas letras'),
 
+  // ✅ CORREÇÃO: Transform ANTES da validação usando pipe
   telefone: z
     .string()
-    .min(10, 'Telefone inválido')
-    .max(20, 'Telefone muito longo')
-    .regex(/^[\d\s\(\)\-\+]+$/, 'Telefone inválido')
-    .transform((val) => val.replace(/\D/g, ''))
-    .optional()
-    .or(z.literal('')),
+    .transform((val) => val.trim())
+    .pipe(
+      z.union([
+        z.literal(''),
+        z.string()
+          .transform((val) => val.replace(/\D/g, ''))
+          .refine(
+            (val) => val.length === 0 || (val.length >= 10 && val.length <= 15),
+            { message: 'Telefone deve ter entre 10 e 15 dígitos' }
+          )
+      ])
+    )
+    .optional(),
 
+  // ✅ CORREÇÃO: Union para permitir string vazia OU email válido
   email: z
-    .string()
-    .email('Email inválido')
-    .max(200, 'Email muito longo')
-    .optional()
-    .or(z.literal('')),
+    .union([
+      z.literal(''),
+      z.string().email('Email inválido').max(200, 'Email muito longo')
+    ])
+    .optional(),
 
   area_juridica: z
     .string()

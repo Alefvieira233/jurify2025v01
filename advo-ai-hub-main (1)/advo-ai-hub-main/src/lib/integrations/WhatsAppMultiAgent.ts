@@ -110,11 +110,21 @@ export class WhatsAppMultiAgentIntegration {
         return;
       }
 
+      const tenantId = this.resolveTenantId(message);
+      if (!tenantId) {
+        console.error('Tenant ID nao resolvido para mensagem WhatsApp');
+        await this.sendMessage(
+          message.from,
+          'Nao foi possivel identificar seu atendimento no momento. Nossa equipe vai entrar em contato em breve.'
+        );
+        return;
+      }
+
       // Busca ou cria lead
-      const leadData = await this.getOrCreateLead(message);
+      const leadData = await this.getOrCreateLead(message, tenantId);
 
       // Salva mensagem no histórico
-      await this.saveMessageHistory(message, leadData.id);
+      await this.saveMessageHistory(message, leadData.id, tenantId);
 
       // Processa via sistema multiagentes
       await multiAgentSystem.processLead(leadData, message.text, 'whatsapp');
@@ -132,8 +142,12 @@ export class WhatsAppMultiAgentIntegration {
     }
   }
 
+  private resolveTenantId(message: WhatsAppMessage): string | null {
+    return (message.metadata as any)?.tenant_id || (message.metadata as any)?.tenantId || null;
+  }
+
   // 👤 Busca ou cria lead baseado na mensagem
-  private async getOrCreateLead(message: WhatsAppMessage): Promise<any> {
+  private async getOrCreateLead(message: WhatsAppMessage, tenantId: string): Promise<any> {
     const phone = message.from;
     const name = message.metadata?.profile_name || message.metadata?.name || `Cliente ${phone.slice(-4)}`;
 
@@ -141,7 +155,8 @@ export class WhatsAppMultiAgentIntegration {
     const { data: existingLead } = await supabase
       .from('leads')
       .select('*')
-      .eq('phone', phone)
+      .eq('telefone', phone)
+      .eq('tenant_id', tenantId)
       .single();
 
     if (existingLead) {
@@ -153,11 +168,13 @@ export class WhatsAppMultiAgentIntegration {
     const { data: newLead, error } = await supabase
       .from('leads')
       .insert({
-        name,
-        phone,
-        message: message.text,
-        source: 'whatsapp',
-        status: 'new',
+        nome: name,
+        telefone: phone,
+        descricao: message.text,
+        area_juridica: 'Nao informado',
+        origem: 'WhatsApp',
+        status: 'novo_lead',
+        tenant_id: tenantId,
         metadata: {
           wa_id: message.metadata?.wa_id,
           first_message: message.text,
@@ -178,19 +195,23 @@ export class WhatsAppMultiAgentIntegration {
   }
 
   // 💾 Salva histórico de mensagens
-  private async saveMessageHistory(message: WhatsAppMessage, leadId: string): Promise<void> {
+  private async saveMessageHistory(message: WhatsAppMessage, leadId: string, tenantId: string): Promise<void> {
     await supabase
       .from('lead_interactions')
       .insert({
         lead_id: leadId,
-        agent_id: 'whatsapp_incoming',
         message: 'Mensagem recebida via WhatsApp',
         response: message.text,
+        channel: 'whatsapp',
+        tenant_id: tenantId,
+        tipo: 'message',
         metadata: {
+          agent_id: 'whatsapp_incoming',
           whatsapp_message_id: message.id,
           from: message.from,
           timestamp: message.timestamp,
           type: message.type
+        
         },
         created_at: new Date().toISOString()
       });
@@ -230,14 +251,23 @@ export class WhatsAppMultiAgentIntegration {
 
         // Salva no histórico se tiver leadId
         if (leadId) {
+          const { data: leadRecord } = await supabase
+            .from('leads')
+            .select('tenant_id')
+            .eq('id', leadId)
+            .single();
+
           await supabase
             .from('lead_interactions')
             .insert({
               lead_id: leadId,
-              agent_id: 'whatsapp_outgoing',
               message: 'Mensagem enviada via WhatsApp',
               response: text,
+              channel: 'whatsapp',
+              tenant_id: leadRecord?.tenant_id || null,
+              tipo: 'message',
               metadata: {
+                agent_id: 'whatsapp_outgoing',
                 whatsapp_message_id: result.messages?.[0]?.id,
                 to: to,
                 sent_at: new Date().toISOString()
@@ -323,11 +353,11 @@ export class WhatsAppMultiAgentIntegration {
     const { data: messages } = await supabase
       .from('lead_interactions')
       .select('*')
-      .or('agent_id.eq.whatsapp_incoming,agent_id.eq.whatsapp_outgoing')
+      
       .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    const incoming = messages?.filter(m => m.agent_id === 'whatsapp_incoming').length || 0;
-    const outgoing = messages?.filter(m => m.agent_id === 'whatsapp_outgoing').length || 0;
+    const incoming = messages?.filter(m => m.metadata?.agent_id === 'whatsapp_incoming').length || 0;
+    const outgoing = messages?.filter(m => m.metadata?.agent_id === 'whatsapp_outgoing').length || 0;
 
     return {
       messages_received_24h: incoming,

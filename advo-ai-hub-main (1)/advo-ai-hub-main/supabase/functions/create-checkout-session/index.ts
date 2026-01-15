@@ -30,7 +30,7 @@ serve(async (req) => {
         }
 
         // 3. Parse Body
-        const { priceId, successUrl, cancelUrl } = await req.json();
+        const { priceId, planId, successUrl, cancelUrl } = await req.json();
         if (!priceId) {
             throw new Error('Missing priceId');
         }
@@ -78,9 +78,13 @@ serve(async (req) => {
             mode: 'subscription',
             success_url: successUrl || `${req.headers.get('origin')}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: cancelUrl || `${req.headers.get('origin')}/pricing`,
+            metadata: {
+                plan_id: planId || null,
+            },
             subscription_data: {
                 metadata: {
                     supabase_user_id: user.id,
+                    plan_id: planId || null,
                 },
             },
         });

@@ -1,10 +1,8 @@
 /**
- * 🔗 WHATSAPP SETUP - OFFICIAL API CONFIGURATION
+ * WhatsApp Setup - Official API configuration
  *
- * Componente para configurar a API Oficial do WhatsApp Business.
- * Substitui o método instável de QR Code.
- *
- * @version 2.0.0
+ * Component to configure the official WhatsApp Business API.
+ * This replaces the unstable QR Code flow.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -13,73 +11,118 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import {
-  Smartphone,
-  CheckCircle,
-  Loader2,
-  AlertCircle,
-  Save,
-  ExternalLink,
-  ShieldCheck
-} from 'lucide-react';
+import { Loader2, Save, ExternalLink, ShieldCheck } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WhatsAppSetupProps {
   onConnectionSuccess?: () => void;
 }
+
+const DEFAULT_ENDPOINT = 'https://graph.facebook.com/v18.0';
+const INTEGRATION_NAME = 'whatsapp_oficial';
 
 export default function WhatsAppSetup({ onConnectionSuccess }: WhatsAppSetupProps) {
   const [loading, setLoading] = useState(false);
   const [config, setConfig] = useState({
     phoneNumberId: '',
     accessToken: '',
-    verifyToken: 'jurify_secret_token' // Default suggestion
+    verifyToken: 'jurify_secret_token',
   });
   const [saved, setSaved] = useState(false);
   const { toast } = useToast();
+  const { profile } = useAuth();
 
-  // Load existing config (mocked for now, ideally from DB)
+  const tenantId = profile?.tenant_id ?? null;
+
   useEffect(() => {
-    // TODO: Fetch existing config from database if available
-  }, []);
+    const loadConfig = async () => {
+      if (!tenantId) return;
+
+      try {
+        const { data, error } = await supabase
+          .from('configuracoes_integracoes')
+          .select('api_key, phone_number_id, verify_token, endpoint_url')
+          .eq('tenant_id', tenantId)
+          .eq('nome_integracao', INTEGRATION_NAME)
+          .maybeSingle();
+
+        if (error) throw error;
+        if (!data) return;
+
+        setConfig({
+          phoneNumberId: data.phone_number_id || '',
+          accessToken: data.api_key || '',
+          verifyToken: data.verify_token || 'jurify_secret_token',
+        });
+        setSaved(true);
+      } catch (error) {
+        console.error('Failed to load WhatsApp config:', error);
+      }
+    };
+
+    loadConfig();
+  }, [tenantId]);
 
   const handleSave = async () => {
+    if (!tenantId) {
+      toast({
+        title: 'Tenant nao encontrado',
+        description: 'Nao foi possivel salvar sem um tenant valido.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      // In a real app, we would save this to a 'integrations' or 'tenant_settings' table.
-      // For now, we'll simulate a save and maybe update a local state or Edge Function env var (if we had access).
-      // Since we can't easily update Edge Function env vars from client, we assume these are set in the dashboard
-      // OR we save them to a table that the Edge Function reads.
+      const { data: existing, error: fetchError } = await supabase
+        .from('configuracoes_integracoes')
+        .select('id')
+        .eq('tenant_id', tenantId)
+        .eq('nome_integracao', INTEGRATION_NAME)
+        .maybeSingle();
 
-      // Simulating DB save
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      if (fetchError) throw fetchError;
 
-      console.log('Saving WhatsApp Config:', config);
+      const payload = {
+        tenant_id: tenantId,
+        nome_integracao: INTEGRATION_NAME,
+        status: 'ativa',
+        api_key: config.accessToken,
+        endpoint_url: DEFAULT_ENDPOINT,
+        phone_number_id: config.phoneNumberId,
+        verify_token: config.verifyToken,
+      };
 
-      // Here you would insert into 'integrations' table
-      /*
-      const { error } = await supabase.from('integrations').upsert({
-        type: 'whatsapp_official',
-        config: config,
-        tenant_id: ...
-      });
-      */
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('configuracoes_integracoes')
+          .update(payload)
+          .eq('id', existing.id)
+          .eq('tenant_id', tenantId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('configuracoes_integracoes').insert([payload]);
+
+        if (error) throw error;
+      }
 
       setSaved(true);
       toast({
-        title: 'Configuração Salva!',
+        title: 'Configuracao salva',
         description: 'Suas credenciais do WhatsApp foram atualizadas.',
       });
 
       onConnectionSuccess?.();
-
     } catch (error) {
       console.error('Error saving config:', error);
       toast({
         title: 'Erro ao salvar',
-        description: 'Não foi possível salvar as configurações.',
-        variant: 'destructive'
+        description: 'Nao foi possivel salvar as configuracoes.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -88,36 +131,38 @@ export default function WhatsAppSetup({ onConnectionSuccess }: WhatsAppSetupProp
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
           <ShieldCheck className="h-7 w-7 text-green-600" />
           WhatsApp Business API (Oficial)
         </h1>
         <p className="text-gray-600 mt-1">
-          Conecte-se via API Oficial da Meta para garantir estabilidade e evitar banimentos.
+          Conecte-se via API oficial da Meta para garantir estabilidade e evitar banimentos.
         </p>
       </div>
 
-      {/* Info Alert */}
       <Alert className="border-blue-200 bg-blue-50">
         <ExternalLink className="h-4 w-4 text-blue-600" />
         <AlertDescription className="text-blue-900">
-          Você precisa de uma conta no <a href="https://developers.facebook.com/" target="_blank" rel="noreferrer" className="underline font-medium">Meta for Developers</a>.
-          Crie um app, adicione o produto "WhatsApp" e obtenha as credenciais abaixo.
+          Voce precisa de uma conta no{' '}
+          <a
+            href="https://developers.facebook.com/"
+            target="_blank"
+            rel="noreferrer"
+            className="underline font-medium"
+          >
+            Meta for Developers
+          </a>
+          . Crie um app, adicione o produto "WhatsApp" e obtenha as credenciais abaixo.
         </AlertDescription>
       </Alert>
 
-      {/* Configuration Form */}
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Credenciais de Acesso</CardTitle>
-          <CardDescription>
-            Insira os dados do seu aplicativo WhatsApp Business.
-          </CardDescription>
+          <CardDescription>Insira os dados do seu aplicativo WhatsApp Business.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-
           <div className="space-y-2">
             <Label htmlFor="phoneId">Phone Number ID</Label>
             <Input
@@ -126,7 +171,9 @@ export default function WhatsAppSetup({ onConnectionSuccess }: WhatsAppSetupProp
               value={config.phoneNumberId}
               onChange={(e) => setConfig({ ...config, phoneNumberId: e.target.value })}
             />
-            <p className="text-xs text-gray-500">Encontrado na seção "API Setup" do painel da Meta.</p>
+            <p className="text-xs text-gray-500">
+              Encontrado na secao "API Setup" do painel da Meta.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -138,7 +185,7 @@ export default function WhatsAppSetup({ onConnectionSuccess }: WhatsAppSetupProp
               value={config.accessToken}
               onChange={(e) => setConfig({ ...config, accessToken: e.target.value })}
             />
-            <p className="text-xs text-gray-500">Recomendamos usar um Token de Sistema para não expirar.</p>
+            <p className="text-xs text-gray-500">Recomendamos usar um Token de Sistema para nao expirar.</p>
           </div>
 
           <div className="space-y-2">
@@ -148,7 +195,9 @@ export default function WhatsAppSetup({ onConnectionSuccess }: WhatsAppSetupProp
               value={config.verifyToken}
               onChange={(e) => setConfig({ ...config, verifyToken: e.target.value })}
             />
-            <p className="text-xs text-gray-500">Defina este mesmo valor na configuração do Webhook na Meta.</p>
+            <p className="text-xs text-gray-500">
+              Defina este mesmo valor na configuracao do Webhook na Meta.
+            </p>
           </div>
 
           <div className="bg-gray-100 p-4 rounded-md border border-gray-200">
@@ -171,11 +220,14 @@ export default function WhatsAppSetup({ onConnectionSuccess }: WhatsAppSetupProp
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Salvar Configuração
+                Salvar Configuracao
               </>
             )}
           </Button>
 
+          {saved && (
+            <p className="text-xs text-green-600 text-center">Configuracao salva para este tenant.</p>
+          )}
         </CardContent>
       </Card>
     </div>

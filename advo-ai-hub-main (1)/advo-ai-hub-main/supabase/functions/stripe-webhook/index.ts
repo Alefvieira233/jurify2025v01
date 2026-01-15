@@ -11,6 +11,20 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
 
 const cryptoProvider = Stripe.createSubtleCryptoProvider();
 
+function mapPriceToPlanId(priceId: string, metadataPlanId?: string | null) {
+    if (metadataPlanId) {
+        return metadataPlanId;
+    }
+
+    const proPriceId = Deno.env.get('STRIPE_PRICE_PRO');
+    const enterprisePriceId = Deno.env.get('STRIPE_PRICE_ENTERPRISE');
+
+    if (proPriceId && priceId === proPriceId) return 'pro';
+    if (enterprisePriceId && priceId === enterprisePriceId) return 'enterprise';
+
+    return null;
+}
+
 serve(async (req) => {
     try {
         const signature = req.headers.get("Stripe-Signature");
@@ -108,6 +122,12 @@ async function manageSubscriptionStatusChange(
         expand: ['default_payment_method']
     });
 
+    const priceId = subscription.items.data[0]?.price?.id;
+    const planId = priceId ? mapPriceToPlanId(priceId, subscription.metadata?.plan_id ?? null) : null;
+    if (!planId) {
+        console.warn("Plan mapping not found for price:", priceId);
+    }
+
     // Upsert subscription data into Supabase
     const subscriptionData = {
         id: subscription.id,
@@ -143,7 +163,7 @@ async function manageSubscriptionStatusChange(
             stripe_subscription_id: subscription.id,
             stripe_customer_id: customerId,
             status: subscription.status,
-            plan_id: subscription.items.data[0].price.id, // Storing price ID as plan ID for now
+            plan_id: planId,
             current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
             cancel_at_period_end: subscription.cancel_at_period_end,
@@ -162,7 +182,7 @@ async function manageSubscriptionStatusChange(
             .from('profiles')
             .update({
                 subscription_status: subscription.status,
-                subscription_tier: subscription.items.data[0].price.id // or map to 'pro'/'free'
+                subscription_tier: planId || 'free'
             })
             .eq('id', uuid);
     }

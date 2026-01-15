@@ -1,4 +1,4 @@
-# Arquivos do sistema
+﻿# Arquivos do sistema
 nul
 *.tmp
 .DS_Store
@@ -29,3 +29,6 @@ build/
 
 # Misc
 .cache/
+# Local CLI settings
+.claude/settings*.json
+

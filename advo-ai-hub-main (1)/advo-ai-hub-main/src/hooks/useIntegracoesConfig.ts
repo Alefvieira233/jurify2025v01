@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,26 +10,29 @@ export type CreateIntegracaoData = Database['public']['Tables']['configuracoes_i
 export const useIntegracoesConfig = () => {
   const [integracoes, setIntegracoes] = useState<IntegracaoConfig[]>([]);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { toast } = useToast();
 
+  const tenantId = profile?.tenant_id ?? null;
+
   const fetchIntegracoes = async () => {
-    if (!user) return;
+    if (!user || !tenantId) return;
 
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('configuracoes_integracoes')
         .select('*')
+        .eq('tenant_id', tenantId)
         .order('criado_em', { ascending: false });
 
       if (error) throw error;
       setIntegracoes(data || []);
     } catch (error) {
-      console.error('Erro ao buscar integrações:', error);
+      console.error('Failed to load integrations:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar as integrações.',
+        description: 'Nao foi possivel carregar as integracoes.',
         variant: 'destructive',
       });
     } finally {
@@ -39,27 +41,27 @@ export const useIntegracoesConfig = () => {
   };
 
   const createIntegracao = async (data: CreateIntegracaoData) => {
-    if (!user) return false;
+    if (!user || !tenantId) return false;
 
     try {
       const { error } = await supabase
         .from('configuracoes_integracoes')
-        .insert([data]);
+        .insert([{ ...data, tenant_id: tenantId }]);
 
       if (error) throw error;
 
       toast({
         title: 'Sucesso',
-        description: 'Integração criada com sucesso!',
+        description: 'Integracao criada com sucesso.',
       });
 
       await fetchIntegracoes();
       return true;
     } catch (error) {
-      console.error('Erro ao criar integração:', error);
+      console.error('Failed to create integration:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível criar a integração.',
+        description: 'Nao foi possivel criar a integracao.',
         variant: 'destructive',
       });
       return false;
@@ -67,28 +69,29 @@ export const useIntegracoesConfig = () => {
   };
 
   const updateIntegracao = async (id: string, data: Partial<IntegracaoConfig>) => {
-    if (!user) return false;
+    if (!user || !tenantId) return false;
 
     try {
       const { error } = await supabase
         .from('configuracoes_integracoes')
         .update({ ...data, atualizado_em: new Date().toISOString() })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
       toast({
         title: 'Sucesso',
-        description: 'Integração atualizada com sucesso!',
+        description: 'Integracao atualizada com sucesso.',
       });
 
       await fetchIntegracoes();
       return true;
     } catch (error) {
-      console.error('Erro ao atualizar integração:', error);
+      console.error('Failed to update integration:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível atualizar a integração.',
+        description: 'Nao foi possivel atualizar a integracao.',
         variant: 'destructive',
       });
       return false;
@@ -101,34 +104,35 @@ export const useIntegracoesConfig = () => {
   };
 
   const updateSincronizacao = async (id: string) => {
-    return await updateIntegracao(id, { 
-      data_ultima_sincronizacao: new Date().toISOString() 
+    return await updateIntegracao(id, {
+      data_ultima_sincronizacao: new Date().toISOString(),
     });
   };
 
   const deleteIntegracao = async (id: string) => {
-    if (!user) return false;
+    if (!user || !tenantId) return false;
 
     try {
       const { error } = await supabase
         .from('configuracoes_integracoes')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('tenant_id', tenantId);
 
       if (error) throw error;
 
       toast({
         title: 'Sucesso',
-        description: 'Integração removida com sucesso!',
+        description: 'Integracao removida com sucesso.',
       });
 
       await fetchIntegracoes();
       return true;
     } catch (error) {
-      console.error('Erro ao remover integração:', error);
+      console.error('Failed to delete integration:', error);
       toast({
         title: 'Erro',
-        description: 'Não foi possível remover a integração.',
+        description: 'Nao foi possivel remover a integracao.',
         variant: 'destructive',
       });
       return false;
@@ -137,7 +141,7 @@ export const useIntegracoesConfig = () => {
 
   useEffect(() => {
     fetchIntegracoes();
-  }, [user]);
+  }, [user, tenantId]);
 
   return {
     integracoes,

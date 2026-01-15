@@ -10,6 +10,113 @@ import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 const RelatoriosGerenciais = () => {
   const { metrics, loading, error } = useDashboardMetrics();
 
+  type CsvRow = {
+    section: string;
+    name: string;
+    value: string | number;
+    value_2?: string | number;
+    value_3?: string | number;
+  };
+
+  const csvHeaders = ['section', 'name', 'value', 'value_2', 'value_3'];
+
+  const toCsv = (rows: CsvRow[]) => {
+    const escapeCell = (value: string | number | undefined) => {
+      const text = value === undefined || value === null ? '' : String(value);
+      return `"${text.replace(/\"/g, '""')}"`;
+    };
+
+    return [
+      csvHeaders.join(','),
+      ...rows.map(row => csvHeaders.map(header => escapeCell(row[header as keyof CsvRow])).join(','))
+    ].join('\n');
+  };
+
+  const downloadCsv = (filename: string, rows: CsvRow[]) => {
+    if (rows.length === 0) {
+      return;
+    }
+
+    const csv = toCsv(rows);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const buildRowsFromMetrics = (data: NonNullable<typeof metrics>): CsvRow[] => {
+    const rows: CsvRow[] = [
+      { section: 'kpi', name: 'total_leads', value: data.totalLeads },
+      { section: 'kpi', name: 'leads_novo_mes', value: data.leadsNovoMes },
+      { section: 'kpi', name: 'contratos', value: data.contratos },
+      { section: 'kpi', name: 'contratos_assinados', value: data.contratosAssinados },
+      { section: 'kpi', name: 'agendamentos', value: data.agendamentos },
+      { section: 'kpi', name: 'agendamentos_hoje', value: data.agendamentosHoje },
+      { section: 'kpi', name: 'agentes_ativos', value: data.agentesAtivos },
+      { section: 'kpi', name: 'execucoes_agentes_hoje', value: data.execucoesAgentesHoje }
+    ];
+
+    Object.entries(data.leadsPorStatus).forEach(([status, count]) => {
+      rows.push({ section: 'status', name: status, value: count });
+    });
+
+    data.leadsPorArea.forEach(area => {
+      rows.push({ section: 'area', name: area.area, value: area.total });
+    });
+
+    data.execucoesRecentesAgentes.forEach(agente => {
+      rows.push({
+        section: 'agente',
+        name: agente.agente_nome,
+        value: agente.total_execucoes,
+        value_2: agente.sucesso,
+        value_3: agente.erro
+      });
+    });
+
+    return rows;
+  };
+
+  const handleExportRelatorios = () => {
+    if (!metrics) {
+      return;
+    }
+
+    const rows = buildRowsFromMetrics(metrics);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    downloadCsv(`relatorios-${dateStamp}.csv`, rows);
+  };
+
+  const handleExportDemo = () => {
+    const demoRows: CsvRow[] = [
+      { section: 'kpi', name: 'total_leads', value: 120 },
+      { section: 'kpi', name: 'leads_novo_mes', value: 18 },
+      { section: 'kpi', name: 'contratos', value: 42 },
+      { section: 'kpi', name: 'contratos_assinados', value: 28 },
+      { section: 'kpi', name: 'agendamentos', value: 16 },
+      { section: 'kpi', name: 'agendamentos_hoje', value: 5 },
+      { section: 'kpi', name: 'agentes_ativos', value: 4 },
+      { section: 'kpi', name: 'execucoes_agentes_hoje', value: 31 },
+      { section: 'status', name: 'novo', value: 35 },
+      { section: 'status', name: 'em_qualificacao', value: 40 },
+      { section: 'status', name: 'proposta_enviada', value: 25 },
+      { section: 'status', name: 'contrato_assinado', value: 20 },
+      { section: 'area', name: 'Trabalhista', value: 30 },
+      { section: 'area', name: 'Civel', value: 28 },
+      { section: 'area', name: 'Tributario', value: 22 },
+      { section: 'area', name: 'Familia', value: 18 },
+      { section: 'agente', name: 'Triagem', value: 45, value_2: 40, value_3: 5 },
+      { section: 'agente', name: 'Follow-up', value: 30, value_2: 27, value_3: 3 }
+    ];
+
+    downloadCsv('relatorios-demo.csv', demoRows);
+  };
+
   if (loading) {
     return (
       <div className="p-6 space-y-6">
@@ -52,7 +159,7 @@ const RelatoriosGerenciais = () => {
               <p className="text-blue-700 mb-6">
                 Os relatórios serão gerados assim que houver dados suficientes no sistema.
               </p>
-              <Button className="bg-amber-500 hover:bg-amber-600">
+              <Button className="bg-amber-500 hover:bg-amber-600" onClick={handleExportDemo}>
                 <Download className="h-4 w-4 mr-2" />
                 Gerar Relatório Demo
               </Button>
@@ -111,6 +218,7 @@ const RelatoriosGerenciais = () => {
             {/* Export Button Premium */}
             <Button
               className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
+              onClick={handleExportRelatorios}
             >
               <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />

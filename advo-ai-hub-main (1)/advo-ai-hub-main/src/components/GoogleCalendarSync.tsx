@@ -1,7 +1,7 @@
-
 import React, { useEffect } from 'react';
 import { useGoogleCalendar } from '@/hooks/useGoogleCalendar';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface AgendamentoData {
   id: string;
@@ -11,7 +11,8 @@ interface AgendamentoData {
   observacoes?: string;
   google_event_id?: string;
   lead?: {
-    nome_completo: string;
+    nome_completo?: string;
+    nome?: string;
     email?: string;
     telefone?: string;
   };
@@ -28,6 +29,7 @@ const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
   action,
   onComplete
 }) => {
+  const { toast } = useToast();
   const { user } = useAuth();
   const {
     createCalendarEvent,
@@ -50,7 +52,7 @@ const GoogleCalendarSync: React.FC<GoogleCalendarSyncProps> = ({
         const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // 1 hora de duração
 
         const eventData = {
-          summary: `Reunião - ${agendamento.lead?.nome_completo || 'Cliente'}`,
+          summary: `Reunião - ${agendamento.lead?.nome_completo || agendamento.lead?.nome || 'Cliente'}`,
           description: `
 Área Jurídica: ${agendamento.area_juridica}
 Responsável: ${agendamento.responsavel}
@@ -79,14 +81,14 @@ Agendamento criado via Jurify
             await createCalendarEvent(eventData, agendamento.id);
             success = true;
             break;
-          
+
           case 'update':
             if (agendamento.google_event_id) {
               await updateCalendarEvent(agendamento.google_event_id, eventData, agendamento.id);
               success = true;
             }
             break;
-          
+
           case 'delete':
             if (agendamento.google_event_id) {
               await deleteCalendarEvent(agendamento.google_event_id, agendamento.id);
@@ -96,8 +98,14 @@ Agendamento criado via Jurify
         }
 
         onComplete?.(success);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error syncing with Google Calendar:', error);
+        // Mostrar erro de sincronização no UI.
+        toast({
+          title: 'Erro na sincronização',
+          description: error.message || 'Não foi possível sincronizar com o Google Calendar.',
+          variant: 'destructive',
+        });
         onComplete?.(false);
       }
     };

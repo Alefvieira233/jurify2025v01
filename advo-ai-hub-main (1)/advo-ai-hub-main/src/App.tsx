@@ -1,4 +1,4 @@
-import { Suspense, useEffect } from "react";
+import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,31 +12,36 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { initSentry } from "./lib/sentry";
 import * as Sentry from '@sentry/react';
 
-// ✅ Inicializar Sentry ANTES de tudo
+// Inicializar Sentry ANTES de tudo
 initSentry();
 
-// Import direto sem lazy (para debug)
+// Componentes críticos - import direto (necessários no carregamento inicial)
 import Auth from "./pages/Auth";
 import GoogleAuthCallback from "./pages/GoogleAuthCallback";
 import NotFound from "./pages/NotFound";
-import Pricing from "./pages/Pricing";
 
-import Dashboard from "./features/dashboard/Dashboard";
-import LeadsPanel from "./features/leads/LeadsPanel";
-import PipelineJuridico from "./features/pipeline/PipelineJuridico";
-import AgendamentosManager from "./features/scheduling/AgendamentosManager";
-import ContratosManager from "./features/contracts/ContratosManager";
-import RelatoriosGerenciais from "./features/reports/RelatoriosGerenciais";
-import WhatsAppIA from "./features/whatsapp/WhatsAppIA";
-import AgentesIAManager from "./features/ai-agents/AgentesIAManager";
-import UsuariosManager from "./features/users/UsuariosManager";
-import LogsPanel from "./features/logs/LogsPanel";
-import IntegracoesConfig from "./features/settings/IntegracoesConfig";
-import ConfiguracoesGerais from "./features/settings/ConfiguracoesGerais";
-import NotificationsPanel from "./features/notifications/NotificationsPanel";
-import TimelineConversas from "./features/timeline/TimelineConversas";
-import AgentsPlayground from "./pages/AgentsPlayground";
-import MissionControl from "./features/mission-control/MissionControl";
+// Lazy loading para features (carregamento sob demanda)
+const Dashboard = lazy(() => import("./features/dashboard/Dashboard"));
+const LeadsPanel = lazy(() => import("./features/leads/LeadsPanel"));
+const PipelineJuridico = lazy(() => import("./features/pipeline/PipelineJuridico"));
+const AgendamentosManager = lazy(() => import("./features/scheduling/AgendamentosManager"));
+const ContratosManager = lazy(() => import("./features/contracts/ContratosManager"));
+const RelatoriosGerenciais = lazy(() => import("./features/reports/RelatoriosGerenciais"));
+const WhatsAppIA = lazy(() => import("./features/whatsapp/WhatsAppIA"));
+const AgentesIAManager = lazy(() => import("./features/ai-agents/AgentesIAManager"));
+const UsuariosManager = lazy(() => import("./features/users/UsuariosManager"));
+const LogsPanel = lazy(() => import("./features/logs/LogsPanel"));
+const IntegracoesConfig = lazy(() => import("./features/settings/IntegracoesConfig"));
+const ConfiguracoesGerais = lazy(() => import("./features/settings/ConfiguracoesGerais"));
+const NotificationsPanel = lazy(() => import("./features/notifications/NotificationsPanel"));
+const TimelineConversas = lazy(() => import("./features/timeline/TimelineConversas"));
+const AgentsPlayground = lazy(() => import("./pages/AgentsPlayground"));
+const MissionControl = lazy(() => import("./features/mission-control/MissionControl"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const AnalyticsDashboard = lazy(() => import("./components/analytics/AnalyticsDashboard"));
+const SubscriptionManager = lazy(() => import("./components/billing/SubscriptionManager"));
+
+// WhatsApp Error Boundary - import direto (necessário para wrapping)
 import { WhatsAppErrorBoundary } from "./features/whatsapp/WhatsAppErrorBoundary";
 
 const queryClient = new QueryClient({
@@ -44,6 +49,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutos
     },
   },
 });
@@ -85,6 +91,8 @@ const App = () => (
                   <Route path="notificacoes" element={<NotificationsPanel />} />
                   <Route path="timeline" element={<TimelineConversas />} />
                   <Route path="planos" element={<Pricing />} />
+                  <Route path="analytics" element={<AnalyticsDashboard />} />
+                  <Route path="billing" element={<SubscriptionManager />} />
                   <Route path="admin/playground" element={<AgentsPlayground />} />
                   <Route path="admin/mission-control" element={<MissionControl />} />
                 </Route>

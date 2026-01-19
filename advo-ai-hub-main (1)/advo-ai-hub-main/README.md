@@ -1,73 +1,144 @@
-# Welcome to your Lovable project
+# Jurify - Legal SaaS Platform
 
-## Project info
+Sistema SaaS jurídico com inteligência artificial para gestão de escritórios de advocacia.
 
-**URL**: https://lovable.dev/projects/d7a2ef50-ef26-45e1-8679-28bb00795032
+## Stack Tecnológico
 
-## How can I edit this code?
+- **Frontend:** React 18 + TypeScript + Vite
+- **UI:** Tailwind CSS + shadcn/ui
+- **Backend:** Supabase (PostgreSQL + Edge Functions + Auth)
+- **IA:** OpenAI GPT-4 via Edge Functions
+- **Monitoramento:** Sentry
 
-There are several ways of editing your application.
+## Funcionalidades
 
-**Use Lovable**
+- **Gestão de Leads:** Captura, qualificação e acompanhamento
+- **Pipeline Jurídico:** Kanban para acompanhamento de casos
+- **Contratos:** Gestão e assinatura digital (ZapSign)
+- **Agendamentos:** Calendário com integração Google Calendar
+- **WhatsApp IA:** Atendimento automatizado com IA
+- **Sistema Multi-Agentes:** 7 agentes especializados para processamento inteligente
+- **Relatórios:** Analytics e métricas de performance
+- **Multi-tenant:** Isolamento de dados por escritório
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d7a2ef50-ef26-45e1-8679-28bb00795032) and start prompting.
+## Requisitos
 
-Changes made via Lovable will be committed automatically to this repo.
+- Node.js >= 18.0.0
+- npm >= 8.0.0
+- Conta Supabase configurada
+- API Key OpenAI (para funcionalidades de IA)
 
-**Use your preferred IDE**
+## Instalação
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+# Clonar repositório
+git clone <repo-url>
+cd jurify
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+# Instalar dependências
+npm install
 
-Follow these steps:
+# Configurar variáveis de ambiente
+cp .env.example .env
+# Editar .env com suas credenciais
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Iniciar servidor de desenvolvimento
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Variáveis de Ambiente
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+```env
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-anon-key
+VITE_SENTRY_DSN=seu-sentry-dsn (opcional)
+```
 
-**Use GitHub Codespaces**
+## Scripts Disponíveis
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Servidor de desenvolvimento |
+| `npm run build` | Build de produção |
+| `npm run preview` | Preview do build |
+| `npm run lint` | Verificação de lint |
+| `npm run type-check` | Verificação de tipos |
+| `npm run test` | Executar testes |
+| `npm run test:coverage` | Testes com cobertura |
 
-## What technologies are used for this project?
+## Estrutura do Projeto
 
-This project is built with:
+```
+src/
+├── components/       # Componentes reutilizáveis
+│   ├── ui/          # Componentes shadcn/ui
+│   └── ...
+├── features/         # Módulos por funcionalidade
+│   ├── leads/
+│   ├── pipeline/
+│   ├── whatsapp/
+│   ├── ai-agents/
+│   └── ...
+├── hooks/            # Custom hooks
+├── contexts/         # React contexts
+├── lib/              # Bibliotecas e utilitários
+│   └── multiagents/  # Sistema multi-agentes
+├── integrations/     # Integrações externas
+├── pages/            # Páginas da aplicação
+└── utils/            # Funções utilitárias
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+supabase/
+└── functions/        # Edge Functions
+    ├── ai-agent-processor/
+    ├── whatsapp-webhook/
+    └── ...
+```
 
-## How can I deploy this project?
+## Sistema Multi-Agentes
 
-Simply open [Lovable](https://lovable.dev/projects/d7a2ef50-ef26-45e1-8679-28bb00795032) and click on Share -> Publish.
+O Jurify possui um sistema de 7 agentes de IA especializados:
 
-## Can I connect a custom domain to my Lovable project?
+| Agente | Função |
+|--------|--------|
+| Coordenador | Orquestra o fluxo entre agentes |
+| Qualificador | Analisa e qualifica leads |
+| Jurídico | Valida viabilidade jurídica |
+| Comercial | Cria propostas personalizadas |
+| Comunicador | Formata mensagens por canal |
+| Analista | Gera insights e métricas |
+| CustomerSuccess | Gerencia onboarding |
 
-Yes, you can!
+## Segurança
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- API keys protegidas em Edge Functions (nunca expostas no frontend)
+- Autenticação via Supabase Auth
+- Row Level Security (RLS) no PostgreSQL
+- Multi-tenancy com isolamento de dados
+- Rate limiting nas APIs
+- Sanitização de inputs (XSS protection)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## Deploy
+
+### Vercel (Recomendado)
+
+```bash
+npm run build
+vercel --prod
+```
+
+### Docker
+
+```bash
+docker build -t jurify .
+docker run -p 3000:3000 jurify
+```
+
+## Documentação Adicional
+
+- [API Endpoints](./docs/API_ENDPOINTS.md)
+- [Setup Guide](./docs/SETUP_GUIDE.md)
+- [Deployment](./docs/DEPLOYMENT.md)
+
+## Licença
+
+Proprietário - Todos os direitos reservados.

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { validateAgenteIA, type AgenteIAFormData } from '@/schemas/agenteSchema';
+import { validateAgenteIA } from '@/schemas/agenteSchema';
 import { sanitizeText } from '@/utils/validation';
 import {
   Select,
@@ -22,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { AgentType } from '@/lib/agents/AgentEngine';
 
 interface AgenteIA {
   id: string;
@@ -47,10 +47,11 @@ interface AgenteIA {
 
 interface NovoAgenteFormProps {
   agente?: AgenteIA | null;
+  defaultType?: AgentType;
   onClose: () => void;
 }
 
-const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
+const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, defaultType, onClose }) => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
@@ -65,7 +66,7 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     status: 'ativo' as string,
     descricao_funcao: '',
     prompt_base: '',
-    tipo_agente: 'chat_interno' as string,
+    tipo_agente: (defaultType as string) || 'chat_interno',
     parametros_avancados: {
       temperatura: 0.7,
       top_p: 0.9,
@@ -118,7 +119,7 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
         descricao_funcao: agente.descricao_funcao || '',
         prompt_base: agente.prompt_base || '',
         tipo_agente: agente.tipo_agente || 'chat_interno',
-        parametros_avancados: typeof agente.parametros_avancados === 'object' && agente.parametros_avancados ? 
+        parametros_avancados: typeof agente.parametros_avancados === 'object' && agente.parametros_avancados ?
           agente.parametros_avancados : {
             temperatura: 0.7,
             top_p: 0.9,
@@ -176,8 +177,8 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     };
 
     const validation = validateAgenteIA(dataToValidate);
-    
-    if (!validation.success) {
+
+    if (!validation.success && validation.errors.length > 0) {
       const firstError = validation.errors[0];
       toast({
         title: "Erro de Validação",
@@ -192,10 +193,10 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     const validatedData = validateForm();
     if (!validatedData) return;
-    
+
     setLoading(true);
 
     try {
@@ -248,11 +249,6 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, onClose }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const getTipoAgenteIcon = (tipo: string) => {
-    const tipoObj = tiposAgente.find(t => t.value === tipo);
-    return tipoObj ? tipoObj.icon : Bot;
   };
 
   return (

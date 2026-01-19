@@ -7,7 +7,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { BaseAgent } from '../core/BaseAgent';
-import { AgentMessage, MessageType, Priority, AGENT_CONFIG } from '../types';
+import { AgentMessage, AGENT_CONFIG } from '../types';
 
 export class CommunicatorAgent extends BaseAgent {
   constructor() {
@@ -19,10 +19,11 @@ export class CommunicatorAgent extends BaseAgent {
   }
 
   protected async handleMessage(message: AgentMessage): Promise<void> {
-    if (message.payload.task === 'send_proposal') {
-      await this.sendProposal(message.payload);
-    } else if (message.payload.task === 'send_onboarding') {
-      await this.sendOnboarding(message.payload);
+    const payload = message.payload as any;
+    if (payload.task === 'send_proposal') {
+      await this.sendProposal(payload);
+    } else if (payload.task === 'send_onboarding') {
+      await this.sendOnboarding(payload);
     }
   }
 
@@ -44,9 +45,9 @@ export class CommunicatorAgent extends BaseAgent {
       },
     });
 
-    this.updateContext(payload.leadId, { 
-      stage: 'proposal_sent', 
-      formatted_message: formatted 
+    this.updateContext(payload.leadId, {
+      stage: 'proposal_sent',
+      formatted_message: formatted
     });
   }
 

@@ -35,6 +35,27 @@ dist-ssr
 # Temporary files
 tmpclaude-*
 src/**/tmpclaude-*
+
 # Local CLI settings
 .claude/settings*.json
+
+# Test coverage
+coverage/
+*.lcov
+
+# Build artifacts
+.vite/
+*.tsbuildinfo
+
+# OS files
+Thumbs.db
+
+# Backup files
+*.backup
+*.bak
+*-backup.*
+*-old.*
+
+# Supabase local
+.supabase/
 

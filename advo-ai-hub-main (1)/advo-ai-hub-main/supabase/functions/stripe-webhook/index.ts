@@ -72,8 +72,33 @@ serve(async (req) => {
             case 'invoice.payment_succeeded': {
                 const invoice = event.data.object;
                 if (invoice.subscription) {
-                    // Optional: Handle payment success specifically if needed
-                    // Usually subscription.updated covers the status change to 'active'
+                    console.log(`✅ Payment succeeded for subscription: ${invoice.subscription}`);
+                }
+                break;
+            }
+            case 'invoice.payment_failed': {
+                const invoice = event.data.object;
+                const customerId = invoice.customer as string;
+                console.log(`⚠️ Payment failed for customer: ${customerId}`);
+
+                const { data: profileData } = await supabase
+                    .from('profiles')
+                    .select('id, email')
+                    .eq('stripe_customer_id', customerId)
+                    .single();
+
+                if (profileData) {
+                    await supabase
+                        .from('subscriptions')
+                        .update({ status: 'past_due', updated_at: new Date().toISOString() })
+                        .eq('stripe_customer_id', customerId);
+
+                    await supabase
+                        .from('profiles')
+                        .update({ subscription_status: 'past_due' })
+                        .eq('id', profileData.id);
+
+                    console.log(`📧 User ${profileData.email} marked as past_due`);
                 }
                 break;
             }
@@ -104,7 +129,6 @@ async function manageSubscriptionStatusChange(
     customerId: string,
     createAction = false
 ) {
-    // Get customer's UUID from mapping table.
     const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('id')
@@ -128,34 +152,6 @@ async function manageSubscriptionStatusChange(
         console.warn("Plan mapping not found for price:", priceId);
     }
 
-    // Upsert subscription data into Supabase
-    const subscriptionData = {
-        id: subscription.id,
-        user_id: uuid,
-        metadata: subscription.metadata,
-        status: subscription.status,
-        price_id: subscription.items.data[0].price.id,
-        // TODO: Map price_id to plan_id if needed, or store price_id directly
-        quantity: subscription.items.data[0].quantity,
-        cancel_at_period_end: subscription.cancel_at_period_end,
-        cancel_at: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
-        canceled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
-        current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-        current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-        created: new Date(subscription.created * 1000).toISOString(),
-        ended_at: subscription.ended_at ? new Date(subscription.ended_at * 1000).toISOString() : null,
-        trial_start: subscription.trial_start ? new Date(subscription.trial_start * 1000).toISOString() : null,
-        trial_end: subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null,
-    };
-
-    // We need to map this to our schema. 
-    // Our schema has: id (uuid), user_id, stripe_subscription_id, status, plan_id...
-    // The 'id' in our table is UUID, but Stripe ID is string 'sub_...'. 
-    // We should probably use stripe_subscription_id as the unique key for upsert, 
-    // OR we should have made 'id' text to hold 'sub_...'.
-    // Looking at migration: `stripe_subscription_id text UNIQUE`.
-    // So we upsert based on stripe_subscription_id.
-
     const { error } = await supabase
         .from('subscriptions')
         .upsert({
@@ -177,7 +173,6 @@ async function manageSubscriptionStatusChange(
     } else {
         console.log(`✅ Subscription ${subscription.id} updated for user ${uuid}`);
 
-        // Update profile status for quick access
         await supabase
             .from('profiles')
             .update({

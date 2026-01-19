@@ -23,23 +23,57 @@ export class CoordinatorAgent extends BaseAgent {
 
   private async planExecution(payload: any): Promise<void> {
     const plan = await this.processWithAI(
-      `Analise este lead e crie um plano: ${payload.message}`,
+      `Analise este lead e decida qual o próximo passo.
+      Lead: ${payload.message}
+      
+      DIRETRIZES DE ROTEAMENTO:
+      - Se o usuário pede um contrato, revisão legal ou dúvida jurídica -> Roteie para "Juridico".
+      - Se o usuário pede orçamento, preço ou proposta -> Roteie para "Comercial".
+      - Se o pedido é vago ou precisa de mais dados -> Roteie para "Qualificador".
+
+      Responda APENAS com um JSON no formato:
+      {
+        "next_agent": "Juridico" | "Comercial" | "Qualificador",
+        "reason": "motivo",
+        "task": "nome_da_tarefa"
+      }`,
       payload.context
     );
+
+    let nextAgent = AGENT_CONFIG.NAMES.QUALIFIER;
+    let task = 'analyze_lead';
+
+    try {
+      // More robust JSON extraction
+      const jsonMatch = plan.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const jsonStr = jsonMatch[0];
+        const decision = JSON.parse(jsonStr);
+
+        if (decision.next_agent && Object.values(AGENT_CONFIG.NAMES).includes(decision.next_agent)) {
+          nextAgent = decision.next_agent;
+          task = decision.task || 'analyze_lead';
+        }
+      } else {
+        console.warn('Nenhum JSON encontrado na resposta do Coordenador');
+      }
+    } catch (e) {
+      console.warn('Falha ao parsear decisão do Coordenador, usando fallback:', e);
+    }
 
     this.updateContext(payload.leadId, { stage: 'planned', plan });
 
     await this.sendMessage(
-      AGENT_CONFIG.NAMES.QUALIFIER,
+      nextAgent,
       MessageType.TASK_REQUEST,
-      { task: 'analyze_lead', leadId: payload.leadId, data: payload },
+      { task, leadId: payload.leadId, data: payload },
       Priority.HIGH
     );
   }
 
   private async monitorProgress(payload: any): Promise<void> {
     const { stage, leadId } = payload;
-    
+
     switch (stage) {
       case 'qualified':
         await this.sendMessage(

@@ -1,31 +1,30 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+
 import Sidebar from "@/components/Sidebar";
-import Dashboard from "@/components/Dashboard";
-import LeadsPanel from "@/components/LeadsPanel";
-import PipelineJuridico from "@/components/PipelineJuridico";
-import AgendamentosManager from "@/components/AgendamentosManager";
-import ContratosManager from "@/components/ContratosManager";
-import RelatoriosGerenciais from "@/components/RelatoriosGerenciais";
-import WhatsAppIA from "@/components/WhatsAppIA";
-import AgentesIAManager from "@/components/AgentesIA/AgentesIAManager";
-import UsuariosManager from "@/components/UsuariosManager";
-import ConfiguracoesGerais from "@/components/ConfiguracoesGerais";
-import NotificationsPanel from "@/components/NotificationsPanel";
-import LogsPanel from "@/components/LogsPanel";
-import IntegracoesConfig from "@/components/IntegracoesConfig";
+import Dashboard from "@/features/dashboard/Dashboard";
+import LeadsPanel from "@/features/leads/LeadsPanel";
+import PipelineJuridico from "@/features/pipeline/PipelineJuridico";
+import AgendamentosManager from "@/features/scheduling/AgendamentosManager";
+import ContratosManager from "@/features/contracts/ContratosManager";
+import RelatoriosGerenciais from "@/features/reports/RelatoriosGerenciais";
+import WhatsAppIA from "@/features/whatsapp/WhatsAppIA";
+import AgentesIAManager from "@/features/ai-agents/AgentesIAManager";
+import UsuariosManager from "@/features/users/UsuariosManager";
+import ConfiguracoesGerais from "@/features/settings/ConfiguracoesGerais";
+import NotificationsPanel from "@/features/notifications/NotificationsPanel";
+import LogsPanel from "@/features/logs/LogsPanel";
+import IntegracoesConfig from "@/features/settings/IntegracoesConfig";
 import OnboardingFlow from "@/components/OnboardingFlow";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import TimelineConversas from "@/components/TimelineConversas";
+import TimelineConversas from "@/features/timeline/TimelineConversas";
 import { useSearchParams } from "react-router-dom";
 
 type ActiveTab = 'dashboard' | 'leads' | 'pipeline' | 'agendamentos' | 'contratos' | 'relatorios' | 'whatsapp' | 'agentes' | 'usuarios' | 'configuracoes' | 'notificacoes' | 'logs' | 'integracoes' | 'timeline';
 
 const Index = () => {
-  const { user, signOut, loading } = useAuth();
-  const { toast } = useToast();
+  const { user, loading } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
 
@@ -46,27 +45,9 @@ const Index = () => {
     setSearchParams({ tab });
   }, [setSearchParams]);
 
-  const handleLogout = useCallback(async () => {
-    try {
-      console.log('🔄 Fazendo logout...');
-      await signOut();
-      toast({
-        title: "Logout realizado",
-        description: "Você foi desconectado com sucesso.",
-      });
-    } catch (error: any) {
-      console.error('❌ Erro no logout:', error);
-      toast({
-        title: "Erro no logout",
-        description: "Ocorreu um erro ao fazer logout.",
-        variant: "destructive",
-      });
-    }
-  }, [signOut, toast]);
-
   const renderContent = useCallback(() => {
     console.log(`📄 Renderizando conteúdo da aba: ${activeTab}`);
-    
+
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
@@ -116,12 +97,12 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-100 flex">
       <OnboardingFlow />
-      
-      <Sidebar 
+
+      <Sidebar
         activeSection={activeTab}
         onSectionChange={handleTabChange}
       />
-      
+
       <main className="flex-1 p-6 overflow-auto">
         {renderContent()}
       </main>

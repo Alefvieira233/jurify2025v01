@@ -8,26 +8,22 @@
  * @version 1.0.0
  */
 
-import React, { useState } from 'react';
-import { 
-  Bot, 
-  Target, 
-  Handshake, 
-  Users, 
-  Plus, 
-  Settings, 
-  Zap,
-  MessageSquare,
-  BarChart3,
+import { useState } from 'react';
+import {
+  Bot,
+  Target,
+  Handshake,
+  Users,
+  Plus,
+  Settings,
   CheckCircle,
-  AlertCircle,
   Info
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useAgentEngine, CreateAgentRequest } from '@/hooks/useAgentEngine';
+import { useAgentEngine } from '@/hooks/useAgentEngine';
 import { AgentType } from '@/lib/agents/AgentEngine';
 import NovoAgenteForm from './NovoAgenteForm';
 
@@ -121,7 +117,7 @@ Seja proativo, atencioso e focado no sucesso do cliente a longo prazo.`,
 const AgentTypeManager = () => {
   const [selectedType, setSelectedType] = useState<AgentType>(AgentType.SDR);
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const { agents, getAgentsByType, loading } = useAgentEngine();
+  const { getAgentsByType } = useAgentEngine();
 
   const agentTypeConfig = AGENT_TYPES[selectedType];
   const agentsOfType = getAgentsByType(selectedType);
@@ -160,11 +156,10 @@ const AgentTypeManager = () => {
           const IconComponent = config.icon;
 
           return (
-            <Card 
+            <Card
               key={type}
-              className={`cursor-pointer transition-all hover:shadow-lg ${
-                selectedType === type ? `ring-2 ring-blue-500 ${config.bgColor}` : ''
-              }`}
+              className={`cursor-pointer transition-all hover:shadow-lg ${selectedType === type ? `ring-2 ring-blue-500 ${config.bgColor}` : ''
+                }`}
               onClick={() => setSelectedType(type as AgentType)}
             >
               <CardHeader className="pb-3">
@@ -249,7 +244,7 @@ const AgentTypeManager = () => {
                     <div className="flex justify-between">
                       <span>Taxa de Ativação:</span>
                       <span className="font-medium">
-                        {agentsOfType.length > 0 
+                        {agentsOfType.length > 0
                           ? Math.round((agentsOfType.filter(a => a.active).length / agentsOfType.length) * 100)
                           : 0}%
                       </span>
@@ -287,7 +282,7 @@ const AgentTypeManager = () => {
                 <h3 className="text-lg font-semibold">
                   Agentes {agentTypeConfig.name} ({agentsOfType.length})
                 </h3>
-                <Button 
+                <Button
                   onClick={handleCreateAgent}
                   size="sm"
                   className={agentTypeConfig.color}
@@ -307,8 +302,8 @@ const AgentTypeManager = () => {
                     <p className="text-gray-600 mb-4">
                       Crie seu primeiro agente {agentTypeConfig.name} para começar a automatizar {
                         selectedType === AgentType.SDR ? 'a qualificação de leads' :
-                        selectedType === AgentType.CLOSER ? 'o fechamento de negócios' :
-                        'o sucesso dos clientes'
+                          selectedType === AgentType.CLOSER ? 'o fechamento de negócios' :
+                            'o sucesso dos clientes'
                       }.
                     </p>
                     <Button onClick={handleCreateAgent} className={agentTypeConfig.color}>
@@ -327,7 +322,7 @@ const AgentTypeManager = () => {
                             <h4 className="font-semibold">{agent.name}</h4>
                             <p className="text-sm text-gray-600">{agent.area_juridica}</p>
                             <div className="mt-2 flex items-center gap-2">
-                              <Badge 
+                              <Badge
                                 variant={agent.active ? "default" : "secondary"}
                                 className={agent.active ? "bg-green-100 text-green-800" : ""}
                               >
@@ -395,7 +390,7 @@ const AgentTypeManager = () => {
                     <div>
                       <h4 className="font-medium text-blue-900">Dica de Configuração</h4>
                       <p className="text-sm text-blue-700 mt-1">
-                        Para melhores resultados, personalize o prompt base com informações específicas 
+                        Para melhores resultados, personalize o prompt base com informações específicas
                         da sua área de atuação e estilo de atendimento preferido.
                       </p>
                     </div>

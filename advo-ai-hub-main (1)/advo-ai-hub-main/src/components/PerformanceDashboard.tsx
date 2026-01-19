@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -139,7 +139,7 @@ const PerformanceDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{conversionRate}%</div>
             <p className="text-xs text-muted-foreground">
-              Leads -> Contratos
+              Leads → Contratos
             </p>
           </CardContent>
         </Card>

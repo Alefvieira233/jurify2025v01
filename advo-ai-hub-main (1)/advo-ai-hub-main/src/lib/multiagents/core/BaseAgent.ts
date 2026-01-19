@@ -9,15 +9,17 @@
  */
 
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Priority,
+  MessageType
+} from '../types';
 import type {
   AgentMessage,
-  MessageType,
   MessagePriority,
   SharedContext,
   AgentAIRequest,
   AgentAIResponse,
-  IAgent,
-  Priority
+  IAgent
 } from '../types';
 
 export abstract class BaseAgent implements IAgent {
@@ -164,7 +166,7 @@ export abstract class BaseAgent implements IAgent {
       console.log(`✅ ${this.name} recebeu resposta da IA (${data.usage?.total_tokens || 0} tokens)`);
 
       if (this.context?.leadId) {
-        supabase
+        const { error: logError } = await supabase
           .from('lead_interactions')
           .insert({
             lead_id: this.context.leadId,
@@ -177,10 +179,11 @@ export abstract class BaseAgent implements IAgent {
               agent_id: this.agentId,
               agent_name: this.name,
             },
-          })
-          .catch((error) => {
-            console.warn('Failed to log lead interaction:', error);
           });
+
+        if (logError) {
+          console.warn('Failed to log lead interaction:', logError);
+        }
       }
 
       return data.result;
@@ -206,8 +209,16 @@ export abstract class BaseAgent implements IAgent {
     if (!this.context) {
       this.context = {
         leadId,
-        messages: [],
-        metadata: updates
+
+        leadData: {},
+        currentStage: 'new',
+        decisions: {},
+        conversationHistory: [],
+        metadata: {
+          channel: 'chat',
+          timestamp: new Date(),
+          ...updates
+        }
       };
     } else {
       this.context.leadId = leadId;

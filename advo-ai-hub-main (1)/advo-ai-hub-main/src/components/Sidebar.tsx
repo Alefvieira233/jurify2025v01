@@ -54,6 +54,8 @@ const Sidebar = ({ activeSection, onSectionChange }: SidebarProps) => {
     { id: 'admin/playground', label: '🧪 Agents Playground', icon: FlaskConical, resource: 'dashboard', action: 'read', adminOnly: false },
     { id: 'usuarios', label: 'Usuários', icon: UserCog, resource: 'usuarios', action: 'read', adminOnly: true },
     { id: 'integracoes', label: 'Integrações', icon: Zap, resource: 'integracoes', action: 'read', adminOnly: true },
+    { id: 'analytics', label: '📊 Analytics', icon: BarChart3, resource: 'dashboard', action: 'read' },
+    { id: 'billing', label: '💳 Billing', icon: CreditCard, resource: 'dashboard', action: 'read' },
     { id: 'planos', label: 'Planos & Assinatura', icon: CreditCard, resource: 'dashboard', action: 'read' },
     { id: 'configuracoes', label: 'Configurações', icon: Settings, resource: 'configuracoes', action: 'read', adminOnly: true },
   ];

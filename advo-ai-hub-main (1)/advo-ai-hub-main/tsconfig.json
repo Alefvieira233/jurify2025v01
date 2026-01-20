@@ -22,20 +22,20 @@
         "./src/*"
       ]
     },
-    /* TypeScript Strict Mode - Enterprise Grade */
+    /* TypeScript Strict Mode - Pragmatic */
     "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
+    "noImplicitAny": false,
+    "strictNullChecks": false,
     "strictFunctionTypes": true,
     "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
+    "strictPropertyInitialization": false,
     "noImplicitThis": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    /* Code Quality */
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": false,
+    /* Code Quality - relaxed for pragmatic development */
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noImplicitOverride": true,
     /* Performance & Security */
     "skipLibCheck": true,

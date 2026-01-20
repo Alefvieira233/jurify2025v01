@@ -1,15 +1,12 @@
-import React from 'react';
+import type { FC } from 'react';
 import {
-  X,
   Edit,
   Bot,
   Clock,
   Tag,
   FileText,
   Settings,
-  MessageSquare,
   Eye,
-  Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,40 +25,13 @@ import {
 } from '@/components/ui/tabs';
 import EnhancedAIChat from '@/features/ai-agents/EnhancedAIChat';
 
-interface AgenteIA {
-  id: string;
-  nome: string;
-  area_juridica: string;
-  objetivo: string;
-  script_saudacao: string;
-  perguntas_qualificacao: string[];
-  keywords_acao: string[];
-  delay_resposta: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  descricao_funcao: string;
-  prompt_base: string;
-  tipo_agente: string;
-  parametros_avancados: any;
-}
-
 interface DetalhesAgenteProps {
-  agente: any;
+  agente: Record<string, unknown>;
   onClose: () => void;
   onEdit: () => void;
 }
 
-const DetalhesAgente: React.FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) => {
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) => {
 
   const tiposAgente = [
     { value: 'chat_interno', label: 'Chat Interno', icon: Bot },
@@ -69,8 +39,10 @@ const DetalhesAgente: React.FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit
     { value: 'api_externa', label: 'API Externa', icon: Settings }
   ];
 
+  const defaultTipo = tiposAgente[0]!;
+
   const getTipoAgenteInfo = (tipo: string) => {
-    return tiposAgente.find(t => t.value === tipo) || tiposAgente[0];
+    return tiposAgente.find(t => t.value === tipo) ?? defaultTipo;
   };
 
   const tipoInfo = getTipoAgenteInfo(agente.tipo_agente);

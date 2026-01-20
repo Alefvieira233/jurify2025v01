@@ -10,7 +10,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -22,8 +21,6 @@ import {
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    LineChart,
-    Line,
     PieChart,
     Pie,
     Cell,
@@ -32,16 +29,12 @@ import {
 } from 'recharts';
 import {
     TrendingUp,
-    TrendingDown,
     Users,
     FileText,
     Brain,
-    DollarSign,
     ArrowUpRight,
     ArrowDownRight,
     RefreshCw,
-    Download,
-    Calendar,
 } from 'lucide-react';
 
 interface DashboardMetrics {

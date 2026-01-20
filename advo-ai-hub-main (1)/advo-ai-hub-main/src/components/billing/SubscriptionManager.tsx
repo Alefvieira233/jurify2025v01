@@ -71,7 +71,7 @@ export const SubscriptionManager = () => {
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
 
-    const currentPlan = subscription?.plan_id || profile?.subscription_tier || 'free';
+    const currentPlan = subscription?.plan_id || (profile as Record<string, unknown>)?.subscription_tier as string || 'free';
 
     const loadSubscriptionData = useCallback(async () => {
         if (!profile?.id) return;
@@ -117,12 +117,12 @@ export const SubscriptionManager = () => {
                     .eq('tenant_id', tenantId),
             ]);
 
-            const planLimits = PLAN_LIMITS[currentPlan] || PLAN_LIMITS.free;
+            const planLimits = PLAN_LIMITS[currentPlan] ?? PLAN_LIMITS.free;
             setUsage({
-                ai_calls: { ...planLimits.ai_calls, used: aiCalls || 0 },
-                leads: { ...planLimits.leads, used: leadsCount || 0 },
-                users: { ...planLimits.users, used: usersCount || 0 },
-                storage_mb: { ...planLimits.storage_mb, used: 50 }, // Placeholder
+                ai_calls: { ...planLimits!.ai_calls, used: aiCalls || 0 },
+                leads: { ...planLimits!.leads, used: leadsCount || 0 },
+                users: { ...planLimits!.users, used: usersCount || 0 },
+                storage_mb: { ...planLimits!.storage_mb, used: 50 }, // Placeholder
             });
 
         } catch (error) {

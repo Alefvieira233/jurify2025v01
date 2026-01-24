@@ -1,28 +1,13 @@
 import React, { useState, useMemo } from 'react';
+import type { AgenteIA } from '@/hooks/useAgentesIA';
+
+export type { AgenteIA };
 
 export interface FilterState {
   searchTerm: string;
   statusFilter: string;
   tipoFilter: string;
   areaFilter: string;
-}
-
-export interface AgenteIA {
-  id: string;
-  nome: string;
-  area_juridica: string;
-  objetivo: string;
-  script_saudacao: string;
-  perguntas_qualificacao: string[];
-  keywords_acao: string[];
-  delay_resposta: number;
-  status: string;
-  created_at: string;
-  updated_at: string;
-  descricao_funcao: string;
-  prompt_base: string;
-  tipo_agente: string;
-  parametros_avancados: any;
 }
 
 export const useAgentesIAFilters = (agentes: AgenteIA[] | null) => {
@@ -50,10 +35,11 @@ export const useAgentesIAFilters = (agentes: AgenteIA[] | null) => {
     
     return agentes.filter(agente => {
       const matchesSearch = agente.nome.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-                           agente.area_juridica.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+                           agente.area_juridica?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
                            agente.descricao_funcao?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       
-      const matchesStatus = filters.statusFilter === 'todos' || agente.status === filters.statusFilter;
+      const status = agente.status ?? 'inativo';
+      const matchesStatus = filters.statusFilter === 'todos' || status === filters.statusFilter;
       const matchesTipo = filters.tipoFilter === 'todos' || agente.tipo_agente === filters.tipoFilter;
       const matchesArea = filters.areaFilter === 'todas' || agente.area_juridica === filters.areaFilter;
       

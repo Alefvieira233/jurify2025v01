@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 import { applyRateLimit, getRequestIdentifier } from "../_shared/rate-limiter.ts";
 
 console.log("[whatsapp-webhook] Function started");
@@ -11,6 +11,8 @@ const WHATSAPP_ACCESS_TOKEN = Deno.env.get("WHATSAPP_ACCESS_TOKEN");
 const INTEGRATION_NAME = "whatsapp_oficial";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin") || undefined);
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }

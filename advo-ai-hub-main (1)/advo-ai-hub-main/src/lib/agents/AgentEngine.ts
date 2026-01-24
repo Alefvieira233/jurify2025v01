@@ -556,7 +556,7 @@ AÇÕES:
       specialization: agente.parametros_avancados?.specialization || ['geral'],
       max_interactions: agente.parametros_avancados?.max_interactions || 50,
       escalation_rules: agente.parametros_avancados?.escalation_rules || [],
-      active: agente.ativo
+      active: agente.status === 'ativo'
     };
   }
 

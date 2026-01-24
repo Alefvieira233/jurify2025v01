@@ -23,6 +23,7 @@ const OnboardingFlow = () => {
   const { user, profile, hasRole } = useAuth();
   const { toast } = useToast();
   const tenantId = profile?.tenant_id || null;
+  const supabaseAny = supabase as typeof supabase & { from: (table: string) => any };
 
   useEffect(() => {
     if (user && profile && hasRole('administrador')) {
@@ -34,7 +35,7 @@ const OnboardingFlow = () => {
     if (!tenantId) return;
 
     try {
-      const { data: setting } = await supabase
+      const { data: setting } = await supabaseAny
         .from('system_settings')
         .select('value')
         .eq('tenant_id', tenantId)
@@ -51,10 +52,10 @@ const OnboardingFlow = () => {
         { data: agentes },
         { data: usuarios }
       ] = await Promise.all([
-        supabase.from('google_calendar_settings').select('id').eq('tenant_id', tenantId).limit(1),
-        supabase.from('api_keys').select('id').eq('tenant_id', tenantId).limit(1),
-        supabase.from('agentes_ia').select('id').eq('tenant_id', tenantId).limit(1),
-        supabase.from('user_roles').select('id').eq('tenant_id', tenantId).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
+        supabaseAny.from('google_calendar_settings').select('id').eq('tenant_id', tenantId).limit(1),
+        supabaseAny.from('api_keys').select('id').eq('tenant_id', tenantId).limit(1),
+        supabaseAny.from('agentes_ia').select('id').eq('tenant_id', tenantId).limit(1),
+        supabaseAny.from('user_roles').select('id').eq('tenant_id', tenantId).gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
       ]);
 
       const onboardingSteps: OnboardingStep[] = [
@@ -109,7 +110,7 @@ const OnboardingFlow = () => {
     if (!tenantId) return;
 
     try {
-      await supabase
+      await supabaseAny
         .from('system_settings')
         .upsert({
           tenant_id: tenantId,

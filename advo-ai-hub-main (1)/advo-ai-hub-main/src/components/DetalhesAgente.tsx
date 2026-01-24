@@ -24,18 +24,26 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import EnhancedAIChat from '@/features/ai-agents/EnhancedAIChat';
+import type { AgenteIA } from '@/hooks/useAgentesIA';
 
 interface DetalhesAgenteProps {
-  agente: Record<string, unknown>;
+  agente: AgenteIA;
   onClose: () => void;
   onEdit: () => void;
 }
+
+type ParametrosAvancados = {
+  temperatura?: number;
+  top_p?: number;
+  frequency_penalty?: number;
+  presence_penalty?: number;
+};
 
 const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) => {
 
   const tiposAgente = [
     { value: 'chat_interno', label: 'Chat Interno', icon: Bot },
-    { value: 'analise_dados', label: 'Análise de Dados', icon: Eye },
+    { value: 'analise_dados', label: 'Analise de Dados', icon: Eye },
     { value: 'api_externa', label: 'API Externa', icon: Settings }
   ];
 
@@ -45,7 +53,10 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
     return tiposAgente.find(t => t.value === tipo) ?? defaultTipo;
   };
 
-  const tipoInfo = getTipoAgenteInfo(agente.tipo_agente);
+  const tipoInfo = getTipoAgenteInfo(agente.tipo_agente ?? defaultTipo.value);
+  const parametros = (agente.parametros_avancados as ParametrosAvancados | null) ?? {};
+  const agenteAtivo = agente.status === 'ativo';
+  const perguntas = agente.perguntas_qualificacao ?? [];
   const TipoIcon = tipoInfo.icon;
 
   return (
@@ -54,8 +65,8 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
         <DialogHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-full ${agente.status === 'ativo' ? 'bg-green-100' : 'bg-gray-100'}`}>
-                <Bot className={`h-5 w-5 ${agente.status === 'ativo' ? 'text-green-600' : 'text-gray-400'}`} />
+              <div className={`p-2 rounded-full ${agenteAtivo ? 'bg-green-100' : 'bg-gray-100'}`}>
+                <Bot className={`h-5 w-5 ${agenteAtivo ? 'text-green-600' : 'text-gray-400'}`} />
               </div>
               <div>
                 <DialogTitle className="text-xl">{agente.nome}</DialogTitle>
@@ -69,10 +80,10 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
             </div>
             <div className="flex items-center space-x-2">
               <Badge
-                variant={agente.status === 'ativo' ? 'default' : 'secondary'}
-                className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                variant={agenteAtivo ? 'default' : 'secondary'}
+                className={agenteAtivo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
               >
-                {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                {agenteAtivo ? 'Ativo' : 'Inativo'}
               </Badge>
               <Button variant="outline" size="sm" onClick={onEdit}>
                 <Edit className="h-4 w-4 mr-2" />
@@ -131,10 +142,10 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Status:</span>
                       <Badge
-                        variant={agente.status === 'ativo' ? 'default' : 'secondary'}
-                        className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                        variant={agenteAtivo ? 'default' : 'secondary'}
+                        className={agenteAtivo ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
                       >
-                        {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                        {agenteAtivo ? 'Ativo' : 'Inativo'}
                       </Badge>
                     </div>
                   </div>
@@ -159,21 +170,21 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
             </div>
           </TabsContent>
 
-          <TabsContent value="prompts" className="space-y-6">
+                    <TabsContent value="prompts" className="space-y-6">
             {/* Prompts & IA */}
             <div className="space-y-4">
               <div>
                 <h4 className="font-semibold text-gray-900 mb-2">Prompt Base</h4>
                 <div className="text-gray-600 bg-gray-50 p-4 rounded border text-sm font-mono whitespace-pre-wrap max-h-64 overflow-y-auto">
-                  {agente.prompt_base || 'Não configurado'}
+                  {agente.prompt_base || 'Nao configurado'}
                 </div>
               </div>
 
-              {agente.perguntas_qualificacao && agente.perguntas_qualificacao.length > 0 && (
+              {perguntas.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Perguntas de Qualificação</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Perguntas de Qualificacao</h4>
                   <div className="space-y-2">
-                    {agente.perguntas_qualificacao.map((pergunta: string, index: number) => (
+                    {perguntas.map((pergunta: string, index: number) => (
                       <div key={index} className="flex items-start space-x-2">
                         <span className="text-blue-600 font-semibold">{index + 1}.</span>
                         <span className="text-gray-600">{pergunta}</span>
@@ -185,7 +196,7 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
 
               {agente.keywords_acao && agente.keywords_acao.length > 0 && (
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Keywords de Ação</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">Keywords de Acao</h4>
                   <div className="flex flex-wrap gap-2">
                     {agente.keywords_acao.map((keyword: string, index: number) => (
                       <Badge key={index} variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
@@ -210,7 +221,7 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Temperatura</label>
                   <div className="text-lg font-semibold text-gray-900">
-                    {agente.parametros_avancados?.temperatura || 0.7}
+                    {parametros.temperatura || 0.7}
                   </div>
                   <p className="text-xs text-gray-500">Controla a criatividade das respostas</p>
                 </div>
@@ -218,7 +229,7 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Top P</label>
                   <div className="text-lg font-semibold text-gray-900">
-                    {agente.parametros_avancados?.top_p || 0.9}
+                    {parametros.top_p || 0.9}
                   </div>
                   <p className="text-xs text-gray-500">Diversidade do vocabulário</p>
                 </div>
@@ -226,7 +237,7 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Frequency Penalty</label>
                   <div className="text-lg font-semibold text-gray-900">
-                    {agente.parametros_avancados?.frequency_penalty || 0}
+                    {parametros.frequency_penalty || 0}
                   </div>
                   <p className="text-xs text-gray-500">Penaliza repetições frequentes</p>
                 </div>
@@ -234,7 +245,7 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
                 <div>
                   <label className="text-sm font-medium text-gray-600">Presence Penalty</label>
                   <div className="text-lg font-semibold text-gray-900">
-                    {agente.parametros_avancados?.presence_penalty || 0}
+                    {parametros.presence_penalty || 0}
                   </div>
                   <p className="text-xs text-gray-500">Encoraja novos tópicos</p>
                 </div>
@@ -256,3 +267,9 @@ const DetalhesAgente: FC<DetalhesAgenteProps> = ({ agente, onClose, onEdit }) =>
 };
 
 export default DetalhesAgente;
+
+
+
+
+
+

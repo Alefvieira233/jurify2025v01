@@ -10,7 +10,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 import { applyRateLimit } from "../_shared/rate-limiter.ts";
 
 console.log("🚀 Send WhatsApp Message Function Started");
@@ -173,6 +173,8 @@ async function getWhatsAppCredentials(
 
 // 🚀 HANDLER PRINCIPAL
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin") || undefined);
+
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

@@ -2,10 +2,22 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Database } from '@/integrations/supabase/types';
 
-type Notification = Database['public']['Tables']['notificacoes']['Row'];
-type NotificationType = Database['public']['Enums']['notification_type'];
+type NotificationType = 'info' | 'alerta' | 'sucesso' | 'erro';
+
+type Notification = {
+  id: string;
+  titulo: string | null;
+  mensagem: string | null;
+  tipo: NotificationType | null;
+  lido_por: string[] | null;
+  data_criacao: string | null;
+  created_by: string | null;
+  tenant_id: string | null;
+  ativo: boolean | null;
+  created_at: string;
+  updated_at: string | null;
+};
 
 export const useNotifications = () => {
   const { user, profile } = useAuth();

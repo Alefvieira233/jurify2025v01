@@ -28,6 +28,7 @@ const SystemHealthCheck = () => {
   const [healthChecks, setHealthChecks] = useState<HealthCheck[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [overallScore, setOverallScore] = useState(0);
+  const supabaseAny = supabase as typeof supabase & { from: (table: string) => any };
 
   const performHealthCheck = async () => {
     setIsLoading(true);
@@ -36,7 +37,7 @@ const SystemHealthCheck = () => {
 
     try {
       try {
-        const { error } = await supabase
+        const { error } = await supabaseAny
           .from('profiles')
           .select('count')
           .eq('tenant_id', tenantId)
@@ -96,7 +97,7 @@ const SystemHealthCheck = () => {
       }
 
       try {
-        const { error } = await supabase
+        const { error } = await supabaseAny
           .from('profiles')
           .select('id')
           .eq('tenant_id', tenantId)
@@ -127,7 +128,7 @@ const SystemHealthCheck = () => {
       }
 
       try {
-        const { data: workflows } = await supabase
+        const { data: workflows } = await supabaseAny
           .from('n8n_workflows')
           .select('id')
           .eq('tenant_id', tenantId)
@@ -164,7 +165,7 @@ const SystemHealthCheck = () => {
       }
 
       try {
-        const { error } = await supabase
+        const { error } = await supabaseAny
           .from('logs_atividades')
           .select('count')
           .eq('tenant_id', tenantId)

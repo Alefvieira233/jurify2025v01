@@ -193,7 +193,7 @@ export function useRealtimeAgents(tenantId?: string) {
 
   // Setup Realtime subscriptions
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId) return undefined;
 
     const channels: RealtimeChannel[] = [];
 
@@ -388,7 +388,7 @@ export function useRealtimeAgents(tenantId?: string) {
     };
   }, [tenantId]);
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId) return undefined;
 
     const interval = setInterval(() => {
       const stale =

@@ -11,8 +11,9 @@ export class QualifierAgent extends BaseAgent {
   }
 
   protected async handleMessage(message: AgentMessage): Promise<void> {
-    if (message.payload.task === 'analyze_lead') {
-      await this.analyzeLead(message.payload);
+    const payload = message.payload as { task?: string };
+    if (payload?.task === 'analyze_lead') {
+      await this.analyzeLead(payload);
     }
   }
 

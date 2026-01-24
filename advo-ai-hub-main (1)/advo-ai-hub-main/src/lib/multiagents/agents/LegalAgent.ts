@@ -18,8 +18,9 @@ export class LegalAgent extends BaseAgent {
   }
 
   protected async handleMessage(message: AgentMessage): Promise<void> {
-    if (message.payload.task === 'validate_case') {
-      await this.validateCase(message.payload);
+    const payload = message.payload as { task?: string };
+    if (payload?.task === 'validate_case') {
+      await this.validateCase(payload);
     }
   }
 

@@ -1,11 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import Stripe from "https://esm.sh/stripe@14.21.0";
-import { corsHeaders } from "../_shared/cors.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
 
 console.log("🚀 Create Checkout Session Function Started");
 
 serve(async (req) => {
+    const corsHeaders = getCorsHeaders(req.headers.get("origin") || undefined);
+
     // 1. Handle CORS
     if (req.method === "OPTIONS") {
         return new Response("ok", { headers: corsHeaders });
@@ -75,18 +77,19 @@ serve(async (req) => {
                     quantity: 1,
                 },
             ],
-            mode: 'subscription',
+            mode: mode,
             success_url: successUrl || `${req.headers.get('origin')}/dashboard?session_id={CHECKOUT_SESSION_ID}`,
             cancel_url: cancelUrl || `${req.headers.get('origin')}/pricing`,
             metadata: {
                 plan_id: planId || null,
+                payment_type: mode === 'payment' ? 'one_time' : 'subscription'
             },
-            subscription_data: {
+            subscription_data: mode === 'subscription' ? {
                 metadata: {
                     supabase_user_id: user.id,
                     plan_id: planId || null,
                 },
-            },
+            } : undefined,
         });
 
         return new Response(

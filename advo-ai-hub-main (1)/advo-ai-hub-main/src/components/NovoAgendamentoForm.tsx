@@ -63,7 +63,18 @@ export const NovoAgendamentoForm = ({ onClose }: NovoAgendamentoFormProps) => {
     mutationFn: async (data: NovoAgendamentoFormData) => {
       const { error } = await supabase
         .from('agendamentos')
-        .insert([{ ...data, tenant_id: tenantId }]);
+        .insert([
+          {
+            tenant_id: tenantId,
+            lead_id: data.lead_id || null,
+            area_juridica: data.area_juridica,
+            data_hora: data.data_hora,
+            status: 'agendado',
+            responsavel: data.responsavel,
+            observacoes: data.observacoes || null,
+            google_event_id: null,
+          },
+        ]);
 
       if (error) throw error;
     },

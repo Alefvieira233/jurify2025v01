@@ -28,7 +28,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { useLeads, type Lead } from '@/hooks/useLeads';
+import { useLeads, type Lead, type LeadInput } from '@/hooks/useLeads';
 import { leadFormSchema, AREAS_JURIDICAS, ORIGENS_LEAD, type LeadFormData } from '@/schemas/leadSchema';
 
 interface EditarLeadFormProps {
@@ -85,7 +85,7 @@ const EditarLeadForm: React.FC<EditarLeadFormProps> = ({ open, onOpenChange, lea
         responsavel: data.responsavel,
         observacoes: data.observacoes || null,
         status: data.status || 'novo_lead',
-      });
+      } as LeadInput);
 
       if (success) {
         onOpenChange(false);

@@ -288,8 +288,23 @@ export const useDashboardMetrics = () => {
     fetchMetrics();
 
     const interval = setInterval(fetchMetrics, 300000);
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        fetchMetrics();
+      }
+    };
+    const handleFocus = () => {
+      fetchMetrics();
+    };
 
-    return () => clearInterval(interval);
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [fetchMetrics]);
 
   return {

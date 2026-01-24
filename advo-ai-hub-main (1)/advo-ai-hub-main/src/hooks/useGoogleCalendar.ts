@@ -7,14 +7,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { GoogleOAuthService, type CalendarEvent } from '@/lib/google/GoogleOAuthService';
-import type { Database } from '@/integrations/supabase/types';
 
-export type GoogleCalendarSettings = Database['public']['Tables']['google_calendar_settings']['Row'];
+export type GoogleCalendarSettings = {
+  id?: string;
+  tenant_id: string;
+  user_id: string;
+  calendar_enabled: boolean | null;
+  auto_sync: boolean | null;
+  sync_direction: string | null;
+  notification_enabled: boolean | null;
+  calendar_id?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
 
 export const useGoogleCalendar = () => {
   const { user, profile } = useAuth();
   const tenantId = profile?.tenant_id || null;
   const { toast } = useToast();
+  const supabaseAny = supabase as any;
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<GoogleCalendarSettings | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -28,7 +39,7 @@ export const useGoogleCalendar = () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAny
         .from('google_calendar_settings')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -51,7 +62,7 @@ export const useGoogleCalendar = () => {
           notification_enabled: true,
         };
 
-        const { data: newSettings, error: createError } = await supabase
+        const { data: newSettings, error: createError } = await supabaseAny
           .from('google_calendar_settings')
           .insert([defaultSettings])
           .select()
@@ -82,7 +93,7 @@ export const useGoogleCalendar = () => {
     try {
       setLoading(true);
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAny
         .from('google_calendar_settings')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('tenant_id', tenantId)

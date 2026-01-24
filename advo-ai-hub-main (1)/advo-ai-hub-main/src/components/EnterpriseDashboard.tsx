@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { useEnterpriseMultiAgent } from '@/hooks/useEnterpriseMultiAgent';
+import { Priority } from '@/lib/multiagents/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,7 +59,7 @@ export const EnterpriseDashboard: React.FC = () => {
     phone: '',
     message: '',
     legal_area: '',
-    urgency: 'medium' as 'low' | 'medium' | 'high' | 'critical',
+    urgency: Priority.MEDIUM,
     source: 'chat' as 'whatsapp' | 'email' | 'chat' | 'form'
   });
 
@@ -79,7 +80,7 @@ export const EnterpriseDashboard: React.FC = () => {
         phone: '',
         message: '',
         legal_area: '',
-        urgency: 'medium',
+        urgency: Priority.MEDIUM,
         source: 'chat'
       });
     }

@@ -10,6 +10,8 @@ interface Profile {
   email: string;
   role?: string;
   tenant_id?: string;
+  subscription_tier?: string;
+  subscription_status?: string;
 }
 
 interface AuthContextType {
@@ -50,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Auto logout on inactivity without touching active sessions.
   useEffect(() => {
-    if (!session) return;
+    if (!session) return undefined;
 
     let timeoutId: NodeJS.Timeout | null = null;
     let lastActivityTime = Date.now();
@@ -271,6 +273,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setUser(null);
           setProfile(null);
           setSentryUser(null);
+          logSecurityEvent('logout', 'Usuario saiu').catch((e) =>
+            console.warn('Security log failed:', e)
+          );
           return;
         }
 
@@ -290,7 +295,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           setSentryUser(null);
         }
 
-        if (session?.user && (event === 'SIGNED_IN' || event === 'SIGNED_OUT')) {
+        if (session?.user && event === 'SIGNED_IN') {
           logSecurityEvent(
             event === 'SIGNED_IN' ? 'login' : 'logout',
             event === 'SIGNED_IN' ? 'Usuario fez login' : 'Usuario saiu'

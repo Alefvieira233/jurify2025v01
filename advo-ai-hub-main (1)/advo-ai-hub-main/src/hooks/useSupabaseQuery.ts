@@ -107,11 +107,28 @@ export const useSupabaseQuery = <T>(
       setLoading(false);
     }
 
+    const handleVisibility = () => {
+      if (!document.hidden && user && enabled) {
+        executeQuery(true);
+      }
+    };
+
+    const handleFocus = () => {
+      if (user && enabled) {
+        executeQuery(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+
     return () => {
       mountedRef.current = false;
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
       }
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [user, enabled, queryKey]); // Add queryKey to dependencies
 
@@ -120,8 +137,8 @@ export const useSupabaseQuery = <T>(
     executeQuery(true);
   }, [executeQuery]);
 
-  const mutate = useCallback((newData: T[]) => {
-    setData(newData);
+  const mutate = useCallback((newData: T[] | ((prev: T[]) => T[])) => {
+    setData((prev) => (typeof newData === 'function' ? newData(prev) : newData));
     setLastFetch(Date.now());
   }, []);
 

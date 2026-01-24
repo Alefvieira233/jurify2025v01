@@ -18,8 +18,9 @@ export class CommercialAgent extends BaseAgent {
   }
 
   protected async handleMessage(message: AgentMessage): Promise<void> {
-    if (message.payload.task === 'create_proposal') {
-      await this.createProposal(message.payload);
+    const payload = message.payload as { task?: string };
+    if (payload?.task === 'create_proposal') {
+      await this.createProposal(payload);
     }
   }
 

@@ -1,4 +1,4 @@
-
+﻿
 import React, { useState } from 'react';
 import { Play, Copy, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,22 +38,23 @@ const TesteAgenteIA: React.FC<TesteAgenteIAProps> = ({ agenteId, agenteName }) =
         setResposta(result.response || 'Resposta vazia');
         toast({
           title: "Sucesso",
-          description: `Execução concluída via ${result.source || 'N8N'}`,
+          description: `ExecuÃ§Ã£o concluÃ­da via ${result.source || 'N8N'}`,
         });
       } else {
         setResposta(`Erro: ${result?.error || 'Erro desconhecido'}`);
         toast({
           title: "Erro",
-          description: "Falha na execução do teste",
+          description: "Falha na execuÃ§Ã£o do teste",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error('Erro ao executar teste:', error);
-      setResposta(`Erro: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      setResposta(`Erro: ${message}`);
       toast({
         title: "Erro",
-        description: "Falha na execução do teste",
+        description: "Falha na execuÃ§Ã£o do teste",
         variant: "destructive",
       });
     } finally {
@@ -65,14 +66,14 @@ const TesteAgenteIA: React.FC<TesteAgenteIAProps> = ({ agenteId, agenteName }) =
     navigator.clipboard.writeText(resposta);
     toast({
       title: "Copiado!",
-      description: "Resposta copiada para a área de transferência",
+      description: "Resposta copiada para a Ã¡rea de transferÃªncia",
     });
   };
 
   return (
     <div className="space-y-4 p-4 border border-gray-200 rounded-lg bg-gray-50">
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-900">Teste Rápido - {agenteName}</h3>
+        <h3 className="font-semibold text-gray-900">Teste RÃ¡pido - {agenteName}</h3>
         <Button
           onClick={executarTeste}
           disabled={loading}
@@ -122,3 +123,5 @@ const TesteAgenteIA: React.FC<TesteAgenteIAProps> = ({ agenteId, agenteName }) =
 };
 
 export default TesteAgenteIA;
+
+

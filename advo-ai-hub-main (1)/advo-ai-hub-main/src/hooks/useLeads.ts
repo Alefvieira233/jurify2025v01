@@ -1,12 +1,49 @@
-
+﻿
 import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import type { Database } from '@/integrations/supabase/types';
 
-export type Lead = Database['public']['Tables']['leads']['Row'];
-export type CreateLeadData = Database['public']['Tables']['leads']['Insert'];
+type LeadMetadata = Record<string, unknown>;
+
+export type Lead = {
+  id: string;
+  nome: string | null;
+  nome_completo: string | null;
+  email: string | null;
+  telefone: string | null;
+  mensagem_inicial?: string | null;
+  area_juridica: string | null;
+  status: string | null;
+  origem: string | null;
+  valor_causa?: number | null;
+  responsavel_id: string | null;
+  responsavel?: string | null;
+  observacoes?: string | null;
+  descricao: string | null;
+  tenant_id: string | null;
+  metadata: LeadMetadata | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type CreateLeadData = {
+  nome_completo: string;
+  telefone?: string | null;
+  email?: string | null;
+  area_juridica?: string | null;
+  origem?: string | null;
+  valor_causa?: number | null;
+  responsavel?: string | null;
+  observacoes?: string | null;
+  status?: string | null;
+  tenant_id?: string | null;
+  responsavel_id?: string | null;
+  descricao?: string | null;
+  metadata?: LeadMetadata | null;
+};
+
+export type LeadInput = CreateLeadData;
 
 const ITEMS_PER_PAGE = 25;
 
@@ -22,7 +59,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
   const [error, setError] = useState<string | null>(null);
   const [isEmpty, setIsEmpty] = useState(false);
 
-  // Paginação
+  // PaginaÃ§Ã£o
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -30,35 +67,39 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
   const normalizeLead = useCallback((lead: any): Lead => {
     return {
       ...lead,
-      nome_completo: lead?.nome_completo ?? lead?.nome ?? '',
-      responsavel: lead?.responsavel ?? lead?.metadata?.responsavel_nome ?? '',
-      observacoes: lead?.observacoes ?? lead?.descricao ?? '',
+      nome_completo: lead?.nome_completo ?? lead?.nome ?? null,
+      responsavel: lead?.metadata?.responsavel_nome ?? null,
+      observacoes: lead?.descricao ?? null,
     };
   }, []);
 
-  const mapLeadInputToDb = useCallback((data: any) => {
-    const payload = { ...data };
+  const mapLeadInputToDb = useCallback((data: Partial<LeadInput>) => {
+    const payload: Record<string, unknown> = { ...data };
+    const hasNome = Object.prototype.hasOwnProperty.call(payload, 'nome') ||
+      Object.prototype.hasOwnProperty.call(payload, 'nome_completo');
 
-    if (payload.nome_completo && !payload.nome) {
-      payload.nome = payload.nome_completo;
+    if (hasNome) {
+      const nome = (payload as any).nome ?? (payload as any).nome_completo ?? '';
+      (payload as any).nome = nome;
     }
-    delete payload.nome_completo;
+    delete (payload as any).nome_completo;
 
-    if (payload.responsavel) {
-      payload.metadata = {
-        ...(payload.metadata || {}),
-        responsavel_nome: payload.responsavel,
+    const responsavel = (payload as any).responsavel as string | undefined;
+    if (responsavel) {
+      (payload as any).metadata = {
+        ...((payload as any).metadata || {}),
+        responsavel_nome: responsavel,
       };
-      if (user?.id && !payload.responsavel_id) {
-        payload.responsavel_id = user.id;
+      if (user?.id && !(payload as any).responsavel_id) {
+        (payload as any).responsavel_id = user.id;
       }
     }
-    delete payload.responsavel;
+    delete (payload as any).responsavel;
 
-    if (payload.observacoes && !payload.descricao) {
-      payload.descricao = payload.observacoes;
+    if ((payload as any).observacoes && !(payload as any).descricao) {
+      (payload as any).descricao = (payload as any).observacoes;
     }
-    delete payload.observacoes;
+    delete (payload as any).observacoes;
 
     return payload;
   }, [user?.id]);
@@ -69,7 +110,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     try {
       setLoading(true);
       setError(null);
-      console.log(`🔍 [useLeads] Buscando leads (página ${page})...`);
+      console.log(`ðŸ” [useLeads] Buscando leads (pÃ¡gina ${page})...`);
 
       let query = supabase
         .from('leads')
@@ -80,7 +121,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
         query = query.eq('tenant_id', profile.tenant_id);
       }
 
-      // Aplicar paginação se habilitada
+      // Aplicar paginaÃ§Ã£o se habilitada
       if (enablePagination) {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
@@ -90,7 +131,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       const { data, error: fetchError, count } = await query;
 
       if (fetchError) {
-        console.error('❌ [useLeads] Erro ao buscar leads:', fetchError);
+        console.error('âŒ [useLeads] Erro ao buscar leads:', fetchError);
         throw fetchError;
       }
 
@@ -103,10 +144,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
         setTotalPages(Math.ceil(count / pageSize));
       }
 
-      console.log(`✅ [useLeads] ${data?.length || 0} leads encontrados (total: ${count})`);
+      console.log(`âœ… [useLeads] ${data?.length || 0} leads encontrados (total: ${count})`);
 
     } catch (error: any) {
-      console.error('❌ [useLeads] Erro na consulta:', error);
+      console.error('âŒ [useLeads] Erro na consulta:', error);
       setError(error.message || 'Erro ao carregar leads');
       setLeads([]);
       setIsEmpty(true);
@@ -122,7 +163,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     }
   }, [user, currentPage, fetchLeads]);
 
-  // Funções de paginação
+  // FunÃ§Ãµes de paginaÃ§Ã£o
   const goToPage = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -145,18 +186,18 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     fetchLeads(currentPage);
   }, [fetchLeads, currentPage]);
 
-  const createLead = useCallback(async (data: CreateLeadData): Promise<boolean> => {
+  const createLead = useCallback(async (data: LeadInput): Promise<boolean> => {
     if (!user) {
       toast({
-        title: 'Erro de autenticação',
-        description: 'Usuário não autenticado',
+        title: 'Erro de autenticaÃ§Ã£o',
+        description: 'UsuÃ¡rio nÃ£o autenticado',
         variant: 'destructive',
       });
       return false;
     }
 
     try {
-      console.log('🔄 [useLeads] Criando novo lead...');
+      console.log('ðŸ”„ [useLeads] Criando novo lead...');
       const payload = mapLeadInputToDb(data);
       const { data: newLead, error } = await supabase
         .from('leads')
@@ -169,7 +210,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       const normalizedLead = normalizeLead(newLead);
       console.log('Lead criado com sucesso:', normalizedLead.id);
 
-      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      // âœ… CORREÃ‡ÃƒO: Usar setter callback para evitar dependÃªncia circular
       setLeads(prev => [normalizedLead, ...prev]);
 
       toast({
@@ -179,21 +220,21 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       return true;
     } catch (error: any) {
-      console.error('❌ [useLeads] Erro ao criar lead:', error);
+      console.error('âŒ [useLeads] Erro ao criar lead:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível criar o lead.',
+        description: error.message || 'NÃ£o foi possÃ­vel criar o lead.',
         variant: 'destructive',
       });
       return false;
     }
   }, [mapLeadInputToDb, normalizeLead, toast, user]);
 
-  const updateLead = useCallback(async (id: string, updateData: Partial<Lead>): Promise<boolean> => {
+  const updateLead = useCallback(async (id: string, updateData: Partial<LeadInput>): Promise<boolean> => {
     if (!user) return false;
 
     try {
-      console.log(`🔄 [useLeads] Atualizando lead ${id}...`);
+      console.log(`ðŸ”„ [useLeads] Atualizando lead ${id}...`);
       const payload = mapLeadInputToDb(updateData);
       const { data: updatedLead, error } = await supabase
         .from('leads')
@@ -219,10 +260,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       return true;
     } catch (error: any) {
-      console.error('❌ [useLeads] Erro ao atualizar lead:', error);
+      console.error('âŒ [useLeads] Erro ao atualizar lead:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível atualizar o lead.',
+        description: error.message || 'NÃ£o foi possÃ­vel atualizar o lead.',
         variant: 'destructive',
       });
       return false;
@@ -233,7 +274,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     if (!user) return false;
 
     try {
-      console.log(`🗑️ [useLeads] Deletando lead ${id}...`);
+      console.log(`ðŸ—‘ï¸ [useLeads] Deletando lead ${id}...`);
       const { error } = await supabase
         .from('leads')
         .delete()
@@ -241,9 +282,9 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       if (error) throw error;
 
-      console.log('✅ [useLeads] Lead deletado com sucesso');
+      console.log('âœ… [useLeads] Lead deletado com sucesso');
 
-      // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      // âœ… CORREÃ‡ÃƒO: Usar setter callback para evitar dependÃªncia circular
       setLeads(prev => prev.filter(lead => lead.id !== id));
 
       toast({
@@ -253,10 +294,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       return true;
     } catch (error: any) {
-      console.error('❌ [useLeads] Erro ao deletar lead:', error);
+      console.error('âŒ [useLeads] Erro ao deletar lead:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'Não foi possível remover o lead.',
+        description: error.message || 'NÃ£o foi possÃ­vel remover o lead.',
         variant: 'destructive',
       });
       return false;
@@ -270,13 +311,13 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     error,
     isEmpty,
 
-    // Operações CRUD
+    // OperaÃ§Ãµes CRUD
     fetchLeads: refreshLeads,
     createLead,
     updateLead,
     deleteLead,
 
-    // Paginação
+    // PaginaÃ§Ã£o
     currentPage,
     totalPages,
     totalCount,
@@ -288,3 +329,4 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     hasPrevPage: currentPage > 1,
   };
 };
+

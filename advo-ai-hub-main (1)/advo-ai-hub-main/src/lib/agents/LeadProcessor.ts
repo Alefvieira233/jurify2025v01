@@ -76,6 +76,11 @@ export class LeadProcessor {
     this.setupWebhooks();
   }
 
+  private startMessageProcessor() {
+    // Placeholder: message queue is processed on demand in processIncomingMessage.
+    return;
+  }
+
   /**
    * 🎯 Cria novo lead no sistema
    */
@@ -168,8 +173,9 @@ export class LeadProcessor {
       console.error('❌ Erro no processamento automático:', error);
       
       // Registra erro mas não falha o processo
+      const message = error instanceof Error ? error.message : String(error);
       await this.logLeadActivity(leadId, 'processing_error', {
-        error: error.message
+        error: message
       });
     }
   }
@@ -235,10 +241,15 @@ export class LeadProcessor {
       }
 
       // Processa mensagem com agente
+      const normalizedChannel =
+        message.channel === CommunicationChannel.PHONE || message.channel === CommunicationChannel.FORM
+          ? CommunicationChannel.CHAT
+          : message.channel;
+
       const response = await agentEngine.processLeadMessage(
         leadId,
         message.content,
-        message.channel
+        normalizedChannel
       );
 
       // Envia resposta

@@ -3,14 +3,51 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseQuery } from './useSupabaseQuery';
-import type { Database } from '@/integrations/supabase/types';
 
-export type Agendamento = Database['public']['Tables']['agendamentos']['Row'];
-export type CreateAgendamentoData = Database['public']['Tables']['agendamentos']['Insert'];
+type AgendamentoRow = {
+  id: string;
+  lead_id: string | null;
+  tenant_id: string | null;
+  area_juridica: string | null;
+  data_hora: string;
+  responsavel: string | null;
+  observacoes: string | null;
+  google_event_id: string | null;
+  status: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+export type Agendamento = AgendamentoRow & {
+  responsavel?: string | null;
+  area_juridica?: string | null;
+  observacoes?: string | null;
+  google_event_id?: string | null;
+};
+
+export type AgendamentoInput = {
+  lead_id?: string | null;
+  area_juridica: string;
+  data_hora: string;
+  responsavel: string;
+  observacoes?: string | null;
+  google_event_id?: string | null;
+  status?: string | null;
+  tenant_id?: string | null;
+};
 
 export const useAgendamentos = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+
+    const normalizeAgendamento = useCallback((agendamento: AgendamentoRow): Agendamento => {
+    return {
+      ...agendamento,
+      responsavel: agendamento.responsavel ?? null,
+      area_juridica: agendamento.area_juridica ?? null,
+      observacoes: agendamento.observacoes ?? null,
+      google_event_id: agendamento.google_event_id ?? null,
+    };
+  }, []);
 
   const fetchAgendamentosQuery = useCallback(async () => {
     console.log('🔍 [useAgendamentos] Buscando agendamentos...');
@@ -33,12 +70,13 @@ export const useAgendamentos = () => {
       }
 
       console.log(`✅ [useAgendamentos] ${data?.length || 0} agendamentos encontrados`);
-      return { data, error: null };
+      const normalized = (data || []).map(normalizeAgendamento);
+      return { data: normalized, error: null };
     } catch (error) {
       console.error('❌ [useAgendamentos] Erro na consulta:', error);
       return { data: null, error };
     }
-  }, [profile?.tenant_id]);
+  }, [profile?.tenant_id, normalizeAgendamento]);
 
   const {
     data: agendamentos,
@@ -52,7 +90,7 @@ export const useAgendamentos = () => {
     staleTime: 15000
   });
 
-  const createAgendamento = useCallback(async (data: CreateAgendamentoData): Promise<boolean> => {
+  const createAgendamento = useCallback(async (data: AgendamentoInput): Promise<boolean> => {
     if (!user) {
       toast({
         title: 'Erro de autenticação',
@@ -64,6 +102,7 @@ export const useAgendamentos = () => {
 
     try {
       console.log('🔄 [useAgendamentos] Criando novo agendamento...');
+
       const { data: newAgendamento, error } = await supabase
         .from('agendamentos')
         .insert([data])
@@ -75,7 +114,8 @@ export const useAgendamentos = () => {
       console.log('✅ [useAgendamentos] Agendamento criado com sucesso:', newAgendamento.id);
 
       // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
-      setAgendamentos(prev => [...prev, newAgendamento].sort((a, b) =>
+      const normalized = normalizeAgendamento(newAgendamento as AgendamentoRow);
+      setAgendamentos(prev => [...prev, normalized].sort((a, b) =>
         new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
       ));
 
@@ -96,11 +136,12 @@ export const useAgendamentos = () => {
     }
   }, [user, toast, setAgendamentos]);
 
-  const updateAgendamento = useCallback(async (id: string, updateData: Partial<Agendamento>): Promise<boolean> => {
+  const updateAgendamento = useCallback(async (id: string, updateData: Partial<AgendamentoInput>): Promise<boolean> => {
     if (!user) return false;
 
     try {
       console.log(`🔄 [useAgendamentos] Atualizando agendamento ${id}...`);
+
       const { data: updatedAgendamento, error } = await supabase
         .from('agendamentos')
         .update({ ...updateData, updated_at: new Date().toISOString() })
@@ -113,8 +154,9 @@ export const useAgendamentos = () => {
       console.log('✅ [useAgendamentos] Agendamento atualizado com sucesso');
 
       // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      const normalized = normalizeAgendamento(updatedAgendamento as AgendamentoRow);
       setAgendamentos(prev => prev.map(agendamento =>
-        agendamento.id === id ? { ...agendamento, ...updatedAgendamento } : agendamento
+        agendamento.id === id ? { ...agendamento, ...normalized } : agendamento
       ).sort((a, b) =>
         new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime()
       ));
@@ -182,3 +224,8 @@ export const useAgendamentos = () => {
     deleteAgendamento, // ✅ NOVO: Exportar deleteAgendamento
   };
 };
+
+
+
+
+

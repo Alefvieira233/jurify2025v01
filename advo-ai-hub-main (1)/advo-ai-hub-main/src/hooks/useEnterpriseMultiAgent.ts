@@ -430,6 +430,7 @@ export const useEnterpriseMultiAgent = () => {
         clearInterval(activityInterval);
       };
     }
+    return undefined;
   }, [isInitialized, loadRealTimeMetrics, loadRecentActivity]);
 
   return {

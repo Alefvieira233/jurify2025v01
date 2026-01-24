@@ -1,5 +1,5 @@
-/**
- * 🧪 COMPONENTE DE TESTE DO SISTEMA MULTIAGENTES
+﻿/**
+ * ðŸ§ª COMPONENTE DE TESTE DO SISTEMA MULTIAGENTES
  * 
  * Interface para executar e visualizar testes do sistema multiagentes.
  */
@@ -29,14 +29,14 @@ export const TestRunner: React.FC = () => {
     setTestResults(null);
 
     try {
-      console.log('🧪 Iniciando testes do sistema multiagentes...');
+      console.log('ðŸ§ª Iniciando testes do sistema multiagentes...');
       const results = await runMultiAgentTests();
       setTestResults(results);
     } catch (error) {
-      console.error('❌ Erro ao executar testes:', error);
+      console.error('âŒ Erro ao executar testes:', error);
       setTestResults({
         overall_status: 'ERROR',
-        error: error.message,
+        error: (error instanceof Error ? error.message : String(error)),
         tests: []
       });
     } finally {
@@ -65,7 +65,7 @@ export const TestRunner: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Testes do Sistema Multiagentes</h1>
-          <p className="text-gray-600">Validação completa do funcionamento do sistema</p>
+          <p className="text-gray-600">ValidaÃ§Ã£o completa do funcionamento do sistema</p>
         </div>
         <Button
           onClick={runTests}
@@ -199,7 +199,7 @@ export const TestRunner: React.FC = () => {
                       <ul className="text-sm text-red-700 space-y-1">
                         {test.errors.map((error: string, i: number) => (
                           <li key={i} className="flex items-start gap-2">
-                            <span className="text-red-500">•</span>
+                            <span className="text-red-500">â€¢</span>
                             <span>{error}</span>
                           </li>
                         ))}
@@ -218,7 +218,7 @@ export const TestRunner: React.FC = () => {
           <CardHeader>
             <CardTitle className="text-red-800 flex items-center gap-2">
               <XCircle className="h-5 w-5" />
-              Erro na Execução dos Testes
+              Erro na ExecuÃ§Ã£o dos Testes
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -231,3 +231,4 @@ export const TestRunner: React.FC = () => {
     </div>
   );
 };
+

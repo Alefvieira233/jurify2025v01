@@ -76,13 +76,13 @@ export class SystemValidator {
 
       const testData = {
         tenant_id: this.tenantId,
-        nome_completo: 'System Validator Test',
+        nome: 'System Validator Test',
         email: 'test@systemvalidator.local',
         telefone: '11999999999',
         area_juridica: 'Teste',
         origem: 'Sistema',
-        responsavel: 'Sistema',
         status: 'novo_lead',
+        metadata: { responsavel_nome: 'Sistema' },
       };
 
       const { data: insertData, error: insertError } = await supabase

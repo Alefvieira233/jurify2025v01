@@ -40,7 +40,7 @@ export class WhatsAppErrorBoundary extends Component<Props, State> {
     };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('❌ [WhatsApp ErrorBoundary] Erro capturado:', error);
     console.error('Stack trace:', errorInfo.componentStack);
 
@@ -63,7 +63,7 @@ export class WhatsAppErrorBoundary extends Component<Props, State> {
     window.location.href = '/';
   };
 
-  render() {
+  override render() {
     if (this.state.hasError) {
       return (
         <div className="p-6 space-y-6">

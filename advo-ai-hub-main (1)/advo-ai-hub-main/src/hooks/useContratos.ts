@@ -4,14 +4,39 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseQuery } from './useSupabaseQuery';
-import type { Database } from '@/integrations/supabase/types';
 
-export type Contrato = Database['public']['Tables']['contratos']['Row'];
-export type CreateContratoData = Database['public']['Tables']['contratos']['Insert'];
+type ContratoRow = {
+  id: string;
+  lead_id: string | null;
+  tenant_id: string | null;
+  nome_cliente: string | null;
+  area_juridica: string | null;
+  valor_causa: number | null;
+  texto_contrato: string | null;
+  clausulas_customizadas: string | null;
+  status: string | null;
+  status_assinatura: string | null;
+  link_assinatura_zapsign: string | null;
+  zapsign_document_id: string | null;
+  data_geracao_link: string | null;
+  data_envio_whatsapp: string | null;
+  responsavel: string | null;
+  data_envio: string | null;
+  data_assinatura: string | null;
+  observacoes: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type Contrato = ContratoRow;
+
+export type ContratoInput = Partial<Contrato>;
 
 export const useContratos = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
+
+  const normalizeContrato = useCallback((contrato: ContratoRow): Contrato => ({ ...contrato }), []);
 
   const fetchContratosQuery = useCallback(async () => {
     console.log('🔍 [useContratos] Buscando contratos...');
@@ -33,8 +58,9 @@ export const useContratos = () => {
       console.log(`✅ [useContratos] ${data?.length || 0} contratos encontrados`);
     }
 
-    return { data, error };
-  }, [profile?.tenant_id]);
+    const normalized = (data || []).map(normalizeContrato);
+    return { data: normalized, error };
+  }, [profile?.tenant_id, normalizeContrato]);
 
   const {
     data: contratos,
@@ -48,7 +74,7 @@ export const useContratos = () => {
     staleTime: 15000
   });
 
-  const createContrato = useCallback(async (data: CreateContratoData): Promise<boolean> => {
+  const createContrato = useCallback(async (data: ContratoInput): Promise<boolean> => {
     if (!user) {
       toast({
         title: 'Erro de autenticação',
@@ -60,6 +86,7 @@ export const useContratos = () => {
 
     try {
       console.log('🔄 [useContratos] Criando novo contrato...');
+
       const { data: newContrato, error } = await supabase
         .from('contratos')
         .insert([data])
@@ -71,7 +98,8 @@ export const useContratos = () => {
       console.log('✅ [useContratos] Contrato criado com sucesso:', newContrato.id);
 
       // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
-      setContratos(prev => [newContrato, ...prev]);
+      const normalized = normalizeContrato(newContrato);
+      setContratos(prev => [normalized, ...prev]);
 
       toast({
         title: 'Sucesso',
@@ -90,11 +118,12 @@ export const useContratos = () => {
     }
   }, [user, toast, setContratos]);
 
-  const updateContrato = useCallback(async (id: string, updateData: Partial<Contrato>): Promise<boolean> => {
+  const updateContrato = useCallback(async (id: string, updateData: Partial<ContratoInput>): Promise<boolean> => {
     if (!user) return false;
 
     try {
       console.log(`🔄 [useContratos] Atualizando contrato ${id}...`);
+
       const { data: updatedContrato, error } = await supabase
         .from('contratos')
         .update({ ...updateData, updated_at: new Date().toISOString() })
@@ -107,8 +136,9 @@ export const useContratos = () => {
       console.log('✅ [useContratos] Contrato atualizado com sucesso');
 
       // ✅ CORREÇÃO: Usar setter callback para evitar dependência circular
+      const normalized = normalizeContrato(updatedContrato);
       setContratos(prev => prev.map(contrato =>
-        contrato.id === id ? { ...contrato, ...updatedContrato } : contrato
+        contrato.id === id ? { ...contrato, ...normalized } : contrato
       ));
 
       toast({
@@ -138,3 +168,5 @@ export const useContratos = () => {
     updateContrato,
   };
 };
+
+

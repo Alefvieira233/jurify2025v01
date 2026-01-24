@@ -60,7 +60,7 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
 
       const { data: leads, error: leadsError } = await supabase
         .from('leads')
-        .select('area_juridica, responsavel, valor_causa, status, created_at')
+        .select('area_juridica, metadata, valor_causa, status, created_at')
         .eq('tenant_id', tenantId)
         .gte('created_at', dataInicio);
 
@@ -82,7 +82,7 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
             const leadsDoAgente = leads?.filter(lead => lead?.area_juridica === agente.area_juridica) || [];
             const contratosDoAgente = contratos?.filter(contrato =>
               normalizeLabel(contrato?.responsavel || '') === iaResponsavel &&
-              (contrato?.status_assinatura === 'assinado' || contrato?.status === 'assinado')
+              (contrato?.status === 'assinado' || contrato?.status_assinatura === 'assinado')
             ) || [];
 
             agentesStats.push({
@@ -99,16 +99,17 @@ const RankingAgentesTable: React.FC<RankingAgentesTableProps> = ({ periodo }) =>
 
       const responsaveisHumanos = leads ?
         [...new Set(leads
-          .map(lead => lead?.responsavel)
+          .map(lead => (lead?.metadata as any)?.responsavel_nome)
           .filter(resp => resp && normalizeLabel(resp) !== iaResponsavel && typeof resp === 'string')
         )] : [];
 
       if (responsaveisHumanos.length > 0) {
         responsaveisHumanos.forEach(responsavel => {
           if (responsavel && typeof responsavel === 'string') {
-            const leadsDoResponsavel = leads?.filter(lead => lead?.responsavel === responsavel) || [];
+            const leadsDoResponsavel = leads?.filter(lead => (lead?.metadata as any)?.responsavel_nome === responsavel) || [];
             const contratosDoResponsavel = contratos?.filter(contrato =>
-              contrato?.responsavel === responsavel && (contrato?.status_assinatura === 'assinado' || contrato?.status === 'assinado')
+              contrato?.responsavel === responsavel &&
+              (contrato?.status === 'assinado' || contrato?.status_assinatura === 'assinado')
             ) || [];
 
             agentesStats.push({

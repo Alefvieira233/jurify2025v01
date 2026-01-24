@@ -1,9 +1,9 @@
-
+﻿
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-// 🚀 RETRY LOGIC COM EXPONENTIAL BACKOFF - TESLA/SPACEX GRADE
+// ðŸš€ RETRY LOGIC COM EXPONENTIAL BACKOFF - TESLA/SPACEX GRADE
 const retryWithBackoff = async <T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
@@ -23,7 +23,7 @@ const retryWithBackoff = async <T>(
       
       // Exponential backoff: 1s, 2s, 4s
       const delay = baseDelay * Math.pow(2, attempt);
-      console.log(`🔄 Tentativa ${attempt + 1} falhou, tentando novamente em ${delay}ms...`);
+      console.log(`ðŸ”„ Tentativa ${attempt + 1} falhou, tentando novamente em ${delay}ms...`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -65,8 +65,9 @@ export const useZapSignIntegration = (): UseZapSignIntegrationReturn => {
       toast.success('Link de assinatura gerado com sucesso!');
       return true;
     } catch (error) {
-      console.error('Erro ao gerar link ZapSign após 3 tentativas:', error);
-      toast.error(`Erro ao gerar link: ${error.message}`);
+      console.error('Erro ao gerar link ZapSign apÃ³s 3 tentativas:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Erro ao gerar link: ");
       return false;
     } finally {
       setIsLoading(false);
@@ -89,7 +90,8 @@ export const useZapSignIntegration = (): UseZapSignIntegrationReturn => {
       }
     } catch (error) {
       console.error('Erro ao verificar status:', error);
-      toast.error(`Erro ao verificar status: ${error.message}`);
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Erro ao verificar status: ");
     }
   };
 
@@ -122,8 +124,9 @@ export const useZapSignIntegration = (): UseZapSignIntegrationReturn => {
       toast.success('Link enviado via WhatsApp com sucesso!');
       return true;
     } catch (error) {
-      console.error('Erro ao enviar via WhatsApp após 3 tentativas:', error);
-      toast.error(`Erro ao enviar: ${error.message}`);
+      console.error('Erro ao enviar via WhatsApp apÃ³s 3 tentativas:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error("Erro ao enviar: ");
       return false;
     } finally {
       setIsLoading(false);
@@ -137,3 +140,5 @@ export const useZapSignIntegration = (): UseZapSignIntegrationReturn => {
     enviarViaWhatsApp
   };
 };
+
+

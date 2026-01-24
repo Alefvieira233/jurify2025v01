@@ -16,6 +16,7 @@ const ExportDataButton = ({ table, filename, className }: ExportDataButtonProps)
   const { toast } = useToast();
   const { hasPermission, profile } = useAuth();
   const tenantId = profile?.tenant_id || null;
+  const supabaseAny = supabase as typeof supabase & { from: (table: string) => any };
 
   const exportToCSV = async () => {
     if (!hasPermission('usuarios', 'read')) {
@@ -38,7 +39,7 @@ const ExportDataButton = ({ table, filename, className }: ExportDataButtonProps)
 
     setLoading(true);
     try {
-      const query = supabase
+      const query = supabaseAny
         .from(table)
         .select('*')
         .eq('tenant_id', tenantId)

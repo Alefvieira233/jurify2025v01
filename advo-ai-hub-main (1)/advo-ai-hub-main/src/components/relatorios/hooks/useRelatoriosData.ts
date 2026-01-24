@@ -65,7 +65,7 @@ export const useKPIs = (periodo: PeriodoFiltro, areaJuridica: string, origemLead
       if (contratosError) throw contratosError;
 
       const totalLeads = leads?.length || 0;
-      const contratosAssinados = contratos?.filter(c => c?.status_assinatura === 'assinado' || c?.status === 'assinado').length || 0;
+      const contratosAssinados = contratos?.filter(c => c?.status === 'assinado' || c?.status_assinatura === 'assinado').length || 0;
       const valorTotalContratos = contratos?.reduce((sum, c) => sum + (c?.valor_causa || 0), 0) || 0;
       const taxaConversao = totalLeads > 0 ? (contratosAssinados / totalLeads * 100) : 0;
 

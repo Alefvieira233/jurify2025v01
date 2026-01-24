@@ -4,6 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
+type LeadSource = 'whatsapp' | 'email' | 'chat' | 'form' | 'phone' | 'playground';
+
 export interface LeadData {
   id?: string;
   name: string;
@@ -12,7 +14,7 @@ export interface LeadData {
   message: string;
   legal_area?: string;
   urgency?: 'low' | 'medium' | 'high' | 'critical';
-  source: 'whatsapp' | 'email' | 'chat' | 'form';
+  source: LeadSource;
   metadata?: Record<string, any>;
 }
 
@@ -193,7 +195,9 @@ export const useMultiAgentSystem = () => {
 
         if (error) throw error;
 
-        await multiAgentSystem.processLead(savedLead, leadData.message, leadData.source);
+        const channel: Exclude<LeadSource, 'form'> =
+          leadData.source === 'form' ? 'chat' : leadData.source;
+        await multiAgentSystem.processLead(savedLead, leadData.message, channel);
 
         toast({
           title: 'Lead processado',

@@ -112,7 +112,7 @@ export interface DecisionRecord {
 }
 
 export interface ContextMetadata {
-  channel: 'whatsapp' | 'email' | 'chat' | 'phone';
+  channel: 'whatsapp' | 'email' | 'chat' | 'phone' | 'playground';
   timestamp: Date;
   tenantId?: string;
   userId?: string;

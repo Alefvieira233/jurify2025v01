@@ -13,7 +13,8 @@ import {
 // Componentes refatorados
 import { AgentesIAFilters } from './AgentesIAFilters';
 import { AgentesIACard } from './AgentesIACard';
-import { useAgentesIAFilters, AgenteIA } from './hooks/useAgentesIAFilters';
+import { useAgentesIAFilters } from './hooks/useAgentesIAFilters';
+import type { AgenteIA } from '@/hooks/useAgentesIA';
 
 // Componentes existentes
 import { useAgentesIA } from '@/hooks/useAgentesIA';
@@ -50,28 +51,28 @@ const AgentesIAManager = () => {
 
   const tiposAgente = [
     { value: 'chat_interno', label: 'Chat Interno', icon: Bot, color: 'text-blue-500' },
-    { value: 'analise_dados', label: 'Análise de Dados', icon: BarChart, color: 'text-green-500' },
+    { value: 'analise_dados', label: 'Analise de Dados', icon: BarChart, color: 'text-green-500' },
     { value: 'api_externa', label: 'API Externa', icon: Zap, color: 'text-purple-500' }
   ];
 
   const toggleStatus = async (agente: AgenteIA) => {
-    const novoStatus = agente.status === 'ativo' ? 'inativo' : 'ativo';
-    console.log(`🔄 Alterando status do agente ${agente.nome} para ${novoStatus}`);
+    const statusLabel = agente.status === 'ativo' ? 'inativo' : 'ativo';
+    console.log(`Alterando status do agente ${agente.nome} para ${statusLabel}`);
 
     // Track user action
     trackUserAction('toggle_agent_status', 'agentes_ia', user?.id, profile?.tenant_id, {
       agentId: agente.id,
       agentName: agente.nome,
-      fromStatus: agente.status,
-      toStatus: novoStatus
+      fromStatus: agente.status ?? 'inativo',
+      toStatus: statusLabel
     });
 
-    const success = await updateAgente(agente.id, { status: novoStatus });
+    const success = await updateAgente(agente.id, { status: statusLabel });
 
     if (success) {
       toast({
         title: "Status Atualizado",
-        description: `Agente ${novoStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso`,
+        description: `Agente ${statusLabel === 'ativo' ? 'ativado' : 'desativado'} com sucesso`,
       });
     }
   };
@@ -316,7 +317,7 @@ const AgentesIAManager = () => {
                   Nenhum agente encontrado
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Crie seu primeiro agente de IA para começar a automatizar processos jurídicos.
+                  Crie seu primeiro agente de IA para comecar a automatizar processos juridicos.
                 </p>
                 <Button onClick={handleCreateNew} className="bg-blue-600 hover:bg-blue-700">
                   <Plus className="h-4 w-4 mr-2" />
@@ -371,3 +372,7 @@ const AgentesIAManager = () => {
 };
 
 export default AgentesIAManager;
+
+
+
+

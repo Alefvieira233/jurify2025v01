@@ -6,9 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useNotifications } from '@/hooks/useNotifications';
-import { Database } from '@/integrations/supabase/types';
 
-type NotificationType = Database['public']['Enums']['notification_type'];
+type NotificationType = 'info' | 'sucesso' | 'alerta' | 'erro';
 
 interface CreateNotificationFormProps {
   onSuccess?: () => void;

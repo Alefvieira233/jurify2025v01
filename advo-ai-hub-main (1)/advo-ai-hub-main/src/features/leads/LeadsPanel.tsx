@@ -11,6 +11,9 @@ import { useDebounce } from '@/hooks/useDebounce';
 import TimelineConversas from '@/features/timeline/TimelineConversas';
 import NovoLeadForm from '@/components/forms/NovoLeadForm';
 import EditarLeadForm from '@/components/forms/EditarLeadForm';
+import LeadsKanban from './LeadsKanban';
+import { LayoutList, LayoutGrid } from 'lucide-react';
+import { DropResult } from '@hello-pangea/dnd';
 
 const LeadsPanel = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -19,7 +22,8 @@ const LeadsPanel = () => {
   const [showTimeline, setShowTimeline] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
-  const { leads, loading, error, isEmpty, fetchLeads, deleteLead } = useLeads();
+  const { leads, loading, error, isEmpty, fetchLeads, deleteLead, updateLead } = useLeads();
+  const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
 
   // Debounce search term para evitar filtros excessivos
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
@@ -47,7 +51,7 @@ const LeadsPanel = () => {
   const getStatusLabel = (status: string) => {
     const labels = {
       novo_lead: 'Novo Lead',
-      em_qualificacao: 'Em Qualificação',
+      em_qualificacao: 'Em Qualificacao',
       proposta_enviada: 'Proposta Enviada',
       contrato_assinado: 'Contrato Assinado',
       em_atendimento: 'Em Atendimento',
@@ -95,6 +99,18 @@ const LeadsPanel = () => {
     }
   };
 
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const { draggableId, destination } = result;
+
+    // Evita chamadas desnecessárias
+    if (result.source.droppableId === destination.droppableId) return;
+
+    // Atualiza status do lead
+    updateLead(draggableId, { status: destination.droppableId });
+  };
+
   // Loading State
   if (loading) {
     return (
@@ -103,7 +119,7 @@ const LeadsPanel = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+                <CardTitle className="text-2xl">Gestao de Leads</CardTitle>
                 <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
               </div>
               <Skeleton className="h-10 w-32" />
@@ -148,7 +164,7 @@ const LeadsPanel = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+                <CardTitle className="text-2xl">Gestao de Leads</CardTitle>
                 <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
               </div>
               <Button
@@ -199,7 +215,7 @@ const LeadsPanel = () => {
           <CardHeader>
             <div className="flex justify-between items-center">
               <div>
-                <CardTitle className="text-2xl">Gestão de Leads</CardTitle>
+                <CardTitle className="text-2xl">Gestao de Leads</CardTitle>
                 <p className="text-gray-600">Gerencie seus leads e oportunidades</p>
               </div>
               <Button
@@ -245,24 +261,43 @@ const LeadsPanel = () => {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-4">
             <h1
-              className="text-5xl md:text-6xl font-bold text-[hsl(var(--primary))] tracking-tight"
-              style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.03em' }}
+              className="text-5xl md:text-6xl font-serif font-bold text-primary tracking-tight"
             >
-              Leads
+              Deal Flow
             </h1>
 
-            {/* Live Badge */}
-            <div className="relative group">
-              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent)_/_0.3)] via-[hsl(var(--accent)_/_0.2)] to-transparent rounded-full blur-md opacity-75 group-hover:opacity-100 transition-opacity duration-500" />
-              <div className="relative px-4 py-2 bg-gradient-to-r from-[hsl(var(--accent)_/_0.15)] via-[hsl(var(--accent)_/_0.1)] to-transparent rounded-full border border-[hsl(var(--accent)_/_0.3)] backdrop-blur-sm">
-                <span className="text-xs font-bold uppercase tracking-wider" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                  Live
-                </span>
-              </div>
+            <div className="h-px w-32 bg-accent/50 hidden md:block" />
+
+            {/* Live Badge - Premium Pulse */}
+            <div className="flex items-center gap-2 px-3 py-1 bg-accent/10 border border-accent/20 rounded-sm">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+              <span className="text-xs font-medium uppercase tracking-widest text-accent-dark">
+                Live Pipeline
+              </span>
             </div>
           </div>
 
           <div className="flex gap-3">
+            {/* View Toggle */}
+            <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className={`h-8 px-2 ${viewMode === 'list' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <LayoutList className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('kanban')}
+                className={`h-8 px-2 ${viewMode === 'kanban' ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+            </div>
+
             {/* Refresh Button Premium */}
             <Button
               onClick={handleRetry}
@@ -276,16 +311,13 @@ const LeadsPanel = () => {
               <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 600 }}>Atualizar</span>
             </Button>
 
-            {/* Novo Lead Button Premium */}
+            {/* Novo Lead Button Premium - Sharp & Gold */}
             <Button
               onClick={() => setShowFormModal(true)}
-              className="relative group/btn overflow-hidden bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_56%)] to-[hsl(43_96%_48%)] hover:shadow-lg transition-all duration-500 border-0"
-              aria-label="Criar novo lead"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent hover:border-accent transition-all duration-300 rounded-sm shadow-md"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-[hsl(var(--accent))] via-[hsl(43_96%_62%)] to-[hsl(var(--accent))] opacity-0 group-hover/btn:opacity-100 blur-xl transition-opacity duration-500" style={{ filter: 'blur(20px)' }} />
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-              <Plus className="relative h-4 w-4 mr-2" strokeWidth={2.5} />
-              <span className="relative" style={{ fontFamily: "'Inter', sans-serif", fontWeight: 700 }}>Novo Lead</span>
+              <Plus className="h-4 w-4 mr-2 text-accent" />
+              <span className="font-medium tracking-wide">NOVA OPORTUNIDADE</span>
             </Button>
           </div>
         </div>
@@ -316,7 +348,7 @@ const LeadsPanel = () => {
             >
               <option value="">Todos os Status</option>
               <option value="novo_lead">Novo Lead</option>
-              <option value="em_qualificacao">Em Qualificação</option>
+              <option value="em_qualificacao">Em Qualificacao</option>
               <option value="proposta_enviada">Proposta Enviada</option>
               <option value="contrato_assinado">Contrato Assinado</option>
               <option value="em_atendimento">Em Atendimento</option>
@@ -326,129 +358,139 @@ const LeadsPanel = () => {
         </CardContent>
       </Card>
 
-      {/* Lista de Leads Premium */}
-      <div className="grid gap-4">
-        {filteredLeads.map((lead, index) => (
-          <Card
-            key={lead.id}
-            className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in"
-            style={{ animationDelay: `${index * 0.05}s` }}
-          >
-            {/* Card Glow Effect */}
-            <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.1)] via-[hsl(var(--primary)_/_0.05)] to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+      {/* View Content */}
+      {viewMode === 'kanban' ? (
+        <LeadsKanban
+          leads={filteredLeads}
+          onDragEnd={handleDragEnd}
+          onEditLead={handleEditLead}
+          onViewTimeline={handleViewTimeline}
+        />
+      ) : (
+        /* Lista de Leads Premium */
+        <div className="grid gap-4">
+          {filteredLeads.map((lead, index) => (
+            <Card
+              key={lead.id}
+              className="relative group card-hover rounded-3xl border-[hsl(var(--border))] overflow-hidden fade-in"
+              style={{ animationDelay: `${index * 0.05}s` }}
+            >
+              {/* Card Glow Effect */}
+              <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.1)] via-[hsl(var(--primary)_/_0.05)] to-transparent rounded-3xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
 
-            {/* Shine Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
+              {/* Shine Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-transparent pointer-events-none" />
 
-            <CardContent className="relative p-6">
-              <div className="flex justify-between items-start gap-4">
-                <div className="space-y-3 flex-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3
-                      className="text-xl font-bold text-[hsl(var(--foreground))]"
-                      style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.02em' }}
-                    >
-                      {lead.nome_completo}
-                    </h3>
+              <CardContent className="relative p-6">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="space-y-3 flex-1">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3
+                        className="text-xl font-bold text-[hsl(var(--foreground))]"
+                        style={{ fontFamily: "'Cormorant Garamond', serif", letterSpacing: '-0.02em' }}
+                      >
+                        {lead.nome_completo}
+                      </h3>
 
-                    {/* Premium Status Badge */}
-                    <div className="relative group/badge">
-                      <div className={`absolute inset-0 ${getStatusColor(lead.status)} rounded-full blur opacity-50 group-hover/badge:opacity-75 transition-opacity duration-300`} />
-                      <Badge className={`relative ${getStatusColor(lead.status)} px-3 py-1 shadow-sm`}>
-                        <span className="font-semibold text-xs" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                          {getStatusLabel(lead.status)}
-                        </span>
-                      </Badge>
+                      {/* Premium Status Badge */}
+                      <div className="relative group/badge">
+                        <div className={`absolute inset-0 ${getStatusColor(lead.status)} rounded-full blur opacity-50 group-hover/badge:opacity-75 transition-opacity duration-300`} />
+                        <Badge className={`relative ${getStatusColor(lead.status)} px-3 py-1 shadow-sm`}>
+                          <span className="font-semibold text-xs" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                            {getStatusLabel(lead.status)}
+                          </span>
+                        </Badge>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
-                    <div>
-                      <span className="font-medium">Telefone:</span> {lead.telefone || 'N/A'}
-                    </div>
-                    <div>
-                      <span className="font-medium">Email:</span> {lead.email || 'N/A'}
-                    </div>
-                    <div>
-                      <span className="font-medium">Área Jurídica:</span> {lead.area_juridica}
-                    </div>
-                    <div>
-                      <span className="font-medium">Responsável:</span> {lead.responsavel}
-                    </div>
-                    <div>
-                      <span className="font-medium">Origem:</span> {lead.origem}
-                    </div>
-                    {lead.valor_causa && (
+                    <div className="grid md:grid-cols-2 gap-4 text-sm text-gray-600">
                       <div>
-                        <span className="font-medium">Valor da Causa:</span> R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}
+                        <span className="font-medium">Telefone:</span> {lead.telefone || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Email:</span> {lead.email || 'N/A'}
+                      </div>
+                      <div>
+                        <span className="font-medium">Area Juridica:</span> {lead.area_juridica}
+                      </div>
+                      <div>
+                        <span className="font-medium">Responsavel:</span> {lead.responsavel}
+                      </div>
+                      <div>
+                        <span className="font-medium">Origem:</span> {lead.origem}
+                      </div>
+                      {lead.valor_causa && (
+                        <div>
+                          <span className="font-medium">Valor da Causa:</span> R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}
+                        </div>
+                      )}
+                    </div>
+
+                    {lead.observacoes && (
+                      <div className="text-sm text-gray-600">
+                        <span className="font-medium">Observações:</span> {lead.observacoes}
                       </div>
                     )}
-                  </div>
 
-                  {lead.observacoes && (
-                    <div className="text-sm text-gray-600">
-                      <span className="font-medium">Observações:</span> {lead.observacoes}
+                    <div className="text-xs text-gray-500">
+                      Criado em: {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                     </div>
-                  )}
+                  </div>
 
-                  <div className="text-xs text-gray-500">
-                    Criado em: {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+                  <div className="flex gap-2 ml-4">
+                    {/* Timeline Button Premium */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleViewTimeline(lead.id, lead.nome_completo)}
+                      className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-[hsl(var(--accent)_/_0.5)] transition-all duration-500"
+                      aria-label="Ver timeline de conversas"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--accent)_/_0.1)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                      <MessageCircle className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
+                    </Button>
+
+                    {/* View Button Premium */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-blue-500/50 transition-all duration-500"
+                      aria-label="Visualizar detalhes do lead"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                      <Eye className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
+                    </Button>
+
+                    {/* Edit Button Premium */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleEditLead(lead)}
+                      className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-purple-500/50 transition-all duration-500"
+                      aria-label="Editar lead"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                      <Edit className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
+                    </Button>
+
+                    {/* Delete Button Premium */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDeleteLead(lead.id, lead.nome_completo)}
+                      className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-red-500/50 text-red-600 hover:text-red-700 transition-all duration-500"
+                      aria-label="Excluir lead"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
+                      <Trash2 className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex gap-2 ml-4">
-                  {/* Timeline Button Premium */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleViewTimeline(lead.id, lead.nome_completo)}
-                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-[hsl(var(--accent)_/_0.5)] transition-all duration-500"
-                    aria-label="Ver timeline de conversas"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-[hsl(var(--accent)_/_0.1)] to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                    <MessageCircle className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
-                  </Button>
-
-                  {/* View Button Premium */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-blue-500/50 transition-all duration-500"
-                    aria-label="Visualizar detalhes do lead"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                    <Eye className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
-                  </Button>
-
-                  {/* Edit Button Premium */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditLead(lead)}
-                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-purple-500/50 transition-all duration-500"
-                    aria-label="Editar lead"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                    <Edit className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
-                  </Button>
-
-                  {/* Delete Button Premium */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteLead(lead.id, lead.nome_completo)}
-                    className="relative group/btn overflow-hidden border-[hsl(var(--border))] hover:border-red-500/50 text-red-600 hover:text-red-700 transition-all duration-500"
-                    aria-label="Excluir lead"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-500/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000" />
-                    <Trash2 className="relative h-4 w-4 group-hover/btn:scale-110 transition-transform duration-300" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {filteredLeads.length === 0 && debouncedSearchTerm && (
         <Card className="border-yellow-200 bg-yellow-50">
@@ -457,7 +499,7 @@ const LeadsPanel = () => {
               <Search className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-yellow-900 mb-2">Nenhum resultado encontrado</h3>
               <p className="text-yellow-700">
-                Não foram encontrados leads com o termo "{debouncedSearchTerm}". Tente ajustar sua busca.
+                Nao foram encontrados leads com o termo "{debouncedSearchTerm}". Tente ajustar sua busca.
               </p>
             </div>
           </CardContent>

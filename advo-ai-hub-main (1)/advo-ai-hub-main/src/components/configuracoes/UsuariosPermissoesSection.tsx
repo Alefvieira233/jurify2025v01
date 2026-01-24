@@ -36,6 +36,7 @@ const UsuariosPermissoesSection = () => {
       if (error) throw error;
 
       const roleGroups = data.reduce((acc: any, item) => {
+        const profileData = Array.isArray(item.profiles) ? item.profiles[0] : item.profiles;
         if (!acc[item.role]) {
           acc[item.role] = {
             role: item.role,
@@ -44,8 +45,8 @@ const UsuariosPermissoesSection = () => {
         }
         acc[item.role].users.push({
           id: item.user_id,
-          nome: item.profiles.nome_completo,
-          email: item.profiles.email,
+          nome: profileData?.nome_completo,
+          email: profileData?.email,
         });
         return acc;
       }, {} as Record<string, any>);

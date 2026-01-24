@@ -12,12 +12,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { OpenAI } from "https://deno.land/x/openai@v4.24.0/mod.ts";
 import { applyRateLimit } from "../_shared/rate-limiter.ts";
+import { getCorsHeaders } from "../_shared/cors.ts";
+import { initSentry, captureError } from "../_shared/sentry.ts";
+
+// 🚀 INIT SENTRY
+initSentry();
 
 // ðŸ”’ CORS Headers
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
 
 // ðŸŽ¯ TIPOS DE REQUISIÃ‡ÃƒO
 interface AgentAIRequest {
@@ -32,6 +33,9 @@ interface AgentAIRequest {
   leadId?: string;
   tenantId?: string;
   userId?: string;
+  // Function Calling Support
+  tools?: any[];
+  tool_choice?: "auto" | "none" | any;
 }
 
 interface AgentAIResponse {
@@ -43,7 +47,10 @@ interface AgentAIResponse {
   };
   model: string;
   agentName: string;
+  agentName: string;
   timestamp: string;
+  // Function Calling Result
+  tool_calls?: any[];
 }
 
 // ðŸ›¡ï¸ ValidaÃ§Ã£o de Input
@@ -83,9 +90,11 @@ async function processAIRequest(
     model = "gpt-4-turbo-preview",
     temperature = 0.7,
     maxTokens = 1500,
+    tools,
+    tool_choice,
   } = request;
 
-  console.log(`ðŸ¤– Processing AI request for agent: ${agentName}`);
+  console.log(`ðŸ¤– Processing AI request for agent: ${agentName} [Tools: ${tools ? tools.length : 0}]`);
 
   // Monta mensagens para a OpenAI
   const messages: Array<{ role: string; content: string }> = [
@@ -113,19 +122,24 @@ async function processAIRequest(
     model,
     messages,
     temperature,
+    temperature,
     max_tokens: maxTokens,
+    tools,
+    tool_choice,
   });
 
-  const result = completion.choices[0]?.message?.content || "Erro ao processar requisiÃ§Ã£o";
+  const result = completion.choices[0]?.message?.content || "";
+  const toolCalls = completion.choices[0]?.message?.tool_calls;
 
   return {
     result,
+    tool_calls: toolCalls,
     usage: completion.usage
       ? {
-          prompt_tokens: completion.usage.prompt_tokens,
-          completion_tokens: completion.usage.completion_tokens,
-          total_tokens: completion.usage.total_tokens,
-        }
+        prompt_tokens: completion.usage.prompt_tokens,
+        completion_tokens: completion.usage.completion_tokens,
+        total_tokens: completion.usage.total_tokens,
+      }
       : undefined,
     model: completion.model,
     agentName,
@@ -250,6 +264,11 @@ async function logAIProcessing(
       completion_tokens: response.usage?.completion_tokens || 0,
       total_tokens: response.usage?.total_tokens || 0,
       result_preview: response.result.substring(0, 200),
+      // Advanced Logging (LangSmith Style)
+      system_prompt: request.systemPrompt,
+      user_prompt: request.userPrompt,
+      full_result: response.result,
+      context: request.context || null,
       created_at: new Date().toISOString(),
     });
 
@@ -262,6 +281,8 @@ async function logAIProcessing(
 
 // ðŸš€ HANDLER PRINCIPAL
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin") || undefined);
+
   // Handle CORS
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });

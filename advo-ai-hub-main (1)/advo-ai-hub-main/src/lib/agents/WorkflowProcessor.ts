@@ -326,7 +326,8 @@ export class WorkflowProcessor {
 
       } catch (error) {
         console.error(`❌ Erro na ação ${action.id}:`, error);
-        await this.logActionExecution(executionId, action.id, 'error', error.message);
+        const message = error instanceof Error ? error.message : String(error);
+        await this.logActionExecution(executionId, action.id, 'error', message);
       }
     }
   }

@@ -27,6 +27,7 @@ const ThinkingIndicator: React.FC<ThinkingIndicatorProps> = ({
             }, 2000);
             return () => clearInterval(interval);
         }
+        return undefined;
     }, [variant]);
 
     React.useEffect(() => {

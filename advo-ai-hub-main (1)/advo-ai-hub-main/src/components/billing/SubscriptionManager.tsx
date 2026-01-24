@@ -70,8 +70,9 @@ export const SubscriptionManager = () => {
     const [usage, setUsage] = useState<UsageLimits | null>(null);
     const [loading, setLoading] = useState(true);
     const [upgrading, setUpgrading] = useState(false);
+    const supabaseAny = supabase as typeof supabase & { from: (table: string) => any };
 
-    const currentPlan = subscription?.plan_id || (profile as Record<string, unknown>)?.subscription_tier as string || 'free';
+    const currentPlan = subscription?.plan_id || profile?.subscription_tier || 'free';
 
     const loadSubscriptionData = useCallback(async () => {
         if (!profile?.id) return;
@@ -80,7 +81,7 @@ export const SubscriptionManager = () => {
             setLoading(true);
 
             // Load subscription
-            const { data: subData } = await supabase
+            const { data: subData } = await supabaseAny
                 .from('subscriptions')
                 .select('*')
                 .eq('user_id', profile.id)
@@ -102,16 +103,16 @@ export const SubscriptionManager = () => {
                 { count: leadsCount },
                 { count: usersCount },
             ] = await Promise.all([
-                supabase
+                supabaseAny
                     .from('agent_ai_logs')
                     .select('*', { count: 'exact', head: true })
                     .eq('tenant_id', tenantId)
                     .gte('created_at', thirtyDaysAgo.toISOString()),
-                supabase
+                supabaseAny
                     .from('leads')
                     .select('*', { count: 'exact', head: true })
                     .eq('tenant_id', tenantId),
-                supabase
+                supabaseAny
                     .from('profiles')
                     .select('*', { count: 'exact', head: true })
                     .eq('tenant_id', tenantId),

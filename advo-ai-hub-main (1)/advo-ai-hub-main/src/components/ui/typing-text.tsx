@@ -27,6 +27,7 @@ const TypingText: React.FC<TypingTextProps> = ({
         } else if (currentIndex === text.length && onComplete) {
             onComplete();
         }
+        return undefined;
     }, [currentIndex, text, speed, onComplete]);
 
     return (

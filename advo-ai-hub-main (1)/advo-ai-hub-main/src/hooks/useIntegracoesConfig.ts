@@ -2,16 +2,34 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import type { Database } from '@/integrations/supabase/types';
 
-export type IntegracaoConfig = Database['public']['Tables']['configuracoes_integracoes']['Row'];
-export type CreateIntegracaoData = Database['public']['Tables']['configuracoes_integracoes']['Insert'];
+export type IntegracaoConfig = {
+  id: string;
+  tenant_id: string | null;
+  nome_integracao: string;
+  status: 'ativa' | 'inativa' | 'erro';
+  api_key: string;
+  endpoint_url: string;
+  observacoes: string | null;
+  criado_em: string;
+  atualizado_em?: string | null;
+  data_ultima_sincronizacao?: string | null;
+};
+
+export type CreateIntegracaoData = {
+  nome_integracao: string;
+  status: IntegracaoConfig['status'];
+  api_key: string;
+  endpoint_url: string;
+  observacoes?: string | null;
+};
 
 export const useIntegracoesConfig = () => {
   const [integracoes, setIntegracoes] = useState<IntegracaoConfig[]>([]);
   const [loading, setLoading] = useState(false);
   const { user, profile } = useAuth();
   const { toast } = useToast();
+  const supabaseAny = supabase as any;
 
   const tenantId = profile?.tenant_id ?? null;
 
@@ -20,7 +38,7 @@ export const useIntegracoesConfig = () => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAny
         .from('configuracoes_integracoes')
         .select('*')
         .eq('tenant_id', tenantId)
@@ -44,7 +62,7 @@ export const useIntegracoesConfig = () => {
     if (!user || !tenantId) return false;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAny
         .from('configuracoes_integracoes')
         .insert([{ ...data, tenant_id: tenantId }]);
 
@@ -72,7 +90,7 @@ export const useIntegracoesConfig = () => {
     if (!user || !tenantId) return false;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAny
         .from('configuracoes_integracoes')
         .update({ ...data, atualizado_em: new Date().toISOString() })
         .eq('id', id)
@@ -113,7 +131,7 @@ export const useIntegracoesConfig = () => {
     if (!user || !tenantId) return false;
 
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAny
         .from('configuracoes_integracoes')
         .delete()
         .eq('id', id)

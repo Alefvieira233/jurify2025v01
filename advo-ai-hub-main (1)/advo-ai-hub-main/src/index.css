@@ -12,100 +12,85 @@
 
 @layer base {
   :root {
-    /* ===== LIGHT MODE - Sophisticated & Premium ===== */
+    /* ===== LIGHT MODE - Conservative Luxury (Rolex/Banking) ===== */
 
-    /* Backgrounds - Ultra Clean with Subtle Warmth */
-    --background: 220 20% 99%;        /* Ultra clean white with hint of blue */
-    --background-secondary: 220 15% 97%;
-    --background-tertiary: 220 12% 95%;
-    --foreground: 222 47% 11%;        /* Rich charcoal */
+    /* Backgrounds - Stark & Clean */
+    --background: 210 20% 98%;        /* Cool White (Paper-like) */
+    --background-secondary: 0 0% 100%; /* Pure White for Cards */
+    --background-tertiary: 210 10% 96%;
+    --foreground: 222 47% 11%;        /* Oxford Blue (Text) */
 
-    /* Cards & Surfaces - Layered Elevation */
+    /* Cards & Surfaces - High Definition */
     --card: 0 0% 100%;
-    --card-secondary: 220 20% 99%;
+    --card-secondary: 210 20% 98%;
     --card-foreground: 222 47% 11%;
-    --card-border: 220 15% 92%;
+    --card-border: 220 13% 91%;
 
     /* Popover */
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
-    /* Primary - Deep Sapphire (Authority & Prestige) */
-    --primary: 222 47% 11%;           /* Rich near-black navy */
-    --primary-light: 221 39% 24%;
-    --primary-foreground: 0 0% 100%;
+    /* Primary - Royal Navy (Authority) */
+    --primary: 222 47% 11%;           /* Deep Oxford Blue */
+    --primary-light: 221 39% 20%;
+    --primary-foreground: 45 30% 90%; /* Ivory Text */
     --primary-hover: 222 50% 8%;
 
-    /* Accent - Refined Gold (Premium & Excellence) */
-    --accent: 43 96% 56%;             /* Refined bright gold */
-    --accent-dark: 43 74% 49%;
-    --accent-light: 43 96% 65%;
+    /* Accent - Metallic Gold (Wealth) */
+    --accent: 45 93% 47%;             /* Metallic Gold */
+    --accent-dark: 45 80% 40%;
+    --accent-light: 45 60% 85%;       /* Champagne */
     --accent-foreground: 222 47% 11%;
-    --accent-hover: 43 96% 52%;
+    --accent-hover: 45 93% 42%;
 
-    /* Secondary - Elegant Gray */
-    --secondary: 220 14% 96%;
+    /* Secondary - Silver/Platinum */
+    --secondary: 210 10% 90%;
     --secondary-foreground: 222 47% 11%;
-    --secondary-hover: 220 14% 94%;
+    --secondary-hover: 210 10% 85%;
 
-    /* Muted - Sophisticated Neutral */
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    /* Muted - Subtle Gray */
+    --muted: 210 10% 96%;
+    --muted-foreground: 215 16% 47%;
 
-    /* Destructive - Refined Red */
-    --destructive: 0 84% 60%;
+    /* Destructive - Venetian Red */
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Success - Professional Emerald */
-    --success: 142 76% 36%;
-    --success-light: 142 69% 45%;
-    --success-foreground: 0 0% 100%;
-
-    /* Warning - Sophisticated Amber */
-    --warning: 38 92% 50%;
-    --warning-foreground: 222 47% 11%;
-
-    /* Info - Professional Blue */
-    --info: 211 96% 48%;
-    --info-foreground: 0 0% 100%;
-
-    /* Borders & Inputs */
-    --border: 220 13% 91%;
-    --border-secondary: 220 13% 94%;
-    --input: 220 13% 91%;
+    /* Borders - Crisp Lines */
+    --border: 214 32% 91%;
+    --border-secondary: 214 30% 85%;
+    --input: 214 32% 91%;
     --input-focus: 222 47% 11%;
-    --ring: 43 96% 56%;
+    --ring: 222 47% 11%; /* Focus rings are Navy, not Gold (Keep it serious) */
 
-    /* Border Radius - Refined & Modern */
-    --radius: 0.875rem;
-    --radius-sm: 0.625rem;
-    --radius-md: 0.75rem;
-    --radius-lg: 1.125rem;
-    --radius-xl: 1.5rem;
+    /* Border Radius - SHARP (Geometry = Precision) */
+    --radius: 0.25rem;      /* 4px - Very subtle rounding */
+    --radius-sm: 0.125rem;  /* 2px */
+    --radius-md: 0.375rem;  /* 6px */
+    --radius-lg: 0.5rem;    /* 8px - Max roundness */
+    --radius-xl: 0.75rem;   /* 12px */
 
-    /* Sidebar - Premium Dark with Gold Accents */
+    /* Sidebar - Deepest Navy */
     --sidebar-background: 222 47% 11%;
     --sidebar-secondary: 222 44% 14%;
-    --sidebar-foreground: 220 14% 96%;
-    --sidebar-primary: 43 96% 56%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 45 93% 47%;    /* Gold Selection */
     --sidebar-primary-foreground: 222 47% 11%;
     --sidebar-accent: 222 42% 16%;
-    --sidebar-accent-foreground: 220 14% 96%;
+    --sidebar-accent-foreground: 45 93% 47%;
     --sidebar-border: 222 40% 18%;
-    --sidebar-ring: 43 96% 56%;
+    --sidebar-ring: 45 93% 47%;
 
-    /* Shadows - Multi-layered Premium Depth */
-    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.03);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.06);
-    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.08), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-    --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.05);
-    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
-    --shadow-xl: 0 25px 50px -12px rgb(0 0 0 / 0.15);
-    --shadow-2xl: 0 35px 60px -15px rgb(0 0 0 / 0.2);
-
-    /* Premium Glow Effects */
-    --glow-gold: 0 0 20px rgb(251 191 36 / 0.3);
-    --glow-primary: 0 0 20px rgb(30 41 59 / 0.2);
+    /* Shadows - Sharp & Defined (Architectural) */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-sm: 0 1px 2px -1px rgb(0 0 0 / 0.1), 0 1px 3px 0 rgb(0 0 0 / 0.1);
+    --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
+    --shadow-md: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+    --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+    
+    /* No glowing in Light Mode for Conservative style */
+    --glow-gold: none;
+    --glow-primary: none;
   }
 
   .dark {

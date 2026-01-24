@@ -274,7 +274,7 @@ class DistributedRateLimitService {
         status: 'unhealthy',
         details: {
           message: 'Rate limiting com falha crítica',
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           cacheHealth: distributedCache.getHealthStatus()
         }
       };

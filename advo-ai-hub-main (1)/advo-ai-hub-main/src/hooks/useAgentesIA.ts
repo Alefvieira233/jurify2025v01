@@ -3,15 +3,78 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useSupabaseQuery } from './useSupabaseQuery';
-import type { Database } from '@/integrations/supabase/types';
 
-export type AgenteIA = Database['public']['Tables']['agentes_ia']['Row'];
-export type CreateAgenteData = Database['public']['Tables']['agentes_ia']['Insert'];
+type AgenteParams = Record<string, unknown>;
+
+export type AgenteIA = {
+  id: string;
+  nome: string;
+  area_juridica: string | null;
+  objetivo: string | null;
+  script_saudacao: string | null;
+  perguntas_qualificacao: string[] | null;
+  keywords_acao: string[] | null;
+  delay_resposta: number | null;
+  status: string | null;
+  descricao_funcao: string | null;
+  prompt_base: string | null;
+  tipo_agente: string | null;
+  parametros_avancados: AgenteParams | null;
+  tenant_id: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type CreateAgenteData = {
+  nome: string;
+  area_juridica?: string | null;
+  objetivo?: string | null;
+  script_saudacao?: string | null;
+  perguntas_qualificacao?: string[] | null;
+  keywords_acao?: string[] | null;
+  delay_resposta?: number | null;
+  status?: string | null;
+  descricao_funcao?: string | null;
+  prompt_base?: string | null;
+  tipo_agente?: string | null;
+  parametros_avancados?: AgenteParams | null;
+  tenant_id?: string | null;
+};
 
 export const useAgentesIA = () => {
   const { user, profile } = useAuth();
   const { toast } = useToast();
   const tenantId = profile?.tenant_id || null;
+
+  const normalizeAgente = useCallback((agente: any): AgenteIA => {
+    return {
+      id: agente.id,
+      nome: agente.nome,
+      area_juridica: agente.area_juridica ?? null,
+      objetivo: agente.objetivo ?? null,
+      script_saudacao: agente.script_saudacao ?? null,
+      perguntas_qualificacao: agente.perguntas_qualificacao ?? null,
+      keywords_acao: agente.keywords_acao ?? null,
+      delay_resposta: agente.delay_resposta ?? null,
+      status: agente.status ?? 'ativo',
+      descricao_funcao: agente.descricao_funcao ?? null,
+      prompt_base: agente.prompt_base ?? agente.prompt_sistema ?? null,
+      tipo_agente: agente.tipo_agente ?? agente.tipo ?? null,
+      parametros_avancados: agente.parametros_avancados ?? null,
+      tenant_id: agente.tenant_id ?? null,
+      created_at: agente.created_at ?? null,
+      updated_at: agente.updated_at ?? null,
+    };
+  }, []);
+
+  const mapAgenteInputToDb = useCallback((data: CreateAgenteData) => {
+    const { tipo_agente, status, ...rest } = data;
+    return {
+      ...rest,
+      tipo_agente: tipo_agente ?? null,
+      status: status ?? undefined,
+    };
+  }, []);
 
   const fetchAgentesQuery = useCallback(async () => {
     try {
@@ -31,12 +94,12 @@ export const useAgentesIA = () => {
         throw error;
       }
 
-      return { data, error: null };
+      return { data: (data || []).map(normalizeAgente), error: null };
     } catch (error) {
       console.error('[useAgentesIA] erro na consulta:', error);
       return { data: null, error };
     }
-  }, [tenantId]);
+  }, [tenantId, normalizeAgente]);
 
   const {
     data: agentes,
@@ -62,7 +125,7 @@ export const useAgentesIA = () => {
     }
 
     try {
-      const payload = { ...data, tenant_id: tenantId };
+      const payload = { ...mapAgenteInputToDb(data), tenant_id: tenantId };
       const { data: newAgente, error } = await supabase
         .from('agentes_ia')
         .insert([payload])
@@ -71,7 +134,7 @@ export const useAgentesIA = () => {
 
       if (error) throw error;
 
-      setAgentes(prev => [newAgente, ...prev]);
+      setAgentes(prev => [normalizeAgente(newAgente), ...prev]);
 
       toast({
         title: 'Sucesso',
@@ -96,7 +159,7 @@ export const useAgentesIA = () => {
     try {
       let query = supabase
         .from('agentes_ia')
-        .update({ ...updateData, updated_at: new Date().toISOString() })
+        .update({ ...mapAgenteInputToDb(updateData as CreateAgenteData), updated_at: new Date().toISOString() })
         .eq('id', id);
 
       query = query.eq('tenant_id', tenantId);
@@ -108,7 +171,7 @@ export const useAgentesIA = () => {
       if (error) throw error;
 
       setAgentes(prev => prev.map(agente =>
-        agente.id === id ? { ...agente, ...updatedAgente } : agente
+        agente.id === id ? { ...agente, ...normalizeAgente(updatedAgente) } : agente
       ));
 
       toast({

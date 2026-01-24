@@ -23,27 +23,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { AgentType } from '@/lib/agents/AgentEngine';
-
-interface AgenteIA {
-  id: string;
-  nome: string;
-  area_juridica: string;
-  objetivo: string;
-  script_saudacao: string;
-  perguntas_qualificacao: string[];
-  keywords_acao: string[];
-  delay_resposta: number;
-  status: string;
-  descricao_funcao: string;
-  prompt_base: string;
-  tipo_agente: string;
-  parametros_avancados: {
-    temperatura: number;
-    top_p: number;
-    frequency_penalty: number;
-    presence_penalty: number;
-  };
-}
+import type { AgenteIA } from '@/hooks/useAgentesIA';
 
 interface NovoAgenteFormProps {
   agente?: AgenteIA | null;
@@ -77,9 +57,9 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, defaultType, on
 
   const areas = [
     'Direito Trabalhista',
-    'Direito de Família',
+    'Direito de Familia',
     'Direito Civil',
-    'Direito Previdenciário',
+    'Direito Previdenciario',
     'Direito Criminal',
     'Direito Empresarial'
   ];
@@ -88,44 +68,51 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, defaultType, on
     {
       value: 'chat_interno',
       label: 'Chat Interno',
-      description: 'Agente para interação direta com clientes via chat',
+      description: 'Agente para interacao direta com clientes via chat',
       icon: Bot
     },
     {
       value: 'analise_dados',
-      label: 'Análise de Dados',
-      description: 'Agente especializado em análise e processamento de dados',
+      label: 'Analise de Dados',
+      description: 'Agente especializado em analise e processamento de dados',
       icon: BarChart
     },
     {
       value: 'api_externa',
       label: 'API Externa',
-      description: 'Agente para integração com APIs e serviços externos',
+      description: 'Agente para integracao com APIs e servicos externos',
       icon: Zap
     }
   ];
 
   useEffect(() => {
     if (agente) {
+      const parametros = (agente.parametros_avancados ?? {}) as Record<string, unknown>;
+      const getNumber = (value: unknown, fallback: number) =>
+        typeof value === 'number' ? value : fallback;
+
       setFormData({
-        nome: agente.nome,
-        area_juridica: agente.area_juridica,
-        objetivo: agente.objetivo,
-        script_saudacao: agente.script_saudacao,
-        perguntas_qualificacao: agente.perguntas_qualificacao.length > 0 ? agente.perguntas_qualificacao : [''],
-        keywords_acao: agente.keywords_acao.length > 0 ? agente.keywords_acao : [''],
-        delay_resposta: agente.delay_resposta,
-        status: agente.status,
-        descricao_funcao: agente.descricao_funcao || '',
-        prompt_base: agente.prompt_base || '',
-        tipo_agente: agente.tipo_agente || 'chat_interno',
-        parametros_avancados: typeof agente.parametros_avancados === 'object' && agente.parametros_avancados ?
-          agente.parametros_avancados : {
-            temperatura: 0.7,
-            top_p: 0.9,
-            frequency_penalty: 0,
-            presence_penalty: 0
-          }
+        nome: agente.nome ?? '',
+        area_juridica: agente.area_juridica ?? '',
+        objetivo: agente.objetivo ?? '',
+        script_saudacao: agente.script_saudacao ?? '',
+        perguntas_qualificacao: Array.isArray(agente.perguntas_qualificacao) && agente.perguntas_qualificacao.length > 0
+          ? agente.perguntas_qualificacao
+          : [''],
+        keywords_acao: Array.isArray(agente.keywords_acao) && agente.keywords_acao.length > 0
+          ? agente.keywords_acao
+          : [''],
+        delay_resposta: agente.delay_resposta ?? 3,
+        status: agente.status ?? 'ativo',
+        descricao_funcao: agente.descricao_funcao ?? '',
+        prompt_base: agente.prompt_base ?? '',
+        tipo_agente: agente.tipo_agente ?? 'chat_interno',
+        parametros_avancados: {
+          temperatura: getNumber(parametros.temperatura, 0.7),
+          top_p: getNumber(parametros.top_p, 0.9),
+          frequency_penalty: getNumber(parametros.frequency_penalty, 0),
+          presence_penalty: getNumber(parametros.presence_penalty, 0),
+        }
       });
     }
   }, [agente]);
@@ -200,22 +187,21 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, defaultType, on
     setLoading(true);
 
     try {
-      // Dados já foram validados e sanitizados pelo Zod
-      const dadosParaSalvar = {
+      // Dados ja foram validados e sanitizados pelo Zod
+      const sanitizedData = {
         ...validatedData,
-        // Sanitizar campos de texto críticos
+        // Sanitizar campos de texto criticos
         nome: sanitizeText(validatedData.nome),
         descricao_funcao: sanitizeText(validatedData.descricao_funcao),
         prompt_base: sanitizeText(validatedData.prompt_base),
         script_saudacao: sanitizeText(validatedData.script_saudacao || ''),
         objetivo: sanitizeText(validatedData.objetivo || '')
       };
-
       if (agente) {
         // Atualizar agente existente
         const { error } = await supabase
           .from('agentes_ia')
-          .update(dadosParaSalvar)
+          .update(sanitizedData)
           .eq('id', agente.id);
 
         if (error) throw error;
@@ -228,7 +214,7 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, defaultType, on
         // Criar novo agente
         const { error } = await supabase
           .from('agentes_ia')
-          .insert([dadosParaSalvar]);
+          .insert([sanitizedData]);
 
         if (error) throw error;
 
@@ -623,3 +609,6 @@ const NovoAgenteForm: React.FC<NovoAgenteFormProps> = ({ agente, defaultType, on
 };
 
 export default NovoAgenteForm;
+
+
+

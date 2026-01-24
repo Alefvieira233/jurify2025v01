@@ -1,27 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
 import { Search, Filter, Plus, AlertCircle, RefreshCw } from 'lucide-react';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable, DropResult } from '@hello-pangea/dnd';
 import { useToast } from '@/hooks/use-toast';
-import { useLeads } from '@/hooks/useLeads';
+import { useLeads, type Lead } from '@/hooks/useLeads';
 import { useDebounce } from '@/hooks/useDebounce';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import NovoLeadForm from '@/components/forms/NovoLeadForm';
-
-interface Lead {
-  id: string;
-  nome_completo: string;
-  telefone: string;
-  email: string;
-  area_juridica: string;
-  origem: string;
-  valor_causa: number;
-  responsavel: string;
-  status: string;
-  created_at: string;
-}
 
 const PipelineJuridico = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -37,7 +24,7 @@ const PipelineJuridico = () => {
 
   const stages = [
     { id: 'novo_lead', title: 'Novos Leads', color: 'bg-blue-100 border-blue-300' },
-    { id: 'em_qualificacao', title: 'Em Qualificação', color: 'bg-yellow-100 border-yellow-300' },
+    { id: 'em_qualificacao', title: 'Em Qualificacao', color: 'bg-yellow-100 border-yellow-300' },
     { id: 'proposta_enviada', title: 'Proposta Enviada', color: 'bg-purple-100 border-purple-300' },
     { id: 'contrato_assinado', title: 'Contrato Assinado', color: 'bg-green-100 border-green-300' },
     { id: 'em_atendimento', title: 'Em Atendimento', color: 'bg-indigo-100 border-indigo-300' },
@@ -108,7 +95,7 @@ const PipelineJuridico = () => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="text-2xl">Pipeline Jurídico</CardTitle>
-                <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
+                <p className="text-gray-600">Gestao visual do funil de vendas juridico</p>
               </div>
               <Skeleton className="h-10 w-32" />
             </div>
@@ -155,7 +142,7 @@ const PipelineJuridico = () => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="text-2xl">Pipeline Jurídico</CardTitle>
-                <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
+                <p className="text-gray-600">Gestao visual do funil de vendas juridico</p>
               </div>
               <Button
                 className="bg-amber-500 hover:bg-amber-600"
@@ -206,7 +193,7 @@ const PipelineJuridico = () => {
             <div className="flex justify-between items-center">
               <div>
                 <CardTitle className="text-2xl">Pipeline Jurídico</CardTitle>
-                <p className="text-gray-600">Gestão visual do funil de vendas jurídico</p>
+                <p className="text-gray-600">Gestao visual do funil de vendas juridico</p>
               </div>
               <Button
                 className="bg-amber-500 hover:bg-amber-600"
@@ -298,7 +285,7 @@ const PipelineJuridico = () => {
 
         {/* Subtitle */}
         <p className="text-[hsl(var(--muted-foreground))] mt-3 text-base" style={{ fontFamily: "'Inter', sans-serif" }}>
-          Gestão visual do funil de vendas jurídico • <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{leads.length}</span> leads no total
+          Gestao visual do funil de vendas juridico - <span className="font-semibold text-[hsl(var(--accent))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>{leads.length}</span> leads no total
         </p>
       </div>
 
@@ -323,7 +310,7 @@ const PipelineJuridico = () => {
               onChange={(e) => setFilterArea(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
-              <option value="">Todas as Áreas</option>
+              <option value="">Todas as Areas</option>
               {areasJuridicas.map(area => (
                 <option key={area} value={area}>{area}</option>
               ))}
@@ -333,7 +320,7 @@ const PipelineJuridico = () => {
               onChange={(e) => setFilterResponsavel(e.target.value)}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
-              <option value="">Todos os Responsáveis</option>
+              <option value="">Todos os Responsaveis</option>
               {responsaveis.map(responsavel => (
                 <option key={responsavel} value={responsavel}>{responsavel}</option>
               ))}

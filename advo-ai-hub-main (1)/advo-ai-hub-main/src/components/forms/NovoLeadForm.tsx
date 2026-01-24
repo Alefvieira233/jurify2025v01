@@ -29,7 +29,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { useLeads, type CreateLeadData } from '@/hooks/useLeads';
+import { useLeads, type LeadInput } from '@/hooks/useLeads';
 import { leadFormSchema, AREAS_JURIDICAS, ORIGENS_LEAD, type LeadFormData } from '@/schemas/leadSchema';
 
 interface NovoLeadFormProps {
@@ -59,7 +59,7 @@ const NovoLeadForm: React.FC<NovoLeadFormProps> = ({ open, onOpenChange, onSucce
   const onSubmit = async (data: LeadFormData) => {
     try {
       // Converter para o formato do banco
-      const leadData: CreateLeadData = {
+      const leadData: LeadInput = {
         nome_completo: data.nome_completo,
         telefone: data.telefone || null,
         email: data.email || null,

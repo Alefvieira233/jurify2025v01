@@ -36,7 +36,7 @@ const ConversaoChart: React.FC<ConversaoChartProps> = ({ periodo }) => {
 
         const { data: contratos, error: contratosError } = await supabase
           .from('contratos')
-          .select('id, status, status_assinatura')
+          .select('id, status')
           .eq('tenant_id', tenantId)
           .gte('created_at', dataInicio.toISOString())
           .lte('created_at', dataFim.toISOString());
@@ -44,7 +44,7 @@ const ConversaoChart: React.FC<ConversaoChartProps> = ({ periodo }) => {
         if (contratosError) throw contratosError;
 
         const totalLeads = leads?.length || 0;
-        const contratosAssinados = contratos?.filter(c => c?.status_assinatura === 'assinado' || c?.status === 'assinado').length || 0;
+        const contratosAssinados = contratos?.filter(c => c?.status === 'assinado').length || 0;
         const taxaConversao = totalLeads > 0 ? (contratosAssinados / totalLeads) * 100 : 0;
 
         semanas.push({

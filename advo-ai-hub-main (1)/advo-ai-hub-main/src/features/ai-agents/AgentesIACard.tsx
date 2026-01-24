@@ -3,7 +3,7 @@ import { Bot, BarChart, Zap, Edit, Eye, Power, PowerOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { AgenteIA } from './hooks/useAgentesIAFilters';
+import type { AgenteIA } from '@/hooks/useAgentesIA';
 
 interface AgentesIACardProps {
   agente: AgenteIA;
@@ -14,7 +14,7 @@ interface AgentesIACardProps {
 
 const tiposAgente = {
   chat_interno: { label: 'Chat Interno', icon: Bot, color: 'text-blue-500' },
-  analise_dados: { label: 'Análise de Dados', icon: BarChart, color: 'text-green-500' },
+  analise_dados: { label: 'Analise de Dados', icon: BarChart, color: 'text-green-500' },
   api_externa: { label: 'API Externa', icon: Zap, color: 'text-purple-500' }
 };
 
@@ -47,10 +47,10 @@ export const AgentesIACard: React.FC<AgentesIACardProps> = ({
           
           <div className="flex items-center space-x-2">
             <Badge 
-              variant={agente.status === 'ativo' ? 'default' : 'secondary'}
-              className={agente.status === 'ativo' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+              variant={(agente.status === 'ativo') ? 'default' : 'secondary'}
+              className={(agente.status === 'ativo') ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
             >
-              {agente.status === 'ativo' ? 'Ativo' : 'Inativo'}
+              {(agente.status === 'ativo') ? 'Ativo' : 'Inativo'}
             </Badge>
           </div>
         </div>
@@ -69,7 +69,7 @@ export const AgentesIACard: React.FC<AgentesIACardProps> = ({
             Atualizado: {new Date(agente.updated_at).toLocaleDateString('pt-BR')}
           </span>
           <span className="text-blue-600 font-medium">
-            0 execuções
+            0 execucoes
           </span>
         </div>
 
@@ -99,9 +99,9 @@ export const AgentesIACard: React.FC<AgentesIACardProps> = ({
             variant="ghost"
             size="sm"
             onClick={() => onToggleStatus(agente)}
-            className={agente.status === 'ativo' ? 'hover:bg-red-50' : 'hover:bg-green-50'}
+            className={(agente.status === 'ativo') ? 'hover:bg-red-50' : 'hover:bg-green-50'}
           >
-            {agente.status === 'ativo' ? (
+            {(agente.status === 'ativo') ? (
               <>
                 <PowerOff className="h-4 w-4 mr-1 text-red-600" />
                 <span className="text-red-600">Desativar</span>
@@ -118,3 +118,5 @@ export const AgentesIACard: React.FC<AgentesIACardProps> = ({
     </Card>
   );
 };
+
+

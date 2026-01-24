@@ -236,7 +236,7 @@ export const useWhatsAppConversations = (): UseWhatsAppConversationsReturn => {
 
   // ✅ CORREÇÃO: Realtime subscriptions com cleanup adequado e filtros
   useEffect(() => {
-    if (!user) return;
+    if (!user) return undefined;
 
     let conversationsChannel: RealtimeChannel | null = null;
     let messagesChannel: RealtimeChannel | null = null;

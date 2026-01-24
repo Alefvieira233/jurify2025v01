@@ -9,6 +9,9 @@ import { Button } from '@/components/ui/button';
 import { useDashboardMetrics } from '@/hooks/useDashboardMetrics';
 import { seedDatabase } from '@/scripts/seed-database';
 import { useToast } from '@/hooks/use-toast';
+import { ConversionFunnel } from '@/components/analytics/ConversionFunnel';
+import { RevenueCard } from '@/components/analytics/RevenueCard';
+import { ResponseTimeChart } from '@/components/analytics/ResponseTimeChart';
 
 const Dashboard = () => {
   const { metrics, loading, error, refetch, isEmpty } = useDashboardMetrics();
@@ -102,7 +105,7 @@ const Dashboard = () => {
               <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-red-900 mb-2">Erro ao carregar dashboard</h3>
               <p className="text-red-700 mb-4">{error}</p>
-              <Button 
+              <Button
                 onClick={refetch}
                 className="bg-red-600 hover:bg-red-700"
               >
@@ -117,35 +120,55 @@ const Dashboard = () => {
 
   if (isEmpty) {
     return (
-      <div className="p-6">
-        <Card className="border-blue-200 bg-blue-50">
-          <CardContent className="p-8">
-            <div className="text-center">
-              <TrendingUp className="h-12 w-12 text-blue-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-blue-900 mb-2">Dashboard vazio</h3>
-              <p className="text-blue-700 mb-6">
-                Nenhum dado encontrado. Você pode gerar dados de teste para visualizar o sistema funcionando
-                ou começar cadastrando leads reais.
-              </p>
-              <div className="flex gap-3 justify-center">
-                <Button
-                  onClick={handleGenerateTestData}
-                  disabled={isSeeding}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  {isSeeding ? 'Gerando...' : 'Gerar Dados de Teste'}
-                </Button>
-                <Button
-                  onClick={refetch}
-                  variant="outline"
-                  className="border-blue-300"
-                >
-                  Atualizar métricas
-                </Button>
-              </div>
+      <div className="p-6 h-full flex flex-col justify-center items-center animate-fade-in">
+        <Card className="border-[hsl(var(--accent)_/_0.3)] bg-gradient-to-br from-[hsl(var(--card))] to-[hsl(var(--muted)_/_0.3)] shadow-2xl max-w-2xl w-full overflow-hidden relative">
+          {/* Gold Glow */}
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-[hsl(var(--accent)_/_0)] via-[hsl(var(--accent))] to-[hsl(var(--accent)_/_0)] opacity-70" />
+
+          <CardContent className="p-10 flex flex-col items-center text-center relative z-10">
+            <div className="w-20 h-20 rounded-2xl bg-[hsl(var(--accent)_/_0.1)] flex items-center justify-center mb-6 ring-1 ring-[hsl(var(--accent))]/20 shadow-lg">
+              <Sparkles className="h-10 w-10 text-[hsl(var(--accent))]" />
             </div>
+
+            <h3 className="text-3xl font-bold text-[hsl(var(--foreground))] mb-3" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+              Bem-vindo ao Jurify
+            </h3>
+
+            <p className="text-[hsl(var(--muted-foreground))] text-lg mb-8 max-w-md leading-relaxed">
+              Seu ambiente está pronto. Gere dados de demonstração para visualizar o potencial da plataforma com o design <span className="font-serif italic text-[hsl(var(--accent))]">Conservative Luxury</span>.
+            </p>
+
+            <div className="flex gap-4 w-full sm:w-auto">
+              <Button
+                onClick={handleGenerateTestData}
+                disabled={isSeeding}
+                className="bg-[hsl(var(--accent))] hover:bg-[hsl(var(--accent-hover))] text-[hsl(var(--accent-foreground))] font-bold px-8 py-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 w-full sm:w-auto text-base"
+              >
+                {isSeeding ? (
+                  <>
+                    <Activity className="h-5 w-5 mr-3 animate-spin" />
+                    Configurando Ambiente...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-5 w-5 mr-3" />
+                    Gerar Dados de Demonstração
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {!isSeeding && (
+              <p className="mt-6 text-xs text-[hsl(var(--muted-foreground))] font-mono uppercase tracking-widest opacity-60">
+                Setup Automático de Perfil & Dados
+              </p>
+            )}
           </CardContent>
+
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-[0.03] pointer-events-none"
+            style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)', backgroundSize: '24px 24px' }}>
+          </div>
         </Card>
       </div>
     );
@@ -165,7 +188,7 @@ const Dashboard = () => {
             </div>
           </div>
           <p className="text-[hsl(var(--muted-foreground))] text-base font-medium">
-            Métricas em tempo real do seu escritório jurídico
+            Metricas em tempo real do seu escritorio juridico
           </p>
         </div>
 
@@ -214,7 +237,7 @@ const Dashboard = () => {
                   <ArrowUpRight className="h-3.5 w-3.5 mr-1" strokeWidth={3} />
                   +{metrics.leadsNovoMes}
                 </Badge>
-                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">este mês</span>
+                <span className="text-sm text-[hsl(var(--muted-foreground))] font-medium">este mes</span>
               </div>
             </CardContent>
           </Card>
@@ -409,6 +432,44 @@ const Dashboard = () => {
             ))}
           </CardContent>
         </Card>
+      </div>
+
+      {/* 📊 PREMIUM ANALYTICS SECTION */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in" style={{ animationDelay: '0.65s' }}>
+        {/* Conversion Funnel */}
+        <div className="lg:col-span-2">
+          <ConversionFunnel data={metrics.leadsPorStatus} />
+        </div>
+
+        {/* Revenue Card */}
+        <div>
+          <RevenueCard
+            currentMRR={metrics.contratosAssinados * 997}
+            previousMRR={(metrics.contratosAssinados - 2) * 997}
+            contractsThisMonth={metrics.contratosAssinados}
+            avgTicket={997}
+            targetMRR={50000}
+          />
+        </div>
+      </div>
+
+      {/* Response Time Chart */}
+      <div className="fade-in" style={{ animationDelay: '0.7s' }}>
+        <ResponseTimeChart
+          data={[
+            { time: '08:00', avgTime: 1.8, p95Time: 3.2 },
+            { time: '09:00', avgTime: 2.1, p95Time: 3.8 },
+            { time: '10:00', avgTime: 1.5, p95Time: 2.9 },
+            { time: '11:00', avgTime: 2.4, p95Time: 4.1 },
+            { time: '12:00', avgTime: 1.9, p95Time: 3.5 },
+            { time: '13:00', avgTime: 2.0, p95Time: 3.3 },
+            { time: '14:00', avgTime: 1.7, p95Time: 2.8 },
+            { time: '15:00', avgTime: 2.2, p95Time: 3.9 },
+            { time: '16:00', avgTime: 1.6, p95Time: 3.0 },
+            { time: '17:00', avgTime: 2.3, p95Time: 4.0 },
+          ]}
+          targetResponseTime={3}
+        />
       </div>
 
       {/* Performance dos Agentes */}

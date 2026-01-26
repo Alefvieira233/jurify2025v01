@@ -1,20 +1,7 @@
 import { memo } from 'react';
 import { Droppable } from '@hello-pangea/dnd';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { PipelineCard } from './PipelineCard';
-
-interface Lead {
-    id: string;
-    nome_completo: string;
-    telefone: string;
-    email: string;
-    area_juridica: string;
-    origem: string;
-    valor_causa: number;
-    responsavel: string;
-    status: string;
-    created_at: string;
-}
+import { type Lead } from '@/hooks/useLeads';
 
 interface Stage {
     id: string;
@@ -30,46 +17,42 @@ interface PipelineColumnProps {
 
 export const PipelineColumn = memo(({ stage, leads, stageIndex }: PipelineColumnProps) => {
     return (
-        <Card
-            className={`relative group ${stage.color} min-h-96 rounded-3xl border-2 overflow-hidden fade-in`}
-            style={{ animationDelay: `${stageIndex * 0.08}s` }}
+        <div
+            className="flex flex-col h-full bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden backdrop-blur-sm transition-all duration-700 hover:bg-white/[0.04] scrollbar-premium"
+            style={{
+                animationDelay: `${stageIndex * 0.1}s`,
+                minHeight: '700px'
+            }}
         >
-            <div className="absolute -inset-1 bg-gradient-to-br from-white/20 via-transparent to-transparent rounded-3xl blur-md opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-
-            <CardHeader className="relative pb-3">
-                <h3
-                    className="font-bold text-gray-900 text-base"
-                    style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                >
-                    {stage.title}
-                </h3>
-                <div className="flex items-center gap-2">
-                    <span
-                        className="text-lg font-bold text-gray-700"
-                        style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                    >
-                        {leads.length}
-                    </span>
-                    <span className="text-xs text-gray-500">leads</span>
+            {/* Header Column */}
+            <div className="p-6 border-b border-white/[0.05] bg-gradient-to-br from-white/[0.03] to-transparent">
+                <div className="flex justify-between items-center mb-1">
+                    <h3 className="text-sm font-black uppercase tracking-[0.2em] text-[hsl(var(--primary))]" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
+                        {stage.title}
+                    </h3>
+                    <div className="px-2 py-0.5 rounded-full bg-[hsl(var(--primary)_/_0.1)] border border-[hsl(var(--primary)_/_0.2)]">
+                        <span className="text-[10px] font-bold text-[hsl(var(--primary))]">{leads.length}</span>
+                    </div>
                 </div>
-            </CardHeader>
+                <div className="h-0.5 w-12 bg-gradient-to-r from-[hsl(var(--primary))] to-transparent rounded-full opacity-50" />
+            </div>
 
             <Droppable droppableId={stage.id}>
                 {(provided, snapshot) => (
-                    <CardContent
+                    <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`relative space-y-3 min-h-80 transition-all duration-300 ${snapshot.isDraggingOver ? 'bg-white/30 scale-[1.02]' : ''
+                        className={`flex-1 p-4 space-y-4 transition-all duration-300 min-h-[500px] ${snapshot.isDraggingOver ? 'bg-[hsl(var(--primary)_/_0.03)] scale-[0.99]' : ''
                             }`}
                     >
                         {leads.map((lead, index) => (
                             <PipelineCard key={lead.id} lead={lead} index={index} />
                         ))}
                         {provided.placeholder}
-                    </CardContent>
+                    </div>
                 )}
             </Droppable>
-        </Card>
+        </div>
     );
 });
 

@@ -1,18 +1,7 @@
 import { memo } from 'react';
 import { Draggable } from '@hello-pangea/dnd';
-
-interface Lead {
-    id: string;
-    nome_completo: string;
-    telefone: string;
-    email: string;
-    area_juridica: string;
-    origem: string;
-    valor_causa: number;
-    responsavel: string;
-    status: string;
-    created_at: string;
-}
+import { type Lead } from '@/hooks/useLeads';
+import { User, Phone, Scale, Banknote, Calendar } from 'lucide-react';
 
 interface PipelineCardProps {
     lead: Lead;
@@ -27,46 +16,57 @@ export const PipelineCard = memo(({ lead, index }: PipelineCardProps) => {
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`relative group/card bg-white/95 backdrop-blur-sm p-4 rounded-2xl border border-gray-200 cursor-move transition-all duration-500 ${snapshot.isDragging
-                            ? 'rotate-3 shadow-2xl scale-105 border-[hsl(var(--accent))]'
-                            : 'hover:shadow-lg hover:border-[hsl(var(--accent)_/_0.3)] hover:-translate-y-1'
+                    className={`relative group/card p-4 rounded-xl border transition-all duration-500 cursor-grab active:cursor-grabbing ${snapshot.isDragging
+                            ? 'bg-[hsl(var(--card)_/_0.95)] border-[hsl(var(--primary))] shadow-[0_20px_50px_rgba(0,0,0,0.5)] rotate-2 scale-105 z-50'
+                            : 'bg-[hsl(var(--card)_/_0.4)] border-white/5 hover:border-white/20 hover:bg-[hsl(var(--card)_/_0.6)] hover:-translate-y-1'
                         }`}
                 >
-                    {snapshot.isDragging && (
-                        <div className="absolute -inset-1 bg-gradient-to-br from-[hsl(var(--accent)_/_0.2)] to-transparent rounded-2xl blur-lg" />
-                    )}
+                    {/* Glossy overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-xl" />
 
-                    <div className="relative space-y-2">
-                        <h4
-                            className="font-bold text-gray-900 text-sm leading-tight"
-                            style={{ fontFamily: "'Cormorant Garamond', serif" }}
-                        >
-                            {lead.nome_completo}
-                        </h4>
-                        <div className="text-xs text-gray-600 space-y-1.5" style={{ fontFamily: "'Inter', sans-serif" }}>
-                            <div className="flex items-center gap-1.5">
-                                <span className="opacity-50">📞</span>
-                                <span className="truncate">{lead.telefone || 'N/A'}</span>
+                    <div className="relative space-y-4">
+                        <div className="flex justify-between items-start">
+                            <h4 className="font-bold text-white text-base leading-tight group-hover/card:text-[hsl(var(--primary))] transition-colors duration-300" style={{ fontFamily: "'Cormorant Garamond', serif" }}>
+                                {lead.nome_completo}
+                            </h4>
+                            <div className="bg-white/5 px-2 py-0.5 rounded border border-white/10">
+                                <span className="text-[9px] uppercase font-black tracking-tighter text-white/50">{lead.origem || 'WEB'}</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="opacity-50">⚖️</span>
+                        </div>
+
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-[11px] text-white/60">
+                                <Phone className="h-3 w-3 text-[hsl(var(--primary))]" />
+                                <span>{lead.telefone || 'N/A'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-white/60">
+                                <Scale className="h-3 w-3 text-[hsl(var(--primary))]" />
                                 <span className="truncate">{lead.area_juridica}</span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                                <span className="opacity-50">👤</span>
-                                <span className="truncate">{lead.responsavel}</span>
+                            <div className="flex items-center gap-2 text-[11px] text-white/60">
+                                <User className="h-3 w-3 text-white/30" />
+                                <span className="truncate">{lead.responsavel || 'Sem Resp.'}</span>
                             </div>
-                            {lead.valor_causa && (
-                                <div className="flex items-center gap-1.5 font-semibold text-[hsl(var(--accent))]">
-                                    <span className="opacity-50">💰</span>
-                                    <span>R$ {Number(lead.valor_causa).toLocaleString('pt-BR')}</span>
-                                </div>
-                            )}
                         </div>
-                        <div className="text-xs text-gray-400 pt-2 border-t border-gray-100">
-                            {new Date(lead.created_at).toLocaleDateString('pt-BR')}
+
+                        <div className="pt-3 border-t border-white/5 flex items-center justify-between">
+                            <div className="flex flex-col">
+                                <span className="text-[8px] uppercase tracking-widest text-white/30">Valor Estimado</span>
+                                <span className="text-xs font-bold text-[hsl(var(--primary))]">
+                                    {lead.valor_causa ? `R$ ${Number(lead.valor_causa).toLocaleString('pt-BR')}` : 'R$ ---'}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[10px] text-white/20">
+                                <Calendar className="h-2.5 w-2.5" />
+                                <span>{new Date(lead.created_at).toLocaleDateString('pt-BR')}</span>
+                            </div>
                         </div>
                     </div>
+
+                    {/* Drag glow */}
+                    {snapshot.isDragging && (
+                        <div className="absolute -inset-0.5 bg-[hsl(var(--primary)_/_0.2)] blur-lg rounded-xl -z-10" />
+                    )}
                 </div>
             )}
         </Draggable>

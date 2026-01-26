@@ -59,7 +59,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
   const [error, setError] = useState<string | null>(null);
   const [isEmpty, setIsEmpty] = useState(false);
 
-  // PaginaÃ§Ã£o
+  // Paginação
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -110,18 +110,24 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     try {
       setLoading(true);
       setError(null);
-      console.log(`ðŸ” [useLeads] Buscando leads (pÃ¡gina ${page})...`);
+      console.log(`🔍 [useLeads] Buscando leads (página ${page})...`);
 
       let query = supabase
         .from('leads')
         .select('*', { count: 'exact' })
         .order('created_at', { ascending: false });
 
-      if (profile?.tenant_id) {
-        query = query.eq('tenant_id', profile.tenant_id);
+      // IMPORTANTE: Se o profile não carregou mas sabemos o tenant pelo metadata do auth, tentamos usar
+      const effectiveTenantId = profile?.tenant_id || (user as any).user_metadata?.tenant_id;
+
+      if (effectiveTenantId) {
+        console.log(`🎯 [useLeads] Filtrando por tenant: ${effectiveTenantId}`);
+        query = query.eq('tenant_id', effectiveTenantId);
+      } else {
+        console.warn('⚠️ [useLeads] Sem tenant_id disponível para filtro. RLS deve atuar.');
       }
 
-      // Aplicar paginaÃ§Ã£o se habilitada
+      // Aplicar paginação
       if (enablePagination) {
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
@@ -131,9 +137,11 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       const { data, error: fetchError, count } = await query;
 
       if (fetchError) {
-        console.error('âŒ [useLeads] Erro ao buscar leads:', fetchError);
+        console.error('❌ [useLeads] Erro técnico Supabase:', fetchError.message);
         throw fetchError;
       }
+
+      console.log(`📊 [useLeads] Resultado: ${data?.length || 0} leads encontrados.`);
 
       const normalizedLeads = (data || []).map(normalizeLead);
       setLeads(normalizedLeads);
@@ -144,10 +152,8 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
         setTotalPages(Math.ceil(count / pageSize));
       }
 
-      console.log(`âœ… [useLeads] ${data?.length || 0} leads encontrados (total: ${count})`);
-
     } catch (error: any) {
-      console.error('âŒ [useLeads] Erro na consulta:', error);
+      console.error('❌ [useLeads] Falha na busca:', error);
       setError(error.message || 'Erro ao carregar leads');
       setLeads([]);
       setIsEmpty(true);
@@ -163,7 +169,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     }
   }, [user, currentPage, fetchLeads]);
 
-  // FunÃ§Ãµes de paginaÃ§Ã£o
+  // Funções de paginação
   const goToPage = useCallback((page: number) => {
     if (page >= 1 && page <= totalPages) {
       setCurrentPage(page);
@@ -189,15 +195,15 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
   const createLead = useCallback(async (data: LeadInput): Promise<boolean> => {
     if (!user) {
       toast({
-        title: 'Erro de autenticaÃ§Ã£o',
-        description: 'UsuÃ¡rio nÃ£o autenticado',
+        title: 'Erro de autenticação',
+        description: 'Usuário não autenticado',
         variant: 'destructive',
       });
       return false;
     }
 
     try {
-      console.log('ðŸ”„ [useLeads] Criando novo lead...');
+      console.log('🔄 [useLeads] Criando novo lead...');
       const payload = mapLeadInputToDb(data);
       const { data: newLead, error } = await supabase
         .from('leads')
@@ -208,9 +214,6 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       if (error) throw error;
 
       const normalizedLead = normalizeLead(newLead);
-      console.log('Lead criado com sucesso:', normalizedLead.id);
-
-      // âœ… CORREÃ‡ÃƒO: Usar setter callback para evitar dependÃªncia circular
       setLeads(prev => [normalizedLead, ...prev]);
 
       toast({
@@ -220,10 +223,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       return true;
     } catch (error: any) {
-      console.error('âŒ [useLeads] Erro ao criar lead:', error);
+      console.error('❌ [useLeads] Erro ao criar lead:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'NÃ£o foi possÃ­vel criar o lead.',
+        description: error.message || 'Não foi possível criar o lead.',
         variant: 'destructive',
       });
       return false;
@@ -234,7 +237,7 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     if (!user) return false;
 
     try {
-      console.log(`ðŸ”„ [useLeads] Atualizando lead ${id}...`);
+      console.log(`🔄 [useLeads] Atualizando lead ${id}...`);
       const payload = mapLeadInputToDb(updateData);
       const { data: updatedLead, error } = await supabase
         .from('leads')
@@ -246,9 +249,6 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
       if (error) throw error;
 
       const normalizedLead = normalizeLead(updatedLead);
-      console.log('Lead atualizado com sucesso');
-
-      // Atualizar estado normalizado
       setLeads(prev => prev.map(lead =>
         lead.id === id ? { ...lead, ...normalizedLead } : lead
       ));
@@ -260,10 +260,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       return true;
     } catch (error: any) {
-      console.error('âŒ [useLeads] Erro ao atualizar lead:', error);
+      console.error('❌ [useLeads] Erro ao atualizar:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'NÃ£o foi possÃ­vel atualizar o lead.',
+        description: error.message || 'Não foi possível atualizar o lead.',
         variant: 'destructive',
       });
       return false;
@@ -274,17 +274,12 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     if (!user) return false;
 
     try {
-      console.log(`ðŸ—‘ï¸ [useLeads] Deletando lead ${id}...`);
       const { error } = await supabase
         .from('leads')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
-
-      console.log('âœ… [useLeads] Lead deletado com sucesso');
-
-      // âœ… CORREÃ‡ÃƒO: Usar setter callback para evitar dependÃªncia circular
       setLeads(prev => prev.filter(lead => lead.id !== id));
 
       toast({
@@ -294,10 +289,10 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
 
       return true;
     } catch (error: any) {
-      console.error('âŒ [useLeads] Erro ao deletar lead:', error);
+      console.error('❌ [useLeads] Erro ao deletar:', error);
       toast({
         title: 'Erro',
-        description: error.message || 'NÃ£o foi possÃ­vel remover o lead.',
+        description: error.message || 'Não foi possível remover o lead.',
         variant: 'destructive',
       });
       return false;
@@ -305,19 +300,14 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
   }, [user, toast]);
 
   return {
-    // Dados
     leads,
     loading,
     error,
     isEmpty,
-
-    // OperaÃ§Ãµes CRUD
     fetchLeads: refreshLeads,
     createLead,
     updateLead,
     deleteLead,
-
-    // PaginaÃ§Ã£o
     currentPage,
     totalPages,
     totalCount,
@@ -329,4 +319,3 @@ export const useLeads = (options?: { enablePagination?: boolean; pageSize?: numb
     hasPrevPage: currentPage > 1,
   };
 };
-
